@@ -18,6 +18,7 @@ model User {
   id             String   @id @default(cuid())
   name           String?
   email          String   @unique
+  password       String?  // Password only for credential-based auth, null for OAuth users
   emailVerified  DateTime?
   image          String?
   role           UserRole @default(CUSTOMER)

@@ -1,18 +1,37 @@
 import "dotenv/config";
 import { PrismaClient } from "../generated/prisma";
+import bcryptjs from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+async function hashPassword(password: string): Promise<string> {
+  return bcryptjs.hash(password, 10);
+}
 
 async function main() {
-  // Create admin user
+  // Create admin user with credentials
+  const adminPassword = await hashPassword("admin123");
   const admin = await prisma.user.upsert({
     where: { email: "admin@example.com" },
     update: {},
     create: {
       email: "admin@example.com",
       name: "Admin User",
+      password: adminPassword,
       role: "ADMIN",
+    },
+  });
+
+  // Create test customer user with credentials
+  const testPassword = await hashPassword("test123");
+  const testUser = await prisma.user.upsert({
+    where: { email: "test@example.com" },
+    update: {},
+    create: {
+      email: "test@example.com",
+      name: "Test User",
+      password: testPassword,
+      role: "CUSTOMER",
     },
   });
 

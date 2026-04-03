@@ -22,9 +22,9 @@ export default function Header() {
             </button>
           </>
         ) : (
-          <button onClick={() => signIn("google")} className="btn-primary">
-            Accedi con Google
-          </button>
+          <Link href="/auth/login" className="btn-primary">
+            Accedi
+          </Link>
         )}
       </nav>
     </header>

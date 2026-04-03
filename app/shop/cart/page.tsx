@@ -74,7 +74,7 @@ export default function CartPage() {
         <main className="container mx-auto px-4 py-8">
           <h1 className="text-3xl font-bold">Carrello</h1>
           <p className="mt-4 text-slate-600">Accedi per visualizzare il carrello.</p>
-          <Link href="/api/auth/signin" className="mt-4 inline-block rounded bg-blue-600 px-4 py-2 text-white">
+          <Link href="/auth/login" className="mt-4 inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition-colors">
             Accedi
           </Link>
         </main>
