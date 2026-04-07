@@ -11,11 +11,20 @@ Progetto di gestione ordini con autenticazione Google (NextAuth), database Prism
 
 1. `npm install`
 2. Copia `.env` da `.env.example` (o modifica `.env` esistente)
-3. Imposta `DATABASE_URL`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SENDGRID_API_KEY`
+3. Imposta `DATABASE_URL`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SENDGRID_API_KEY`, `SUPPORT_EMAIL`
 4. Avvia database: `docker-compose up -d`
 5. `npx prisma db push`
 6. `npx prisma generate`
-7. `npm run db:seed` (opzionale, per dati di test)
+7. `npm run db:seed` (opzionale, per dati di test sicuri)
+
+## Credenziali di Test
+
+Dopo aver eseguito il seeding del database, puoi accedere con queste credenziali di prova:
+
+- **Admin**: `admin@example.com` / `AdminSecure123!`
+- **User**: `test@example.com` / `TestSecure456!`
+
+> ⚠️ **Importante**: Queste password rispettano i requisiti di sicurezza minimi dell'applicazione (8+ caratteri, maiuscola, minuscola, numero, carattere speciale). In produzione, usa sempre password uniche e sicure.
 
 ## Configurazione Ambiente
 
@@ -52,6 +61,14 @@ SENDGRID_API_KEY="your-sendgrid-api-key"
 - **NON committare mai** il file `.env` su Git
 - Usa chiavi diverse per sviluppo e produzione
 - Genera sempre nuove chiavi segrete per produzione
+- Le password di test rispettano i requisiti di sicurezza minimi
+- In produzione, abilita sempre HTTPS e configura header di sicurezza
+
+### Sicurezza Dati di Test
+- Le credenziali di seeding sono progettate per rispettare le policy di sicurezza
+- Password di test: minimo 8 caratteri, maiuscola, minuscola, numero, carattere speciale
+- Usa solo per sviluppo locale - mai in produzione
+- Dopo il testing, considera di rimuovere o modificare i dati di test
 
 ## Esecuzione
 

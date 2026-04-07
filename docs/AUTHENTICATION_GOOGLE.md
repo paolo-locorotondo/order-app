@@ -771,6 +771,8 @@ openssl rand -base64 32
 
 ## Sicurezza - Checklist
 
+## Sicurezza - Checklist
+
 - [ ] `NEXTAUTH_SECRET` è generato con `openssl rand -base64 32`
 - [ ] `GOOGLE_CLIENT_SECRET` NON è in Git (`.gitignore` lo copre)
 - [ ] Il `.env` contiene credenziali reali
@@ -778,6 +780,11 @@ openssl rand -base64 32
 - [ ] In produzione, usa HTTPS (Google non accetta HTTP per siti pubblici)
 - [ ] Cambia `NEXTAUTH_SECRET` per ogni ambiente (dev ≠ prod)
 - [ ] Usa variabili d'ambiente del provider (Vercel, Railway, etc.) in produzione
+- [ ] **Header di sicurezza configurati**: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, CSP, HSTS
+- [ ] **Validazione password robusta**: minimo 8 caratteri, maiuscola, minuscola, numero, carattere speciale
+- [ ] **Dati di test sicuri**: password seeding rispettano policy sicurezza (non usare "admin123", "test123")
+- [ ] **Gestione errori sicura**: nessun leak di informazioni sensibili nei messaggi di errore
+- [ ] **Input sanitization**: tutti gli input validati con Zod schemas prima dell'elaborazione
 
 ---
 
@@ -789,11 +796,23 @@ L'autenticazione Google in Order App funziona così:
 3. **JWT Token** mantiene le sessioni stateless (no server-side memory)
 4. **Middleware** protegge le rotte richiedendo un token valido
 5. **Type-safe** grazie alla dichiarazione dei tipi NextAuth estesa
+6. **Sicurezza avanzata** con header HTTP, validazione input e password robuste
+
+**Funzionalità di sicurezza implementate:**
+- Header di sicurezza completi (XSS, CSRF, clickjacking protection)
+- Content Security Policy (CSP) per prevenzione injection
+- Strict Transport Security (HSTS) per forzare HTTPS
+- Validazione input runtime con Zod schemas
+- Password policy robuste (8+ caratteri, caratteri misti)
+- Gestione errori sicura senza information disclosure
+- Dati di test che rispettano le policy di sicurezza
 
 Per produzione:
 - Configura reindirizzamenti HTTPS
 - Usa credenziali ambiente del tuo provider di deploy
 - Monitora i log di autenticazione
+- Esegui regolarmente security audit
+- Mantieni aggiornate le dipendenze di sicurezza
 
 ---
 

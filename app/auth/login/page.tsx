@@ -3,6 +3,9 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Suspense } from "react";
+import { LoginErrorRedirect } from "./login-error-redirect";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -29,7 +32,7 @@ export default function LoginPage() {
       } else if (result?.ok) {
         router.push("/dashboard");
       }
-    } catch (err) {
+    } catch {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -39,13 +42,16 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     try {
       await signIn("google", { callbackUrl: "/dashboard" });
-    } catch (err) {
+    } catch {
       setError("Failed to sign in with Google");
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
+      <Suspense fallback={null}>
+        <LoginErrorRedirect />
+      </Suspense>
       <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-8 shadow-xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white">Benvenuto</h1>
@@ -124,11 +130,19 @@ export default function LoginPage() {
               {isLoading ? "Accesso in corso..." : "Accedi"}
             </button>
 
+            <p className="mt-4 text-sm text-slate-400">
+              Non hai un account?{' '}
+              <a href="/auth/register" className="font-semibold text-white hover:text-blue-200">
+                Registrati qui
+              </a>
+            </p>
+
             {/* Test Credentials Info */}
             <div className="mt-6 rounded-lg bg-slate-800/50 border border-slate-700 px-4 py-3 text-xs text-slate-300">
-              <p className="font-semibold text-slate-200 mb-2">Credenziali di test:</p>
-              <p>Admin: <code className="text-emerald-400">admin@example.com</code> / <code className="text-emerald-400">admin123</code></p>
-              <p>User: <code className="text-emerald-400">test@example.com</code> / <code className="text-emerald-400">test123</code></p>
+              <p className="font-semibold text-slate-200 mb-2">Credenziali di test (sicure):</p>
+              <p>Admin: <code className="text-emerald-400">admin@example.com</code> / <code className="text-emerald-400">AdminSecure123!</code></p>
+              <p>User: <code className="text-emerald-400">test@example.com</code> / <code className="text-emerald-400">TestSecure456!</code></p>
+              <p className="mt-2 text-slate-400">⚠️ Queste password rispettano i requisiti di sicurezza minimi.</p>
             </div>
           </form>
         )}
@@ -137,7 +151,7 @@ export default function LoginPage() {
         {activeTab === "google" && (
           <div className="space-y-4">
             <p className="text-sm text-slate-400">
-              Accedi rapidamente usando il tuo account Google. Configura le credenziali Google OAuth nel file .env per attivare questa opzione.
+              Accedi rapidamente usando il tuo account Google. Verranno usate le seguenti info: Nome, Email, Immagine
             </p>
             <button
               onClick={handleGoogleSignIn}

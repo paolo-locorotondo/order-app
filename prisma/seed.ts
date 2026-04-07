@@ -9,8 +9,8 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 async function main() {
-  // Create admin user with credentials
-  const adminPassword = await hashPassword("admin123");
+  // Create admin user with secure credentials
+  const adminPassword = await hashPassword("AdminSecure123!");
   const admin = await prisma.user.upsert({
     where: { email: "admin@example.com" },
     update: {},
@@ -22,8 +22,8 @@ async function main() {
     },
   });
 
-  // Create test customer user with credentials
-  const testPassword = await hashPassword("test123");
+  // Create test customer user with secure credentials
+  const testPassword = await hashPassword("TestSecure456!");
   const testUser = await prisma.user.upsert({
     where: { email: "test@example.com" },
     update: {},

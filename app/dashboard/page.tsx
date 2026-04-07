@@ -24,6 +24,9 @@ export default async function DashboardPage() {
               <a href="/dashboard/admin/inventory" className="rounded bg-emerald-600 px-3 py-2 text-white">
                 Inventario
               </a>
+              <a href="/dashboard/admin/users" className="rounded bg-teal-600 px-3 py-2 text-white">
+                Gestione Utenti
+              </a>
             </>
           ) : null}
         </div>
