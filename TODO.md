@@ -29,21 +29,34 @@
 ## 🚀 Next Steps
 
 ### 1. Gestione Pagina Admin Prodotti (CRUD)
-**Stato**: 🔴 TODO  
-**Descrizione**: La pagina `/dashboard/admin/products` attualmente mostra solo i prodotti ma manca la gestione completa (Create, Read, Update, Delete)
+**Stato**: ✅ COMPLETATO  
+**Descrizione**: Gestione completa dei prodotti con create, read, update, delete
 
-**Task**:
-- [ ] Implementare form di creazione prodotto
-- [ ] Implementare modal/form di edit prodotto
-- [ ] Implementare delete prodotto con conferma
-- [ ] Aggiornare inventario da questa pagina
-- [ ] Validazione form client + server
-- [ ] Feedback visivo (toast/notifiche) per azioni
+**Task completati**:
+- [x] Implementare form di creazione prodotto con validazione client
+- [x] Implementare modal/form di modifica prodotto
+- [x] Implementare delete prodotto con conferma 2-step
+- [x] Creare inventory insieme al prodotto durante CREATE
+- [x] Aggiornare inventory tramite endpoint separato durante UPDATE
+- [x] Validazione form client-side e server-side
+- [x] Feedback visivo: loading state durante azioni
+- [x] Auto-generazione slug dal nome prodotto
+- [x] Validazione SKU univoco (controlla duplicati)
+- [x] Gestione errori e messaggi user-friendly
 
-**File coinvolti**:
-- `app/dashboard/admin/products/page.tsx`
-- `app/api/admin/products/route.ts` (POST, PUT, DELETE)
-- Possibile nuovo component: `components/ProductForm.tsx`
+**File creati/modificati**:
+- `components/ProductForm.tsx` (NEW) - Form riutilizzabile con validazione
+- `components/ProductDialog.tsx` (NEW) - Modal per create/edit
+- `app/api/inventory/[id]/route.ts` (NEW) - Endpoint PUT per aggiornare stock
+- `app/api/products/route.ts` (UPDATED) - POST con quantity nel body, validazione SKU
+- `app/api/products/[id]/route.ts` (UPDATED) - PUT con SKU handling, DELETE con cascading
+- `app/dashboard/admin/products/page.tsx` (UPDATED) - Client component con tabella CRUD
+
+**Bug fix implementati**:
+- ✅ Quantity: POST endpoint ora accetta e usa quantity dal body
+- ✅ SKU duplicati: Validazione pre-check + errore 400 user-friendly
+- ✅ SKU NULL: Stringa vuota convertita a NULL per evitare unique constraint
+- ✅ DELETE cascading: Elimina CartItem + OrderItem + Inventory prima del Product
 
 ---
 
@@ -94,3 +107,16 @@
 - La preview mode su Vercel è adeguata per testing
 - Verificare le env var su Vercel prima di ogni deployment
 - Testare sempre il flusso completo localmente prima di pushare
+- ✅ DELETE Fix: eliminare Inventory prima del Product per evitare foreign key constraint
+
+## 🎉 Completion Status
+
+**Step 1 - Admin Prodotti CRUD**: ✅ COMPLETATO
+- CREATE: ✅ Funzionante
+- READ: ✅ Funzionante
+- UPDATE: ✅ Funzionante (incluso aggiornamento inventario)
+- DELETE: ✅ Fixato (cascading constraint risolto)
+
+**Prossimi Step**:
+- Step 2: Gestione Checkout Carrello → Ordini (in TODO)
+- Step 3: Email Notifications (SendGrid) (in TODO)

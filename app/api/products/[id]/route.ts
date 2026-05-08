@@ -32,6 +32,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
   }
 
+  // Convert empty SKU to null to avoid unique constraint issues
+  const sku = parsed.data.sku?.trim() || null;
+
   const updated = await prisma.product.update({
     where: { id: params.id },
     data: {
@@ -39,7 +42,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       slug: parsed.data.slug,
       description: parsed.data.description,
       price: parsed.data.price,
-      sku: parsed.data.sku,
+      sku,
       image: parsed.data.image,
     },
     include: { inventory: true },
@@ -56,6 +59,26 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await prisma.product.delete({ where: { id: params.id } });
-  return NextResponse.json({ data: { id: params.id } });
+  try {
+    // Delete all related data first (foreign key constraints)
+    // 1. Delete cart items containing this product
+    await prisma.cartItem.deleteMany({ where: { productId: params.id } });
+    
+    // 2. Delete order items containing this product
+    await prisma.orderItem.deleteMany({ where: { productId: params.id } });
+    
+    // 3. Delete inventory
+    await prisma.inventory.deleteMany({ where: { productId: params.id } });
+    
+    // 4. Finally delete the product
+    await prisma.product.delete({ where: { id: params.id } });
+    
+    return NextResponse.json({ data: { id: params.id } });
+  } catch (error) {
+    console.error("Delete product error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete product" },
+      { status: 500 }
+    );
+  }
 }

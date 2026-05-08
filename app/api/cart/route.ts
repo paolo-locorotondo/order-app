@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     ? await prisma.cartItem.update({
         where: { id: existing.id },
         data: { quantity: existing.quantity + parsed.data.quantity },
+        include: { product: true },
       })
     : await prisma.cartItem.create({
         data: {
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
           productId: parsed.data.productId,
           quantity: parsed.data.quantity,
         },
+        include: { product: true },
       });
 
   return NextResponse.json({ data: result }, { status: 201 });
@@ -58,6 +60,7 @@ export async function PATCH(request: NextRequest) {
   const updated = await prisma.cartItem.update({
     where: { id: item.id },
     data: { quantity: parsed.data.quantity },
+    include: { product: true },
   });
 
   return NextResponse.json({ data: updated });

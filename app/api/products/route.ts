@@ -34,24 +34,49 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
   }
 
-  const product = await prisma.product.create({
-    data: {
-      name: parsed.data.name,
-      slug: parsed.data.slug,
-      description: parsed.data.description,
-      price: parsed.data.price,
-      sku: parsed.data.sku,
-      image: parsed.data.image,
-      inventory: {
-        create: {
-          quantity: 0,
-          reserved: 0,
-          reorderPoint: 5,
+  // Extract quantity from body (optional, default to 0)
+  const quantity = Math.max(0, Number(body.quantity) || 0);
+  
+  // Convert empty SKU to null to avoid unique constraint issues
+  const sku = parsed.data.sku?.trim() || null;
+
+  // Check if SKU already exists (if provided)
+  if (sku) {
+    const existing = await prisma.product.findUnique({ where: { sku } });
+    if (existing) {
+      return NextResponse.json(
+        { error: `SKU "${sku}" esiste già. Usa un codice univoco.` },
+        { status: 400 }
+      );
+    }
+  }
+
+  try {
+    const product = await prisma.product.create({
+      data: {
+        name: parsed.data.name,
+        slug: parsed.data.slug,
+        description: parsed.data.description,
+        price: parsed.data.price,
+        sku,
+        image: parsed.data.image,
+        inventory: {
+          create: {
+            quantity,
+            reserved: 0,
+            reorderPoint: 5,
+          },
         },
       },
-    },
-    include: { inventory: true },
-  });
+      include: { inventory: true },
+    });
 
-  return NextResponse.json({ data: product }, { status: 201 });
+    return NextResponse.json({ data: product }, { status: 201 });
+  } catch (error) {
+    console.error("Product creation error:", error);
+    return NextResponse.json(
+      { error: "Errore nella creazione del prodotto" },
+      { status: 500 }
+    );
+  }
 }

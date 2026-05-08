@@ -108,7 +108,9 @@ export default function CartPage() {
               </p>
               <div className="border-t pt-4">
                 <p className="text-lg font-bold mb-4">
-                  Totale: €{items.reduce((sum, item) => sum + item.product.price * item.quantity, 0).toFixed(2)}
+                  Totale: €{items.reduce((sum, item) => {
+                    return sum + (item.product?.price ?? 0) * item.quantity;
+                  }, 0).toFixed(2)}
                 </p>
                 <button
                   disabled={items.length === 0}
