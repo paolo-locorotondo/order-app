@@ -4,8 +4,8 @@ import { prisma } from "@/lib/db";
 import { getToken } from "next-auth/jwt";
 
 const orderSchema = z.object({
-  address: z.string().min(5),
-  paymentMethod: z.enum(["stripe", "paypal", "cash"]).optional().default("cash"),
+  address: z.string().min(10, "Indirizzo deve essere almeno 10 caratteri"),
+  paymentMethod: z.enum(["stripe", "paypal", "cash"]).default("cash"),
 });
 
 export async function GET(request: NextRequest) {
@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
     data: {
       userId: token.id,
       total,
+      address: parsed.data.address,
+      paymentMethod: parsed.data.paymentMethod,
       status: "PENDING",
       stripePaymentId: null,
       items: {
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
         })),
       },
     },
-    include: { items: true },
+    include: { items: { include: { product: true } } },
   });
 
   // Update inventory

@@ -961,6 +961,8 @@ export const OrderScalarFieldEnum = {
   userId: 'userId',
   total: 'total',
   status: 'status',
+  address: 'address',
+  paymentMethod: 'paymentMethod',
   stripePaymentId: 'stripePaymentId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

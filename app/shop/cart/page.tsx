@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import CartItemsList from "@/components/CartItemsList";
@@ -17,6 +18,7 @@ interface CartItem {
 }
 
 export default function CartPage() {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +69,10 @@ export default function CartPage() {
     }
   };
 
+  const handleCheckout = () => {
+    router.push("/shop/checkout");
+  };
+
   if (status === "unauthenticated") {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -113,8 +119,9 @@ export default function CartPage() {
                   }, 0).toFixed(2)}
                 </p>
                 <button
+                  onClick={handleCheckout}
                   disabled={items.length === 0}
-                  className="w-full rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Procedi al checkout
                 </button>

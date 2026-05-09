@@ -78,6 +78,8 @@ model Order {
   userId          String
   total           Float
   status          OrderStatus @default(PENDING)
+  address         String      // Shipping address
+  paymentMethod   String      @default("cash") // stripe, paypal, cash
   stripePaymentId String?
   items           OrderItem[]
   createdAt       DateTime @default(now())
