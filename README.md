@@ -104,3 +104,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+#### Step CD/CI on Vercel
+
+Premesse:
+- Verifica che sia configurato il collegamento con git (**NB**: col piano Hobby di Vercel, sono collegabili solo repository pubbliche e non facenti parte di organization. Quindi l'obiettivo mio di avere una organization con dentro una repo per ogni stack, al momento non si può attuare)
+- Verifica che le variabili d'ambiente su Vercel siano popolate correttamente
+
+Step:
+1. Git push
+2. Aspettare che parta e finisca con successo il deploy
+3. Aggiornare lo schema del DB, se necessario:
+    - al momento tramite il comando `npx prisma db push` da lancaire quin su VSCode puntando, nel .env, al DB remoto Supabase
+    - in futuro capire come integrare questo comando su Vercel nella fase di build
