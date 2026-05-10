@@ -98,7 +98,7 @@
   - Se non autenticato, redirect a `/auth/login?callbackUrl=/shop/products/[id]`
   - Usare `useRouter.push()` per redirect con callback
 - **Priority**: 🔴 HIGH (user experience)
-- **Stato**: 🔴 TODO 
+- **Stato**: ✅ COMPLETATO 
 
 **BUG #2: Cart - Spelling error "0 prodottoi"**
 - **File**: `app/shop/cart/page.tsx` (line ~110)
@@ -116,7 +116,7 @@
   - Se supera, mostrare errore: "Superata disponibilità del prodotto"
   - Anche al checkout: fare check finale prima di creare ordine
 - **Priority**: 🔴 HIGH (data integrity)
-- **Stato**: 🔴 TODO 
+- **Stato**: ✅ COMPLETATO 
 
 **BUG #4: Checkout - CartItemsList non permette modifca**
 - **File**: `app/shop/checkout/page.tsx`
@@ -281,13 +281,13 @@
 
 ### PHASE 1: BUG FIX CRITICO 🔴
 1. **BUG #5**: ✅ Inventory check prima ordine (COMPLETATO)
-2. **BUG #3**: Validazione disponibilità al carrello (3h)
-3. **BUG #1**: Redirect login con callback (2h)
+2. **BUG #3**: ✅ Validazione disponibilità al carrello (COMPLETATO)
+3. **BUG #1**: ✅ Redirect login con callback (COMPLETATO)
 4. **BUG #5b**: Loading state su tasto "Aggiungi al carrello" (1.5h)
 5. **BUG #2**: Spelling fix (15min)
 6. **BUG #4**: Review CartItemsList disabilitato (30min)
 
-**Tempo totale**: ~7-8 ore
+**Tempo totale**: ~7-8 ore | **Completati**: 3/6 (50%) ✅
 
 ### PHASE 2: MIGLIORIE CORE 🟡
 1. **MIGLIORAMENTO #2**: Customer Orders Detail Modal (4h)
@@ -323,9 +323,9 @@
 ## 📝 Nota Importante
 
 **Stato Step 2**: ✅ Completato (Checkout flow implementato e testato)  
-**Stato Step 2B (Bug Fix)**: 🟡 In Progress (1/6 bug completato)  
-**Prossima priorità**: Continuare PHASE 1 - BUG #3 (Validazione inventario carrello)  
-**Timeline stimata PHASE 1**: 1 giorno
+**Stato Step 2B (Bug Fix)**: 🟡 In Progress (3/6 bug completati - 50%)  
+**Prossima priorità**: Continuare PHASE 1 - BUG #5b (Loading state button)  
+**Timeline stimata PHASE 1**: 0.5-1 giorno (3 bug rimasti)
 
 ---
 
