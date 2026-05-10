@@ -15,6 +15,9 @@
 - Nella sezione "Riepilogo Carrello" non riesco a modificare la quantità ne a cliccare il tasto "rimuovi" perchè?
 - Avevo un prodotto con quantity 5 in inventario, ho provato a fare un ordine di 6 unità, ma una volta confermato l'ordine, l'inventario non è stato aggiornato perchè?.
 
+5. Nella pagina di dettaglio di un prodotto:
+- Il tasto "Aggiungi al carrello" deve avere la stessa logica degli altri, quindi essere disabilitato fintanto che non completa l'operazione a back end, infatti una volta completata viene mostrato il messaggio "Prodotto aggiunto al carrello" e quindi solo allora può tornare ricliccabile il tasto.
+
 
 ## MIGLIORIE
 
@@ -27,6 +30,21 @@ Aggiungere le CRUD per gli utenti ADMIN:
 - modifica ordine: cambia stato, metodo di pagamento, indirizzo di consegna
 - crea ordine: questa pagina ha senso se l'admin vuole effettuare un ordine per conti di qualcun altro.
 
+3. Pagina Admin - Prodotti:
+- Vorrei renderla graficamente simile alla pagina "Admin - Utenti", quindi il crea/modifica prodotto non come modale, ma come form che viene mostrato nella stessa pagina. Di conseguenza, il tasto "+ Nuvo Prodotto" verrà sostituito con i tasti che portano alle altre pagine "Gestione Utenti" e "Inventario"
+
+4. Migliorare le pagine e la navigazione:
+- La Home dovrebbe mostrare direttamente i tasti che mostra la dashboard. Infatti al momento tra utente admin e customer la dashboard cambia solo per alcuni tasti. Quindi valutare se unire le due pagine home e dashboard oppure se mettere un link diretto alla dashboard nella home oppure come sotto sezione della home.
+
+5. Schema prodotti con data consegna:
+- Requisito: Un prodotto ha un prezzo, ma il prezzo dipende dalla data in cui viene consegnato il prodotto.
+Esempio: Ho un prodotto X che ha il prezzo 10€ se consegnato domani (2026/05/12). Fra tre giorni voglio reinserire in inventario lo stesso prodotto X ma con prezzo 8€ con consegna (2026/05/22).
+Al momento potrei:
+    a. creare un nuovo prodotto con prezzo diverso, ma sono costretto a nominarlo diversamente "X 2026/05/22" per non violare il vincolo di Unique constraint sul campo slug.
+    b. modificare il prodotto esistente "X" cambiando il prezzo, ma risulta scomodo per scopi statistici
+    c. usare lo sku per distinguere i prodotti per data di consegna (es: X-2026_05_12 e X-2026_05_22) e cambiare il vincolo di unique su slug per sostituirlo con uno unique sulla coppia slug e sku.
+Io preferisco la c.
+
 
 ## DOMANDE
 
@@ -36,3 +54,5 @@ Aggiungere le CRUD per gli utenti ADMIN:
 2. cos'è stripePaymentId in Order?
    **RISPOSTA:** `stripePaymentId` è l'ID della transazione di pagamento generato da Stripe. Quando un utente paga tramite Stripe (carta di credito), Stripe crea una `PaymentIntent` e ritorna un ID univoco. Memorizziamo questo ID in Order per poter tracciare il pagamento, verificare lo status, processare rimborsi, e riconciliare i pagamenti tra il nostro DB e Stripe. Se `stripePaymentId` è NULL, significa che l'ordine non è ancora stato pagato (es. metodo "contrassegno") o il pagamento è fallito.
 
+3. le variabili d'ambiente DATABASE_URL e DIRECT_URL perchè sono due? è possibile unirle in una sola variabile?
+   **RISPOSTA:** `DATABASE_URL` è la connection string con connection pooling (Prisma Accelerate o PgBouncer), usata per query normali da web. `DIRECT_URL` è la connection diretta al database, usata per migrazioni, seed script, e bulk operations che non passano dal connection pool. In Supabase: DATABASE_URL usa il pool di connessioni, DIRECT_URL va direttamente al DB. Tecnicamente si potrebbero unire se non usi connection pooling, ma è meglio mantenerle separate per scalabilità e per evitare problemi di connessioni esaurite in produzione.

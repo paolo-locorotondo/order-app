@@ -98,12 +98,14 @@
   - Se non autenticato, redirect a `/auth/login?callbackUrl=/shop/products/[id]`
   - Usare `useRouter.push()` per redirect con callback
 - **Priority**: 🔴 HIGH (user experience)
+- **Stato**: 🔴 TODO 
 
 **BUG #2: Cart - Spelling error "0 prodottoi"**
 - **File**: `app/shop/cart/page.tsx` (line ~110)
 - **Problema**: Plurale sbagliato
 - **Soluzione**: Fixare la logica di plurale `item.length !== 1 ? "i" : ""`
 - **Priority**: 🟡 LOW (cosmetic)
+- **Stato**: 🔴 TODO 
 
 **BUG #3: Cart - Permettere superamento inventario disponibile**
 - **File**: `components/AddToCartForm.tsx`, `app/api/cart/route.ts`
@@ -114,6 +116,7 @@
   - Se supera, mostrare errore: "Superata disponibilità del prodotto"
   - Anche al checkout: fare check finale prima di creare ordine
 - **Priority**: 🔴 HIGH (data integrity)
+- **Stato**: 🔴 TODO 
 
 **BUG #4: Checkout - CartItemsList non permette modifca**
 - **File**: `app/shop/checkout/page.tsx`
@@ -122,6 +125,7 @@
   - Se dev permettere: passare handler reali a CartItemsList
   - Se no: aggiungere nota "Per modificare il carrello, torna indietro"
 - **Priority**: 🟡 MEDIUM (UX clarity)
+- **Stato**: 🔴 TODO 
 
 **BUG #5: Checkout - Inventory non aggiornato se ordine > disponibile**
 - **File**: `app/api/orders/route.ts` (POST handler)
@@ -132,6 +136,18 @@
   - Per ogni item, controllare `inventory.quantity >= item.quantity`
   - Se non rispetta, throw error "Prodotto [name] non disponibile in quantità richiesta"
 - **Priority**: 🔴 HIGH (critical bug)
+- **Stato**: ✅ COMPLETATO
+
+**BUG #5b: Pagina dettaglio prodotto - Tasto "Aggiungi al carrello" non ha loading state**
+- **File**: `app/shop/products/[id]/page.tsx`, `components/AddToCartForm.tsx`
+- **Problema**: Il tasto "Aggiungi al carrello" nella pagina di dettaglio prodotto non ha feedback durante l'operazione (non si disabilita, non mostra loading)
+- **Soluzione**:
+  - Aggiungere stato `loading` mentre fetch è in corso
+  - Disabilitare tasto durante `loading: true`
+  - Mostrare spinner o testo "Aggiungendo..." durante operazione
+  - Solo dopo callback success, riabilitare e mostrare "Prodotto aggiunto"
+- **Priority**: 🟡 MEDIUM (UX consistency)
+- **Stato**: 🔴 TODO 
 
 #### MIGLIORIE:
 
@@ -151,6 +167,7 @@
   - `DELETE /api/orders/[id]` - Cancella order + restore inventory
   - `POST /api/orders?adminMode=true` - Crea ordine per conto di altro user (admin only)
 - **Priority**: 🟡 MEDIUM
+- **Stato**: 🔴 TODO 
 
 **MIGLIORAMENTO #2: Customer Orders History**
 - **File**: Aggiornare `app/dashboard/orders/page.tsx`
@@ -164,6 +181,7 @@
     - Totale
   - Bottone "Scarica fattura" (placeholder per Step 3)
 - **Priority**: 🟡 MEDIUM
+- **Stato**: 🔴 TODO 
 
 **MIGLIORAMENTO #3: Product Reservation System (Advanced)**
 - **File**: `app/shop/checkout/page.tsx`, `app/api/orders/route.ts`
@@ -175,6 +193,41 @@
   - OnOrderSuccess: `reserved` diventa parte di `quantity` decrement
   - OnOrderCancel: riportare `reserved` a zero
 - **Priority**: 🟢 LOW (nice to have, advanced feature)
+- **Stato**: 🔴 TODO
+
+**MIGLIORAMENTO #4: Redesign Admin Products Page (UI Consistency)**
+- **File**: `app/dashboard/admin/products/page.tsx`
+- **Descrizione**: Renderla graficamente simile a `/dashboard/admin/users`, con form inline invece di modal
+- **Implementazione**:
+  - Rimuovere componente `ProductDialog` (modal)
+  - Aggiungere form inline in fondo alla pagina (come `/admin/users`)
+  - Form appare quando click "Nuovi Prodotto" o click "Modifica" su un prodotto
+  - Tasto "Nuovo Prodotto" sostituito con tab/link a "Gestione Utenti" e "Gestione Inventario"
+  - Stesso layout: tabella destra, form sinistra (o sopra)
+- **Priority**: 🟡 MEDIUM (refactor estetico)
+- **Stato**: 🔴 TODO
+
+**MIGLIORAMENTO #5: Unify Navigation (Home → Dashboard)**
+- **File**: `app/page.tsx`, `app/dashboard/page.tsx`
+- **Descrizione**: Home page dovrebbe mostrare stessi tasti della dashboard (i tasti variano solo per admin vs customer)
+- **Soluzioni possibili**:
+  - **Opzione A**: Unire le due pagine - Home reindirizza a `/dashboard`
+  - **Opzione B**: Home con tab/link diretto a dashboard
+  - **Opzione C**: Home mostra i tasti direttamente (Miei Ordini, Carrello, Prodotti) e aggiunge link "Dashboard Admin" se ADMIN
+- **Nota**: Da decidere con user quale preferisce
+- **Priority**: 🟡 MEDIUM (UX improvement)
+- **Stato**: 🔴 TODO (in planning)
+
+**MIGLIORAMENTO #6: Products with Delivery Date & Dynamic Pricing**
+- **File**: `prisma/schema.prisma`, `app/api/products/route.ts`, `components/ProductForm.tsx`
+- **Descrizione**: Un prodotto può avere varianti con date di consegna diverse e prezzi diversi
+- **Opzione scelta**: Modificare unique constraint: da `unique: slug` a `@@unique([slug, sku])`
+  - Permette di avere: Prodotto "X" con SKU "X-2026_05_12" a €10 e "X-2026_05_22" a €8
+  - Aggiungere campo `deliveryDate` a Product (o a Inventory?)
+  - UI: mostrare data consegna accanto al prezzo
+  - Filtro shop: permette filtrare per data consegna
+- **Priority**: 🟢 MEDIUM (feature request, richiede schema change)
+- **Stato**: 🔴 TODO (planning)
 
 ---
 
@@ -227,34 +280,52 @@
 ## 📊 Piano di Implementazione (Priorità)
 
 ### PHASE 1: BUG FIX CRITICO 🔴
-1. **BUG #5**: Inventory check prima ordine (5h)
+1. **BUG #5**: ✅ Inventory check prima ordine (COMPLETATO)
 2. **BUG #3**: Validazione disponibilità al carrello (3h)
 3. **BUG #1**: Redirect login con callback (2h)
-4. **BUG #2**: Spelling fix (15min)
-5. **BUG #4**: Review CartItemsList disabilitato (30min)
+4. **BUG #5b**: Loading state su tasto "Aggiungi al carrello" (1.5h)
+5. **BUG #2**: Spelling fix (15min)
+6. **BUG #4**: Review CartItemsList disabilitato (30min)
 
-**Tempo totale**: ~10-11 ore
+**Tempo totale**: ~7-8 ore
 
 ### PHASE 2: MIGLIORIE CORE 🟡
-1. **MIGLIORAMENTO #1**: Admin Orders CRUD (8h)
-2. **MIGLIORAMENTO #2**: Customer Orders Detail Modal (4h)
+1. **MIGLIORAMENTO #2**: Customer Orders Detail Modal (4h)
+2. **MIGLIORAMENTO #1**: Admin Orders CRUD (8h)
+3. **MIGLIORAMENTO #4**: Redesign Admin Products Page (3h)
+4. **MIGLIORAMENTO #5**: Navigation Unification (2h)
 
-**Tempo totale**: ~12 ore
+**Tempo totale**: ~17 ore
 
 ### PHASE 3: ADVANCED FEATURES 🟢
 1. **MIGLIORAMENTO #3**: Reservation System (5h)
-2. Email Notifications (SendGrid) (6h)
-3. Payment Integration (Stripe) (8h)
+2. **MIGLIORAMENTO #6**: Products with Delivery Date (schema rework - 6h)
+3. Email Notifications (SendGrid) (6h)
+4. Payment Integration (Stripe) (8h)
 
-**Tempo totale**: ~19 ore
+**Tempo totale**: ~25 ore
+
+---
+
+## 📝 Domande & Risposte
+
+### Domande Risolte:
+1. ✅ **reorderPoint** - Livello minimo di stock per riordini automatici
+2. ✅ **stripePaymentId** - ID transazione Stripe per tracking pagamenti
+3. ✅ **DATABASE_URL vs DIRECT_URL** - Perché due?
+   - `DATABASE_URL`: Connection string con connection pooling (Prisma Accelerate o PgBouncer), usata per query normali da web
+   - `DIRECT_URL`: Connection diretta al database, usata per migrazioni, seed script, bulk operations
+   - In Supabase: DATABASE_URL usa il pool di connessioni, DIRECT_URL va direttamente al DB
+   - Si potrebbero unire se non usi connection pooling, ma è meglio mantenerle separate per scalabilità
 
 ---
 
 ## 📝 Nota Importante
 
 **Stato Step 2**: ✅ Completato (Checkout flow implementato e testato)  
-**Prossima priorità**: Iniziare PHASE 1 (Bug Fix Critico)  
-**Timeline stimata PHASE 1**: 1-2 giorni (dipende dal carico)
+**Stato Step 2B (Bug Fix)**: 🟡 In Progress (1/6 bug completato)  
+**Prossima priorità**: Continuare PHASE 1 - BUG #3 (Validazione inventario carrello)  
+**Timeline stimata PHASE 1**: 1 giorno
 
 ---
 
