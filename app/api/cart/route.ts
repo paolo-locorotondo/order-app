@@ -26,19 +26,45 @@ export async function POST(request: NextRequest) {
 
   const existing = await prisma.cartItem.findUnique({
     where: { userId_productId: { userId: token.id, productId: parsed.data.productId } },
+    include: { product: { include: { inventory: true } } },
   });
+
+  // BUG FIX #3: VALIDATE INVENTORY AVAILABILITY
+  const inventory = await prisma.inventory.findUnique({
+    where: { productId: parsed.data.productId },
+  });
+
+  if (!inventory) {
+    return NextResponse.json(
+      { error: "Prodotto non disponibile" },
+      { status: 404 }
+    );
+  }
+
+  const requestedQty = parsed.data.quantity;
+  const currentCartQty = existing?.quantity ?? 0;
+  const totalQty = currentCartQty + requestedQty;
+
+  if (totalQty > inventory.quantity) {
+    return NextResponse.json(
+      {
+        error: `Superata disponibilità del prodotto. Disponibili: ${inventory.quantity}, nel carrello: ${currentCartQty}, richieste: ${requestedQty}`,
+      },
+      { status: 400 }
+    );
+  }
 
   const result = existing
     ? await prisma.cartItem.update({
         where: { id: existing.id },
-        data: { quantity: existing.quantity + parsed.data.quantity },
+        data: { quantity: totalQty },
         include: { product: true },
       })
     : await prisma.cartItem.create({
         data: {
           userId: token.id,
           productId: parsed.data.productId,
-          quantity: parsed.data.quantity,
+          quantity: requestedQty,
         },
         include: { product: true },
       });
