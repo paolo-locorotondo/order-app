@@ -147,7 +147,7 @@
   - Mostrare spinner o testo "Aggiungendo..." durante operazione
   - Solo dopo callback success, riabilitare e mostrare "Prodotto aggiunto"
 - **Priority**: 🟡 MEDIUM (UX consistency)
-- **Stato**: 🔴 TODO 
+- **Stato**: ✅ COMPLETATO
 
 #### MIGLIORIE:
 
@@ -205,7 +205,7 @@
   - Tasto "Nuovo Prodotto" sostituito con tab/link a "Gestione Utenti" e "Gestione Inventario"
   - Stesso layout: tabella destra, form sinistra (o sopra)
 - **Priority**: 🟡 MEDIUM (refactor estetico)
-- **Stato**: 🔴 TODO
+- **Stato**: ✅ COMPLETATO
 
 **MIGLIORAMENTO #5: Unify Navigation (Home → Dashboard)**
 - **File**: `app/page.tsx`, `app/dashboard/page.tsx`
@@ -283,7 +283,7 @@
 1. **BUG #5**: ✅ Inventory check prima ordine (COMPLETATO)
 2. **BUG #3**: ✅ Validazione disponibilità al carrello (COMPLETATO)
 3. **BUG #1**: ✅ Redirect login con callback (COMPLETATO)
-4. **BUG #5b**: Loading state su tasto "Aggiungi al carrello" (1.5h)
+4. **BUG #5b**: ✅ Loading state su tasto "Aggiungi al carrello" (COMPLETATO)
 5. **BUG #2**: Spelling fix (15min)
 6. **BUG #4**: Review CartItemsList disabilitato (30min)
 
@@ -292,7 +292,7 @@
 ### PHASE 2: MIGLIORIE CORE 🟡
 1. **MIGLIORAMENTO #2**: Customer Orders Detail Modal (4h)
 2. **MIGLIORAMENTO #1**: Admin Orders CRUD (8h)
-3. **MIGLIORAMENTO #4**: Redesign Admin Products Page (3h)
+3. **MIGLIORAMENTO #4**: ✅ Redesign Admin Products Page (COMPLETATO)
 4. **MIGLIORAMENTO #5**: Navigation Unification (2h)
 
 **Tempo totale**: ~17 ore

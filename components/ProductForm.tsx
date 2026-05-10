@@ -31,17 +31,24 @@ export default function ProductForm({ product, onSubmit, loading = false }: Prod
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [slugChanged, setSlugChanged] = useState(false);
 
-  // Auto-generate slug from name
+  // Auto-generate slug from name (sia in creazione che in modifica)
   useEffect(() => {
-    if (!product) {
-      const generatedSlug = formData.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      setFormData((prev) => ({ ...prev, slug: generatedSlug }));
+    const generatedSlug = formData.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    setFormData((prev) => ({ ...prev, slug: generatedSlug }));
+
+    // Mostra warning solo in modifica e solo se lo slug è effettivamente cambiato
+    if (product && generatedSlug !== product.slug) {
+      setSlugChanged(true);
+    } else {
+      setSlugChanged(false);
     }
-  }, [formData.name, product]);
+  }, [formData.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -61,7 +68,10 @@ export default function ProductForm({ product, onSubmit, loading = false }: Prod
       ...prev,
       [name]: name === "price" || name === "quantity" ? parseFloat(value) || 0 : value,
     }));
-    // Clear error for this field when user starts typing
+    // Se l'utente modifica lo slug manualmente, aggiorna il warning
+    if (name === "slug" && product) {
+      setSlugChanged(value !== product.slug);
+    }
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -74,7 +84,7 @@ export default function ProductForm({ product, onSubmit, loading = false }: Prod
     try {
       await onSubmit({
         ...formData,
-        sku: formData.sku?.trim() || "", // Will be converted to null by API
+        sku: formData.sku?.trim() || "",
       });
     } catch (error) {
       console.error("Form submission error:", error);
@@ -115,12 +125,17 @@ export default function ProductForm({ product, onSubmit, loading = false }: Prod
           value={formData.slug}
           onChange={handleChange}
           className={`w-full px-3 py-2 border rounded-md text-sm ${
-            errors.slug ? "border-red-500" : "border-slate-300"
+            errors.slug ? "border-red-500" : slugChanged ? "border-amber-400" : "border-slate-300"
           } focus:outline-none focus:ring-2 focus:ring-blue-500`}
           placeholder="macbook-pro"
           disabled={loading}
         />
         {errors.slug && <p className="mt-1 text-sm text-red-600">{errors.slug}</p>}
+        {slugChanged && !errors.slug && (
+          <p className="mt-1 text-sm text-amber-600">
+            ⚠️ Lo slug è cambiato rispetto all'originale (<code className="bg-amber-50 px-1 rounded">{product?.slug}</code>). Verifica che non sia usato altrove (link, SEO, ecc.).
+          </p>
+        )}
       </div>
 
       {/* Descrizione */}
@@ -140,7 +155,7 @@ export default function ProductForm({ product, onSubmit, loading = false }: Prod
         />
       </div>
 
-      {/* Prezzo */}
+      {/* Prezzo + SKU */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="price" className="block text-sm font-medium text-slate-700">
@@ -197,7 +212,7 @@ export default function ProductForm({ product, onSubmit, loading = false }: Prod
         />
       </div>
 
-      {/* Quantità Inventario */}
+      {/* Quantità */}
       <div>
         <label htmlFor="quantity" className="block text-sm font-medium text-slate-700">
           Quantità Inventario *
@@ -218,7 +233,7 @@ export default function ProductForm({ product, onSubmit, loading = false }: Prod
         {errors.quantity && <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>}
       </div>
 
-      {/* Submit Button */}
+      {/* Submit */}
       <div className="flex justify-end gap-2 pt-4">
         <button
           type="submit"
