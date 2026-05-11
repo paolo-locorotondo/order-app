@@ -110,7 +110,7 @@ export default function CartPage() {
             <aside className="rounded border bg-white p-4 shadow-sm h-fit">
               <h2 className="font-bold mb-4">Riepilogo</h2>
               <p className="text-sm text-slate-600 mb-4">
-                {items.length} prodotto{items.length !== 1 ? "i" : ""}
+                {items.length} prodott{items.length !== 1 ? "i" : "o"}
               </p>
               <div className="border-t pt-4">
                 <p className="text-lg font-bold mb-4">

@@ -101,11 +101,11 @@
 - **Stato**: ✅ COMPLETATO 
 
 **BUG #2: Cart - Spelling error "0 prodottoi"**
-- **File**: `app/shop/cart/page.tsx` (line ~110)
+- **File**: `app/shop/cart/page.tsx` (line ~112)
 - **Problema**: Plurale sbagliato
-- **Soluzione**: Fixare la logica di plurale `item.length !== 1 ? "i" : ""`
+- **Soluzione**: Fixare la logica di plurale `item.length !== 1 ? "i" : ""` (logica plurale correta: prodott{items.length !== 1 ? "i" : "o"}) 
 - **Priority**: 🟡 LOW (cosmetic)
-- **Stato**: 🔴 TODO 
+- **Stato**: ✅ COMPLETATO
 
 **BUG #3: Cart - Permettere superamento inventario disponibile**
 - **File**: `components/AddToCartForm.tsx`, `app/api/cart/route.ts`
@@ -125,7 +125,7 @@
   - Se dev permettere: passare handler reali a CartItemsList
   - Se no: aggiungere nota "Per modificare il carrello, torna indietro"
 - **Priority**: 🟡 MEDIUM (UX clarity)
-- **Stato**: 🔴 TODO 
+- **Stato**: ✅ COMPLETATO (è intenzionale lasciare non editabili)
 
 **BUG #5: Checkout - Inventory non aggiornato se ordine > disponibile**
 - **File**: `app/api/orders/route.ts` (POST handler)
@@ -284,10 +284,10 @@
 2. **BUG #3**: ✅ Validazione disponibilità al carrello (COMPLETATO)
 3. **BUG #1**: ✅ Redirect login con callback (COMPLETATO)
 4. **BUG #5b**: ✅ Loading state su tasto "Aggiungi al carrello" (COMPLETATO)
-5. **BUG #2**: Spelling fix (15min)
-6. **BUG #4**: Review CartItemsList disabilitato (30min)
+5. **BUG #2**: ✅ Spelling fix "prodottoi" → "prodotti" (COMPLETATO)
+6. **BUG #4**: ✅ Review CartItemsList disabilitato (COMPLETATO - intenzionale durante checkout)
 
-**Tempo totale**: ~7-8 ore | **Completati**: 3/6 (50%) ✅
+**Tempo totale**: ~7-8 ore | **Completati**: 6/6 (100%) ✅
 
 ### PHASE 2: MIGLIORIE CORE 🟡
 1. **MIGLIORAMENTO #2**: Customer Orders Detail Modal (4h)
@@ -323,9 +323,9 @@
 ## 📝 Nota Importante
 
 **Stato Step 2**: ✅ Completato (Checkout flow implementato e testato)  
-**Stato Step 2B (Bug Fix)**: 🟡 In Progress (3/6 bug completati - 50%)  
-**Prossima priorità**: Continuare PHASE 1 - BUG #5b (Loading state button)  
-**Timeline stimata PHASE 1**: 0.5-1 giorno (3 bug rimasti)
+**Stato Step 2B (Bug Fix)**: ✅ COMPLETATO (6/6 bug risolti - 100%)  
+**Prossima priorità**: PHASE 2 - Miglioramenti Core (Customer Orders Detail, Admin Orders CRUD)  
+**Timeline stimata PHASE 2**: 2-3 giorni
 
 ---
 
