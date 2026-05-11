@@ -37,18 +37,25 @@ export async function POST(request: NextRequest) {
   // Extract quantity from body (optional, default to 0)
   const quantity = Math.max(0, Number(body.quantity) || 0);
   
-  // Convert empty SKU to null to avoid unique constraint issues
-  const sku = parsed.data.sku?.trim() || null;
+  // Generate SKU if not provided (combine slug with timestamp)
+  // SKU is now required in the schema, so we must always provide a value
+  const sku = parsed.data.sku?.trim() || `${parsed.data.slug}-${Date.now()}`.toUpperCase();
 
-  // Check if SKU already exists (if provided)
-  if (sku) {
-    const existing = await prisma.product.findUnique({ where: { sku } });
-    if (existing) {
-      return NextResponse.json(
-        { error: `SKU "${sku}" esiste già. Usa un codice univoco.` },
-        { status: 400 }
-      );
-    }
+  // Check if product with this slug+sku combination already exists
+  const existing = await prisma.product.findUnique({ 
+    where: { 
+      slug_sku: {
+        slug: parsed.data.slug,
+        sku
+      }
+    } 
+  });
+  
+  if (existing) {
+    return NextResponse.json(
+      { error: `Prodotto con slug "${parsed.data.slug}" e SKU "${sku}" esiste già.` },
+      { status: 400 }
+    );
   }
 
   try {

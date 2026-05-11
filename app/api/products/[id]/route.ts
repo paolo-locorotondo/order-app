@@ -32,8 +32,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
   }
 
-  // Convert empty SKU to null to avoid unique constraint issues
-  const sku = parsed.data.sku?.trim() || null;
+  // Generate SKU if not provided (combine slug with timestamp)
+  // SKU is now required in the schema, so we must always provide a value
+  const sku = parsed.data.sku?.trim() || `${parsed.data.slug}-${Date.now()}`.toUpperCase();
 
   const updated = await prisma.product.update({
     where: { id: params.id },

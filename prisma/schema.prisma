@@ -38,16 +38,18 @@ enum UserRole {
 model Product {
   id          String    @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String
   description String?
   price       Float
-  sku         String?   @unique
+  sku         String
   image       String?
   inventory   Inventory?
   orderItems  OrderItem[]
   cartItems   CartItem[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@unique([slug, sku])
 }
 
 model Inventory {

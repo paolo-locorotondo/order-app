@@ -66,7 +66,12 @@ async function main() {
   for (const productData of products) {
     const { inventory, ...productFields } = productData;
     await prisma.product.upsert({
-      where: { slug: productFields.slug },
+      where: { 
+        slug_sku: {
+          slug: productFields.slug,
+          sku: productFields.sku,
+        }
+      },
       update: {},
       create: {
         ...productFields,
