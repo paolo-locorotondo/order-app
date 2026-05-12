@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../generated/prisma";
 import bcryptjs from "bcryptjs";
+import { UserRole } from "@/generated/prisma/enums";
 
 const prisma = new PrismaClient();
 
@@ -18,7 +19,7 @@ async function main() {
       email: "admin@example.com",
       name: "Admin User",
       password: adminPassword,
-      role: "ADMIN",
+      role: UserRole.ADMIN,
     },
   });
 
@@ -31,7 +32,7 @@ async function main() {
       email: "test@example.com",
       name: "Test User",
       password: testPassword,
-      role: "CUSTOMER",
+      role: UserRole.CUSTOMER,
     },
   });
 

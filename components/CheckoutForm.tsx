@@ -4,7 +4,7 @@ import { useState } from "react";
 
 export interface CheckoutFormData {
   address: string;
-  paymentMethod: "cash" | "stripe" | "paypal";
+  paymentMethod: "cash" | "stripe" | "paypal"; // TODO usare enum prisma PaymentMethods
 }
 
 interface CheckoutFormProps {

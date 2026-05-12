@@ -22,7 +22,7 @@ const config: runtime.GetPrismaClientConfig = {
       "value": "prisma-client-ts"
     },
     "output": {
-      "value": "c:\\Users\\Locor\\MyProjects\\order-app\\generated\\prisma",
+      "value": "C:\\Users\\Locor\\MyProjects\\order-app\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -36,7 +36,7 @@ const config: runtime.GetPrismaClientConfig = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "c:\\Users\\Locor\\MyProjects\\order-app\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\Locor\\MyProjects\\order-app\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativePath": "../../prisma",

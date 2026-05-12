@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { UserRole } from "@/generated/prisma/enums";
 
 interface User {
   id: string;
   name: string | null;
   email: string;
-  role: "CUSTOMER" | "ADMIN";
+  role: UserRole;
   createdAt: Date;
 }
 
@@ -16,7 +17,7 @@ export default function UserActionsCell({ user }: { user: User }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editName, setEditName] = useState(user.name || "");
   const [editEmail, setEditEmail] = useState(user.email);
-  const [editRole, setEditRole] = useState<"CUSTOMER" | "ADMIN">(user.role);
+  const [editRole, setEditRole] = useState<UserRole>(user.role);
   const [editPassword, setEditPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -74,13 +75,18 @@ export default function UserActionsCell({ user }: { user: User }) {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data?.error || "Errore durante l'eliminazione.");
+        const errorMsg = data?.error || "Errore durante l'eliminazione.";
+        setError(errorMsg);
+        alert(errorMsg);
         return;
       }
 
+      setSuccess("Utente eliminato con successo.");
       router.refresh();
     } catch {
-      setError("Errore di rete. Riprova più tardi.");
+      const errorMsg = "Errore di rete. Riprova più tardi.";
+      setError(errorMsg);
+      alert(errorMsg);
     } finally {
       setIsDeleting(false);
     }
@@ -155,11 +161,11 @@ export default function UserActionsCell({ user }: { user: User }) {
               <select
                 id="edit-role"
                 value={editRole}
-                onChange={(e) => setEditRole(e.target.value as "CUSTOMER" | "ADMIN")}
+                onChange={(e) => setEditRole(e.target.value as UserRole)}
                 className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900"
               >
-                <option value="CUSTOMER">Customer</option>
-                <option value="ADMIN">Admin</option>
+                <option value={UserRole.CUSTOMER}>Customer</option>
+                <option value={UserRole.ADMIN}>Admin</option>
               </select>
             </div>
 

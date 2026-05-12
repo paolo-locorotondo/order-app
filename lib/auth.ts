@@ -5,6 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcryptjs from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { userLoginSchema } from "@/lib/validators";
+import { UserRole } from "@/generated/prisma/enums";
 
 export const authOptions: NextAuthOptions = {
   // Note: PrismaAdapter removed due to conflicts with CredentialsProvider
@@ -35,11 +36,13 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user) {
-          throw new Error("Email non trovata");
+          // Email non trovata
+          throw new Error("Credenziali non corrette. Verifica i dati inseriti oppure usa Google per accedere.");
         }
 
         if (!user.password) {
-          throw new Error("Questo account non ha una password. Usa Google per accedere.");
+          // L'utente esiste ma non ha una password (es. registrato via Google)
+          throw new Error("Credenziali non corrette. Verifica i dati inseriti oppure usa Google per accedere.");
         }
 
         // Check password
@@ -49,7 +52,8 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isPasswordValid) {
-          throw new Error("Password non corretta");
+          // Password non corretta
+          throw new Error("Credenziali non corrette. Verifica i dati inseriti oppure usa Google per accedere.");
         }
 
         return {
@@ -73,7 +77,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn(params) {
       const { user, account, profile } = params;
-      
+
       // Handle Google OAuth user creation
       if (account?.provider === "google") {
         // Verify OAuth credentials are configured
@@ -95,7 +99,7 @@ export const authOptions: NextAuthOptions = {
               name: user?.name || "",
               email: user?.email || "",
               image: user?.image || undefined,
-              role: "CUSTOMER",
+              role: UserRole.CUSTOMER,
             },
           });
         } catch (error) {
@@ -126,6 +130,29 @@ export const authOptions: NextAuthOptions = {
         if (dbUser) {
           token.id = dbUser.id;
           token.role = dbUser.role;
+        } else {
+          // User doesn't exist in database after OAuth - invalidate token
+          token.id = null;
+          token.role = null;
+        }
+      }
+
+      // SECURITY: Always refresh role from DB during session to catch real-time changes
+      // This ensures if admin is demoted or user is deleted, access is revoked immediately
+      if (token.id && !account) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id },
+          });
+          if (dbUser) {
+            token.role = dbUser.role;
+          } else {
+            // User was deleted from DB - invalidate token
+            return null as any;
+          }
+        } catch (error) {
+          console.error("Error refreshing user role from DB:", error);
+          // On error, keep existing token (fail open)
         }
       }
 

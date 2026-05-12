@@ -1,10 +1,21 @@
+import { validateAuthFromServerSession, UserRole } from "@/lib/auth-helpers";
 import Header from "@/components/Header";
 import AddToCartForm from "@/components/AddToCartForm";
 import { prisma } from "@/lib/db";
+import Link from "next/link";
+import AccessDenied from "@/components/AccessDenied";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function ProductPage({ params }: Props) {
+
+  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER]);
+  if (!auth?.ok) {
+    return (
+      <AccessDenied errorMessage={auth?.errorResponse ?? "Unauthorized"} />
+    );
+  }
+
   const { id } = await params;
   const product = await prisma.product.findUnique({
     where: { id },
@@ -35,6 +46,11 @@ export default async function ProductPage({ params }: Props) {
               Disponibilità: {product.inventory?.quantity ?? 0}
             </p>
             <AddToCartForm productId={product.id} />
+            <div className="mt-6">
+              <Link href="/shop" className="text-blue-600 hover:underline">
+                ← Continua lo shopping
+              </Link>
+            </div>
           </div>
         </div>
       </main>

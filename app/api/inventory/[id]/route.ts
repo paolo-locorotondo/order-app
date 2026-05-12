@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getToken } from "next-auth/jwt";
+import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const params = await context.params;
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
-  if (!token || token.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await validateAuth(request, UserRole.ADMIN);
+  if (!auth.ok) {
+    return auth.errorResponse;
   }
+
+  const params = await context.params;
 
   try {
     const body = await request.json();

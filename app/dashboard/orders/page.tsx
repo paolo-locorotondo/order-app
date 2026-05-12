@@ -1,13 +1,19 @@
 import Header from "@/components/Header";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { UserRole, validateAuthFromServerSession } from "@/lib/auth-helpers";
+import AccessDenied from "@/components/AccessDenied";
 
 export default async function OrderHistoryPage() {
-  const session = await getServerSession(authOptions);
+
+  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER]);
+  if (!auth?.ok) {
+    return (
+      <AccessDenied errorMessage={auth?.errorResponse ?? "Unauthorized"} />
+    );
+  }
 
   const orders = await prisma.order.findMany({
-    where: { userId: session?.user?.id ?? "" },
+    where: { userId: auth.session?.user?.id ?? "" },
     include: { items: { include: { product: true } } },
     orderBy: { createdAt: "desc" },
   });

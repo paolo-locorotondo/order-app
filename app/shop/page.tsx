@@ -1,14 +1,38 @@
+import { UserRole, validateAuthFromServerSession } from "@/lib/auth-helpers";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import Header from "@/components/Header";
 
 export const revalidate = 10;
 
+async function getProductsLite() {
+  return prisma.product.findMany({
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      price: true
+    },
+    //include: { inventory: false },
+    orderBy: { createdAt: "desc" }
+  })
+}
+
 async function getProducts() {
   return prisma.product.findMany({ include: { inventory: true }, orderBy: { createdAt: "desc" } });
 }
 
 export default async function ShopPage() {
+  // Questa pagina è pubblica, non serve autenticazione,
+  // ma se volessimo nascondere alcune info dei prodotti:
+  /* let products = null;
+  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER]);
+    if (!auth?.ok) {
+    // per gli utenti non autenticati o con ruolo sconosciuto, mostriamo solo i prodotti senza info sull'inventario
+    products = await getProductsLite();
+  } else {
+    products = await getProducts();
+  } */
   const products = await getProducts();
 
   return (

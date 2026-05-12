@@ -88,6 +88,86 @@ Apri [http://localhost:3000](http://localhost:3000)
 - `docker-compose up -d` - avvia Postgres
 - `docker-compose down` - ferma Postgres
 
+## Struttura del Progetto
+
+```
+order-app/
+├── app/                            # Next.js App Router
+│   ├── api/                        # API routes
+│   │   ├── admin/users/            # Gestione utenti (admin)
+│   │   ├── auth/                   # Autenticazione e registrazione
+│   │   ├── cart/                   # Gestione carrello
+│   │   ├── inventory/              # Gestione inventario
+│   │   ├── orders/                 # Gestione ordini
+│   │   └── products/               # Gestione prodotti
+│   ├── auth/                       # Pagine autenticazione
+│   │   ├── error/
+│   │   ├── login/
+│   │   └── register/
+│   ├── dashboard/                  # Dashboard
+│   │   ├── admin/                  # Area admin
+│   │   │   ├── inventory/
+│   │   │   ├── products/
+│   │   │   └── users/
+│   │   └── orders/
+│   ├── generated/                  # File generati da Prisma (avoid)
+│   ├── shop/                       # Shop pubblico
+│   │   ├── cart/
+│   │   ├── checkout/
+│   │   ├── order-confirmation/
+│   │   └── products/
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── providers.tsx
+├── components/                     # React components riutilizzabili
+│   ├── AddToCartForm.tsx
+│   ├── CartItemsList.tsx
+│   ├── CheckoutForm.tsx
+│   ├── Header.tsx
+│   ├── ProductDialog.tsx
+│   └── ProductForm.tsx
+├── docs/                           # Documentazione
+│   └── AUTHENTICATION_GOOGLE.md
+├── generated/                      # File generati (avoid)
+│   └── prisma/
+├── lib/                            # Utility e funzioni condivise
+│   ├── auth-helpers.ts
+│   ├── auth.ts
+│   ├── db.ts
+│   └── validators.ts
+├── prisma/                         # Schema e seeding database
+│   ├── schema.prisma
+│   └── seed.ts
+├── public/                         # Asset statici
+├── types/                          # Type definitions
+│   └── next-auth.d.ts
+├── .env                            # Variabili ambiente (git-ignored)
+├── .env.example                    # Template variabili ambiente
+├── docker-compose.yml              # Compose per PostgreSQL e dbAdminer
+├── eslint.config.mjs
+├── middleware.ts                   # Middleware NextAuth
+├── next.config.ts
+├── package.json
+├── postcss.config.mjs
+├── prisma.config.ts
+├── tsconfig.json
+├── AGENTS.md                       # Configurazione agenti
+├── CLAUDE.md                       # Istruzioni per Claude
+├── README.md                       # Questo file
+├── TEST_REPORT.md                  # File usato per segnare i bug che scopro
+└── TODO.md                         # File usato per segnare le cose da fare
+```
+
+### Descrizione Cartelle Principali
+
+- **`app/`**: Contiene il routing di Next.js con App Router. Divide l'applicazione in area pubblica (`shop/`), autenticazione (`auth/`), dashboard utente e admin, e API routes.
+- **`components/`**: Componenti React riutilizzabili per UI (form, liste, dialoghi, ecc).
+- **`lib/`**: Funzioni utility (helper di autenticazione, database, validazione).
+- **`prisma/`**: Schema del database e script di seeding con dati di test.
+- **`public/`**: Asset statici serviti direttamente.
+- **`types/`**: Type definitions TypeScript, incluse estensioni NextAuth.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

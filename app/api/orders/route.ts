@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getToken } from "next-auth/jwt";
+import { validateAuth, UserRole, serverErrorResponse } from "@/lib/auth-helpers";
 
 const orderSchema = z.object({
   address: z.string().min(10, "Indirizzo deve essere almeno 10 caratteri"),
@@ -9,11 +9,19 @@ const orderSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const auth = await validateAuth(request, [UserRole.ADMIN, UserRole.CUSTOMER]);
+  if (!auth.ok) {
+    return auth.errorResponse;
+  }
+
+  const authTokenId = auth.token?.id;
+  if (!authTokenId) {
+    return serverErrorResponse();
+  }
 
   const orders = await prisma.order.findMany({
-    where: { userId: token.id },
+    where: { userId: authTokenId },
     include: { items: { include: { product: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -22,15 +30,23 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const auth = await validateAuth(request, [UserRole.ADMIN, UserRole.CUSTOMER]);
+  if (!auth.ok) {
+    return auth.errorResponse;
+  }
+
+  const authTokenId = auth.token?.id;
+  if (!authTokenId) {
+    return serverErrorResponse();
+  }
 
   const body = await request.json();
   const parsed = orderSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
 
   const cartItems = await prisma.cartItem.findMany({
-    where: { userId: token.id },
+    where: { userId: authTokenId },
     include: { product: { include: { inventory: true } } },
   });
 
@@ -53,7 +69,7 @@ export async function POST(request: NextRequest) {
 
   const created = await prisma.order.create({
     data: {
-      userId: token.id,
+      userId: authTokenId,
       total,
       address: parsed.data.address,
       paymentMethod: parsed.data.paymentMethod,
@@ -81,7 +97,7 @@ export async function POST(request: NextRequest) {
   );
 
   // Clear cart
-  await prisma.cartItem.deleteMany({ where: { userId: token.id } });
+  await prisma.cartItem.deleteMany({ where: { userId: authTokenId } });
 
   return NextResponse.json({ data: created }, { status: 201 });
 }

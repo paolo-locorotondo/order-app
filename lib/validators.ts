@@ -1,3 +1,4 @@
+import { UserRole } from "@/generated/prisma/enums";
 import { z } from "zod";
 
 export const productSchema = z.object({
@@ -65,7 +66,7 @@ export const userUpdateSchema = z.object({
     .regex(/\d/, "Password deve contenere almeno un numero")
     .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Password deve contenere almeno un carattere speciale")
     .optional(),
-  role: z.enum(["CUSTOMER", "ADMIN"]).optional(),
+  role: z.enum([UserRole.CUSTOMER, UserRole.ADMIN]).optional(),
 });
 
 // Input sanitization utilities

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { productSchema } from "@/lib/validators";
-import { getToken } from "next-auth/jwt";
+import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
 const PAGE_SIZE = 20;
 
 export async function GET(request: NextRequest) {
+
+  const auth = await validateAuth(request, UserRole.ADMIN);
+  if (!auth.ok) {
+    return auth.errorResponse;
+  }
+
   const url = new URL(request.url);
   const page = Number(url.searchParams.get("page") ?? "1");
   const skip = (page - 1) * PAGE_SIZE;
@@ -21,10 +27,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
-  if (!token || token.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await validateAuth(request, UserRole.ADMIN);
+  if (!auth.ok) {
+    return auth.errorResponse;
   }
 
   const body = await request.json();
@@ -34,23 +40,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
   }
 
-  // Extract quantity from body (optional, default to 0)
   const quantity = Math.max(0, Number(body.quantity) || 0);
-  
-  // Generate SKU if not provided (combine slug with timestamp)
-  // SKU is now required in the schema, so we must always provide a value
   const sku = parsed.data.sku?.trim() || `${parsed.data.slug}-${Date.now()}`.toUpperCase();
 
-  // Check if product with this slug+sku combination already exists
-  const existing = await prisma.product.findUnique({ 
-    where: { 
+  const existing = await prisma.product.findUnique({
+    where: {
       slug_sku: {
         slug: parsed.data.slug,
-        sku
-      }
-    } 
+        sku,
+      },
+    },
   });
-  
+
   if (existing) {
     return NextResponse.json(
       { error: `Prodotto con slug "${parsed.data.slug}" e SKU "${sku}" esiste già.` },

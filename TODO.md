@@ -85,7 +85,7 @@
 ---
 
 ### 2B. Bug Fix & Improvements da TEST_REPORT
-**Stato**: 🔴 TODO  
+**Stato**: ✅ COMPLETATO  
 **Descrizione**: Fix dei bug riscontrati e implementazione delle migliorie suggerite
 
 #### BUG:
@@ -227,7 +227,27 @@
   - UI: mostrare data consegna accanto al prezzo
   - Filtro shop: permette filtrare per data consegna
 - **Priority**: 🟢 MEDIUM (feature request, richiede schema change)
-- **Stato**: 🔴 TODO (planning)
+- **Stato**: ✅ COMPLETATO
+
+**MIGLIORAMENTO #7: Gestione paymentMethod come Enum**
+- **File**: `prisma\schema.prisma`
+- **Descrizione**: Usare una Enum per il paymentMethod ed usare questa enum generata da prisma in tutta l'applicazione.
+- **Implementazione**:
+  - Usare enum PaymentMethods invece di String come tipo del campo paymentMethod
+      enum PaymentMethods { 
+        CASH
+        PAYPAL
+        STRIPE
+      }
+- **Priority**: 🟢 LOW (nice to have, advanced feature)
+- **Stato**: 🔴 TODO
+
+**MIGLIORAMENTO #8: svuota form in Admin - Utenti come in Admin - Prodotti**
+- **File**: `prisma\schema.prisma`
+- **Descrizione**: Nella pagina di gestione prodotti, quando si modifica un prodotto, al termine della chiamata back end, se l'esito è positivo, viene svuotato il form che torna a quello di crea Nuovo Prodotto. Bisogna replicare questo comportamento anche nella pagina di gestione utenti.
+- **Implementazione**: da definire
+- **Priority**: 🟢 LOW (nice to have, advanced feature)
+- **Stato**: 🔴 TODO
 
 ---
 

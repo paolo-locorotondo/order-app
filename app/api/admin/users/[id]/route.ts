@@ -1,19 +1,14 @@
 import bcryptjs from "bcryptjs";
-import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { userUpdateSchema } from "@/lib/validators";
-
-const AUTH_SECRET = process.env.NEXTAUTH_SECRET;
+import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!AUTH_SECRET) {
-    return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
-  }
 
-  const token = await getToken({ req: request, secret: AUTH_SECRET });
-  if (!token || token.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await validateAuth(request, UserRole.ADMIN);
+  if (!auth.ok) {
+    return auth.errorResponse;
   }
 
   const { id: userId } = await params;
@@ -35,7 +30,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Utente non trovato." }, { status: 404 });
     }
 
-    const updateData: { name?: string; email?: string; password?: string; role?: "ADMIN" | "CUSTOMER" } = {};
+    const updateData: { name?: string; email?: string; password?: string; role?: UserRole } = {};
 
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) {
@@ -77,13 +72,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!AUTH_SECRET) {
-    return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
-  }
 
-  const token = await getToken({ req: request, secret: AUTH_SECRET });
-  if (!token || token.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await validateAuth(request, UserRole.ADMIN);
+  if (!auth.ok) {
+    return auth.errorResponse;
   }
 
   const { id: userId } = await params;
@@ -95,7 +87,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // Cannot delete admin user who is the current one
-    if (token.id === userId) {
+    if (auth.token?.id === userId) {
       return NextResponse.json(
         { error: "Non puoi eliminare il tuo account." },
         { status: 400 }

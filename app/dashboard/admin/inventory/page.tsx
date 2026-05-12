@@ -1,20 +1,14 @@
+import { UserRole, validateAuthFromServerSession } from "@/lib/auth-helpers";
 import Header from "@/components/Header";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import AccessDenied from "@/components/AccessDenied";
 
 export default async function AdminInventory() {
-  const session = await getServerSession(authOptions);
 
-  if (session?.user?.role !== "ADMIN") {
+  const auth = await validateAuthFromServerSession(UserRole.ADMIN);
+  if (!auth?.ok) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold">Accesso negato</h1>
-          <p>Devi essere amministratore per visualizzare questa pagina.</p>
-        </main>
-      </div>
+      <AccessDenied errorMessage={auth?.errorResponse ?? "Unauthorized"} />
     );
   }
 

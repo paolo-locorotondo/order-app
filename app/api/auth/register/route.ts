@@ -2,6 +2,7 @@ import bcryptjs from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { userRegistrationSchema } from "@/lib/validators";
+import { UserRole } from "@/generated/prisma/enums";
 
 export async function POST(request: Request) {
   try {
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Esiste già un account con questa email." }, { status: 409 });
     }
 
+     // TODO usare salt da env?
     const hashedPassword = await bcryptjs.hash(password, 10);
 
     await prisma.user.create({
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
         name,
         email,
         password: hashedPassword,
-        role: "CUSTOMER",
+        role: UserRole.CUSTOMER,
       },
     });
 

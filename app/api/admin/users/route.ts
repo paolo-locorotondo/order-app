@@ -1,19 +1,14 @@
 import bcryptjs from "bcryptjs";
-import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { userRegistrationSchema } from "@/lib/validators";
-
-const AUTH_SECRET = process.env.NEXTAUTH_SECRET;
+import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
-  if (!AUTH_SECRET) {
-    return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
-  }
 
-  const token = await getToken({ req: request, secret: AUTH_SECRET });
-  if (!token || token.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await validateAuth(request, UserRole.ADMIN);
+  if (!auth.ok) {
+    return auth.errorResponse;
   }
 
   const users = await prisma.user.findMany({
@@ -30,14 +25,11 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ users });
 }
 
-export async function POST(request: NextRequest) {
-  if (!AUTH_SECRET) {
-    return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
-  }
+export async function POST(request: NextRequest) {  
 
-  const token = await getToken({ req: request, secret: AUTH_SECRET });
-  if (!token || token.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await validateAuth(request, UserRole.ADMIN);
+  if (!auth.ok) {
+    return auth.errorResponse;
   }
 
   try {
@@ -51,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, email, password } = validationResult.data;
-    const role = body.role === "ADMIN" ? "ADMIN" : "CUSTOMER";
+    const role = body.role === UserRole.ADMIN ? UserRole.ADMIN : UserRole.CUSTOMER;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -60,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = await bcryptjs.hash(password, 10);
-    const user = await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         name,
         email,
@@ -72,10 +64,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
         },
       },
       { status: 201 }
