@@ -8,3 +8,5 @@
 
 3. le variabili d'ambiente DATABASE_URL e DIRECT_URL perchè sono due? è possibile unirle in una sola variabile?
    **RISPOSTA:** `DATABASE_URL` è la connection string con connection pooling (Prisma Accelerate o PgBouncer), usata per query normali da web. `DIRECT_URL` è la connection diretta al database, usata per migrazioni, seed script, e bulk operations che non passano dal connection pool. In Supabase: DATABASE_URL usa il pool di connessioni, DIRECT_URL va direttamente al DB. Tecnicamente si potrebbero unire se non usi connection pooling, ma è meglio mantenerle separate per scalabilità e per evitare problemi di connessioni esaurite in produzione.
+
+4. La chiamata http://localhost:3000/api/auth/session mostra dei dati sensibili se faccio inspect del browser. Verifica che sia gestito nella maniera più sicura e secondo le best practice di sicurezza.

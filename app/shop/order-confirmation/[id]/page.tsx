@@ -29,7 +29,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
   if (!order) notFound();
 
   // Un utente CUSTOMER può vedere solo i propri ordini
-  if (auth.session?.user.role === UserRole.CUSTOMER && order.userId !== auth.session.user.id) {
+  if (auth.session.user.role === UserRole.CUSTOMER && order.userId !== auth.session.user.id) {
     notFound(); // non riveliamo che l'ordine esiste ma appartiene a qualcun altro
   }
 

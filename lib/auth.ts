@@ -5,7 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcryptjs from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { userLoginSchema } from "@/lib/validators";
-import { UserRole } from "@/generated/prisma/enums";
+import { UserRole } from "@/app/generated/prisma/enums";
 
 export const authOptions: NextAuthOptions = {
   // Note: PrismaAdapter removed due to conflicts with CredentialsProvider

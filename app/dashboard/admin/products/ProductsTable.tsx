@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ProductForm, { ProductFormData } from "@/components/ProductForm";
-import { ProductModel, InventoryModel } from "@/generated/prisma/models";
+import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 
 interface ProductWithInventory extends ProductModel {
   inventory: InventoryModel | null;
@@ -105,7 +105,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Nome</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Slug</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Sku</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Prezzo</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stock</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Azioni</th>
@@ -116,9 +116,10 @@ export default function ProductsTable({ products }: { products: ProductWithInven
                 <tr
                   key={product.id}
                   className={`hover:bg-slate-50 ${selectedProduct?.id === product.id ? "bg-blue-50" : ""}`}
+                  onClick={() => { setSelectedProduct(product); setFormError(null); }}
                 >
                   <td className="px-4 py-3 text-sm font-medium text-slate-700">{product.name}</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{product.slug}</td>
+                  <td className="px-4 py-3 text-sm text-slate-500">{product.sku}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">€{product.price.toFixed(2)}</td>
                   <td className="px-4 py-3 text-sm">
                     <span className={`rounded px-2 py-1 text-xs font-medium ${

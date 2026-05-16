@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { validateAuth, UserRole, serverErrorResponse } from "@/lib/auth-helpers";
+import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
 const orderSchema = z.object({
   address: z.string().min(10, "Indirizzo deve essere almeno 10 caratteri"),
@@ -15,13 +15,8 @@ export async function GET(request: NextRequest) {
     return auth.errorResponse;
   }
 
-  const authTokenId = auth.token?.id;
-  if (!authTokenId) {
-    return serverErrorResponse();
-  }
-
   const orders = await prisma.order.findMany({
-    where: { userId: authTokenId },
+    where: { userId: auth.token.id },
     include: { items: { include: { product: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -36,17 +31,13 @@ export async function POST(request: NextRequest) {
     return auth.errorResponse;
   }
 
-  const authTokenId = auth.token?.id;
-  if (!authTokenId) {
-    return serverErrorResponse();
-  }
-
   const body = await request.json();
   const parsed = orderSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
 
+  // TODO capire come mettere tutte queste operazioni a db in una transazione
   const cartItems = await prisma.cartItem.findMany({
-    where: { userId: authTokenId },
+    where: { userId: auth.token.id },
     include: { product: { include: { inventory: true } } },
   });
 
@@ -69,11 +60,11 @@ export async function POST(request: NextRequest) {
 
   const created = await prisma.order.create({
     data: {
-      userId: authTokenId,
+      userId: auth.token.id,
       total,
       address: parsed.data.address,
       paymentMethod: parsed.data.paymentMethod,
-      status: "PENDING",
+      status: "PENDING", // TODO usare enum prisma
       stripePaymentId: null,
       items: {
         create: cartItems.map((item: (typeof cartItems)[number]) => ({
@@ -97,7 +88,7 @@ export async function POST(request: NextRequest) {
   );
 
   // Clear cart
-  await prisma.cartItem.deleteMany({ where: { userId: authTokenId } });
+  await prisma.cartItem.deleteMany({ where: { userId: auth.token.id } });
 
   return NextResponse.json({ data: created }, { status: 201 });
 }

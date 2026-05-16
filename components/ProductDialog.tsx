@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { ProductModel, InventoryModel } from "@/generated/prisma/models";
+import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 import ProductForm, { ProductFormData } from "./ProductForm";
 
 interface ProductDialogProps {

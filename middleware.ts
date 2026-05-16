@@ -9,13 +9,13 @@ const protectedRoutes = [
   "/dashboard/admin/users",
   "/dashboard/admin/products",
   "/dashboard/admin/inventory",
+  "/dashboard/admin/orders",
   "/shop/cart",
   "/shop/checkout",
   // api
   "/api/admin",
   "/api/cart",
   "/api/inventory",
-  "/api/orders",
   "/api/products",
 ];
 
@@ -58,7 +58,6 @@ export const config = {
     "/api/admin/:path*",
     "/api/cart/:path*",
     "/api/inventory/:path*",
-    "/api/orders/:path*",
     "/api/products/:path*",
   ],
 };

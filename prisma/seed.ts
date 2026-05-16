@@ -1,7 +1,7 @@
 import "dotenv/config";
-import { PrismaClient } from "../generated/prisma";
+import { PrismaClient } from "@/app/generated/prisma";
 import bcryptjs from "bcryptjs";
-import { UserRole } from "@/generated/prisma/enums";
+import { UserRole } from "@/app/generated/prisma/enums";
 
 const prisma = new PrismaClient();
 

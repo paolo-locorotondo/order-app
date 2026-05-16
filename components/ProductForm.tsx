@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ProductModel, InventoryModel } from "@/generated/prisma/models";
+import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 
 interface ProductFormProps {
   product?: ProductModel & { inventory: InventoryModel | null };

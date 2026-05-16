@@ -9,8 +9,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     return auth.errorResponse;
   }
 
-  const authTokenId = auth.token?.id;
-
   const params = await context.params;
   
   const order = await prisma.order.findUnique({
@@ -18,7 +16,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     include: { items: { include: { product: true } }, user: true },
   });
 
-  if (!order || order.userId !== authTokenId) {
+  if (!order) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Admin può vedere tutti gli ordini, CUSTOMER solo i propri
+  if (auth.user.role !== UserRole.ADMIN && order.userId !== auth.token.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

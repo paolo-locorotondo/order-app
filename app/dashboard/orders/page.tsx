@@ -13,7 +13,7 @@ export default async function OrderHistoryPage() {
   }
 
   const orders = await prisma.order.findMany({
-    where: { userId: auth.session?.user?.id ?? "" },
+    where: { userId: auth.session.user.id },
     include: { items: { include: { product: true } } },
     orderBy: { createdAt: "desc" },
   });

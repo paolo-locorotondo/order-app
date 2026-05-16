@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { UserRole } from "@/generated/prisma/enums";
+import { UserRole } from "@/app/generated/prisma/enums";
 
 interface User {
   id: string;

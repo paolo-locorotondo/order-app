@@ -2,7 +2,7 @@ import bcryptjs from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { userRegistrationSchema } from "@/lib/validators";
-import { UserRole } from "@/generated/prisma/enums";
+import { UserRole } from "@/app/generated/prisma/enums";
 
 export async function POST(request: Request) {
   try {

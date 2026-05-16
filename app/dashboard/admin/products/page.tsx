@@ -30,11 +30,8 @@ export default async function AdminProducts() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a
-              href="/dashboard/admin/users"
-              className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Gestione Utenti
+            <a href="/dashboard/orders" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+              Miei Ordini
             </a>
             <a
               href="/dashboard/admin/inventory"
@@ -42,9 +39,20 @@ export default async function AdminProducts() {
             >
               Gestione Inventario
             </a>
+            <a
+              href="/dashboard/admin/orders"
+              className="rounded bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+            >
+              Gestione Ordini
+            </a>
+            <a
+              href="/dashboard/admin/users"
+              className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Gestione Utenti
+            </a>
           </div>
         </div>
-
         <ProductsTable products={products} />
       </main>
     </div>

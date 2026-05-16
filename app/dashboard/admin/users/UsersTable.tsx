@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CreateUserForm from "./CreateUserForm";
-import { UserRole } from "@/generated/prisma/enums";
+import { UserRole } from "@/app/generated/prisma/enums";
 
 interface User {
   id: string;
@@ -58,6 +58,7 @@ export default function UsersTable({ users }: { users: User[] }) {
               <tr
                 key={user.id}
                 className={`hover:bg-slate-50 ${selectedUser?.id === user.id ? "bg-blue-50" : ""}`}
+                onClick={() => setSelectedUser(user)}
               >
                 <td className="px-4 py-3 text-sm text-slate-700">{user.name || "-"}</td>
                 <td className="px-4 py-3 text-sm text-slate-700">{user.email}</td>

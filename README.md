@@ -155,7 +155,7 @@ order-app/
 ├── AGENTS.md                       # Configurazione agenti
 ├── CLAUDE.md                       # Istruzioni per Claude
 ├── README.md                       # Questo file
-├── TEST_REPORT.md                  # File usato per segnare i bug che scopro
+├── QUESTIONS.md                    # File usato per segnare domande e risposte
 └── TODO.md                         # File usato per segnare le cose da fare
 ```
 

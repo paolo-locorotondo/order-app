@@ -16,7 +16,7 @@ export default async function CheckoutPage() {
 
   // Carrello vuoto → redirect immediato senza mostrare la pagina
   const items = await prisma.cartItem.findMany({
-    where: { userId: auth.session?.user.id },
+    where: { userId: auth.session.user.id },
     include: { product: true },
     orderBy: { createdAt: "desc" },
   });

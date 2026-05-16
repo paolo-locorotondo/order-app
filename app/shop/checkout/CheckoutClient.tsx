@@ -48,6 +48,30 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
         }
     };
 
+    const handleRemove = async () => {
+        setSubmitting(true);
+        setError(null);
+        try {
+            throw new Error("Per modificare il carrello, torna indietro");
+        } catch (err) {
+            setError((err as Error).message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleUpdateQty = async () => {
+        setSubmitting(true);
+        setError(null);
+        try {
+            throw new Error("Per modificare il carrello, torna indietro");
+        } catch (err) {
+            setError((err as Error).message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     return (
         <div>
             {error && (
@@ -63,8 +87,8 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
                         <h2 className="mb-4 text-lg font-bold">Riepilogo Carrello</h2>
                         <CartItemsList
                             items={items}
-                            onRemove={async () => { }}
-                            onUpdateQty={async () => { }}
+                            onRemove={async () => { handleRemove() }}
+                            onUpdateQty={async () => { handleUpdateQty() }}
                         />
                     </div>
                 </div>

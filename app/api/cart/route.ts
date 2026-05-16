@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { cartItemSchema } from "@/lib/validators";
-import { validateAuth, UserRole, serverErrorResponse } from "@/lib/auth-helpers";
+import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   const cartItems = await prisma.cartItem.findMany({
-    where: { userId: auth.token?.id },
+    where: { userId: auth.token.id },
     include: { product: true },
   });
 
@@ -26,17 +26,12 @@ export async function POST(request: NextRequest) {
     return auth.errorResponse;
   }
 
-  const authTokenId = auth.token?.id;
-  if (!authTokenId) {
-    return serverErrorResponse();
-  }
-
   const body = await request.json();
   const parsed = cartItemSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
 
   const existing = await prisma.cartItem.findUnique({
-    where: { userId_productId: { userId: authTokenId, productId: parsed.data.productId } },
+    where: { userId_productId: { userId: auth.token.id, productId: parsed.data.productId } },
     include: { product: { include: { inventory: true } } },
   });
 
@@ -73,7 +68,7 @@ export async function POST(request: NextRequest) {
     })
     : await prisma.cartItem.create({
       data: {
-        userId: authTokenId,
+        userId: auth.token.id,
         productId: parsed.data.productId,
         quantity: requestedQty,
       },
@@ -94,13 +89,8 @@ export async function PATCH(request: NextRequest) {
   const parsed = z.object({ id: z.string().cuid(), quantity: z.number().int().min(1) }).safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
 
-  const authTokenId = auth.token?.id;
-  if (!authTokenId) {
-    return serverErrorResponse();
-  }
-
   const item = await prisma.cartItem.findUnique({ where: { id: parsed.data.id } });
-  if (!item || item.userId !== authTokenId) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!item || item.userId !== auth.token.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const updated = await prisma.cartItem.update({
     where: { id: item.id },
@@ -122,13 +112,8 @@ export async function DELETE(request: NextRequest) {
   const itemId = url.searchParams.get("id");
   if (!itemId) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const authTokenId = auth.token?.id;
-  if (!authTokenId) {
-    return serverErrorResponse();
-  }
-
   const item = await prisma.cartItem.findUnique({ where: { id: itemId } });
-  if (!item || item.userId !== authTokenId) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!item || item.userId !== auth.token.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.cartItem.delete({ where: { id: item.id } });
   return NextResponse.json({ data: { id: item.id } });

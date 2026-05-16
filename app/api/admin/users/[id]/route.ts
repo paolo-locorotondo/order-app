@@ -87,7 +87,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // Cannot delete admin user who is the current one
-    if (auth.token?.id === userId) {
+    if (auth.token.id === userId) {
       return NextResponse.json(
         { error: "Non puoi eliminare il tuo account." },
         { status: 400 }
