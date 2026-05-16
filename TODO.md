@@ -15,7 +15,7 @@
 
 ### Features Attuali ✅
 - Autenticazione Google con NextAuth
-- Database seeding con dati di test (🔴 TODO rimuovere utenti di test)
+- Database seeding con dati di test
 - Shop: elenco di prodotti da poter aggiungere al carrello
 - Carrello: lista di prodotti da poter aggiungere all'ordine durante il checkout
 - Dashboard:
@@ -25,10 +25,6 @@
   - Admin Prodotti: CRUD
   - Admin Inventario: per ora solo visualizza dati inventario (TODO CRUD?)
   - Admin Ordini: CRUD, in particolare creazione di un ordine per conto di altro utente
-
-### Credenziali Test (🔴 TODO da rimuovere)
-- Admin: `admin@example.com` / `AdminSecure123!`
-- User: `test@example.com` / `TestSecure456!`
 
 ---
 

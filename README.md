@@ -17,15 +17,6 @@ Progetto di gestione ordini con autenticazione Google (NextAuth), database Prism
 6. `npx prisma generate`
 7. `npm run db:seed` (opzionale, per dati di test sicuri)
 
-## Credenziali di Test
-
-Dopo aver eseguito il seeding del database, puoi accedere con queste credenziali di prova:
-
-- **Admin**: `admin@example.com` / `AdminSecure123!`
-- **User**: `test@example.com` / `TestSecure456!`
-
-> ⚠️ **Importante**: Queste password rispettano i requisiti di sicurezza minimi dell'applicazione (8+ caratteri, maiuscola, minuscola, numero, carattere speciale). In produzione, usa sempre password uniche e sicure.
-
 ## Configurazione Ambiente
 
 Il progetto richiede diverse variabili d'ambiente per funzionare correttamente. Copia il file `.env.example` in `.env` e configura i valori seguenti:

@@ -10,6 +10,7 @@ const protectedRoutes = [
   "/dashboard/admin/products",
   "/dashboard/admin/inventory",
   "/dashboard/admin/orders",
+  "/shop/products",
   "/shop/cart",
   "/shop/checkout",
   // api

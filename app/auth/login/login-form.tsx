@@ -133,13 +133,6 @@ export function LoginForm() {
             </a>
           </p>
 
-          {/* Test Credentials Info */}
-          <div className="mt-6 rounded-lg bg-slate-800/50 border border-slate-700 px-4 py-3 text-xs text-slate-300">
-            <p className="font-semibold text-slate-200 mb-2">Credenziali di test (sicure):</p>
-            <p>Admin: <code className="text-emerald-400">admin@example.com</code> / <code className="text-emerald-400">AdminSecure123!</code></p>
-            <p>User: <code className="text-emerald-400">test@example.com</code> / <code className="text-emerald-400">TestSecure456!</code></p>
-            <p className="mt-2 text-slate-400">⚠️ Queste password rispettano i requisiti di sicurezza minimi.</p>
-          </div>
         </form>
       )}
 
