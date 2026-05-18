@@ -13,7 +13,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 
   try {
     const body = await request.json();
-    const { quantity } = body;
+    const { quantity, reserved, reorderPoint } = body;
 
     if (quantity === undefined || quantity < 0) {
       return NextResponse.json(
@@ -24,7 +24,11 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 
     const inventory = await prisma.inventory.update({
       where: { id: params.id },
-      data: { quantity },
+      data: {
+        quantity,
+        ...(reserved !== undefined && { reserved }),
+        ...(reorderPoint !== undefined && { reorderPoint }),
+      },
       include: { product: true },
     });
 
