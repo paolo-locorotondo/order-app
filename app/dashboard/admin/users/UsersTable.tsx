@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CreateUserForm from "./CreateUserForm";
+import AdminModal from "@/components/AdminModal";
 import { UserRole } from "@/app/generated/prisma/enums";
 
 interface User {
@@ -14,10 +15,21 @@ interface User {
 }
 
 export default function UsersTable({ users }: { users: User[] }) {
+  const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const router = useRouter();
+
+  const openModal = (user?: User) => {
+    setSelectedUser(user);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setSelectedUser(undefined);
+    setModalOpen(false);
+  };
 
   const handleDelete = async (id: string) => {
     setDeleteLoading(true);
@@ -28,7 +40,7 @@ export default function UsersTable({ users }: { users: User[] }) {
         alert(data?.error || "Errore durante l'eliminazione.");
         return;
       }
-      if (selectedUser?.id === id) setSelectedUser(undefined);
+      if (selectedUser?.id === id) closeModal();
       setDeleteConfirm(null);
       router.refresh();
     } catch {
@@ -39,8 +51,7 @@ export default function UsersTable({ users }: { users: User[] }) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-
+    <>
       {/* Tabella */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200">
@@ -55,11 +66,7 @@ export default function UsersTable({ users }: { users: User[] }) {
           </thead>
           <tbody className="divide-y divide-slate-200 bg-white">
             {users.map((user) => (
-              <tr
-                key={user.id}
-                className={`hover:bg-slate-50 ${selectedUser?.id === user.id ? "bg-blue-50" : ""}`}
-                onClick={() => setSelectedUser(user)}
-              >
+              <tr key={user.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 text-sm text-slate-700">{user.name || "-"}</td>
                 <td className="px-4 py-3 text-sm text-slate-700">{user.email}</td>
                 <td className="px-4 py-3 text-sm text-slate-700">{user.role}</td>
@@ -69,7 +76,7 @@ export default function UsersTable({ users }: { users: User[] }) {
                 <td className="px-4 py-3 text-sm">
                   <div className="flex flex-wrap gap-1">
                     <button
-                      onClick={() => setSelectedUser(user)}
+                      onClick={() => openModal(user)}
                       className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
                     >
                       Modifica
@@ -106,14 +113,19 @@ export default function UsersTable({ users }: { users: User[] }) {
         </table>
       </div>
 
-      {/* Form inline */}
-      <div>
+      {/* Modal */}
+      <AdminModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        title={selectedUser ? `Modifica: ${selectedUser.name || selectedUser.email}` : "Crea nuovo utente"}
+      >
         <CreateUserForm
           key={selectedUser?.id ?? "new"}
           user={selectedUser}
-          onCancel={() => setSelectedUser(undefined)}
+          onCancel={closeModal}
+          onSuccess={closeModal}
         />
-      </div>
-    </div>
+      </AdminModal>
+    </>
   );
 }

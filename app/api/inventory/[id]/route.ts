@@ -13,7 +13,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 
   try {
     const body = await request.json();
-    const { quantity } = body;
+    const { quantity, reserved, reorderPoint } = body;
 
     if (quantity === undefined || quantity < 0) {
       return NextResponse.json(
@@ -24,7 +24,11 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 
     const inventory = await prisma.inventory.update({
       where: { id: params.id },
-      data: { quantity },
+      data: {
+        quantity,
+        ...(reserved !== undefined && { reserved }),
+        ...(reorderPoint !== undefined && { reorderPoint }),
+      },
       include: { product: true },
     });
 
@@ -32,5 +36,26 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
   } catch (error) {
     console.error("Inventory update error:", error);
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+
+  const auth = await validateAuth(request, UserRole.ADMIN);
+  if (!auth.ok) {
+    return auth.errorResponse;
+  }
+
+  const params = await context.params;
+
+  try {
+    const inventory = await prisma.inventory.delete({
+      where: { id: params.id },
+    });
+
+    return NextResponse.json({ data: inventory });
+  } catch (error) {
+    console.error("Inventory delete error:", error);
+    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
 }
