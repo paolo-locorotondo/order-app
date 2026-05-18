@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { PaymentMethods } from "@/app/generated/prisma/enums";
+
 
 export interface CheckoutFormData {
   address: string;
-  paymentMethod: "cash" | "stripe" | "paypal"; // TODO usare enum prisma PaymentMethods
+  paymentMethod: PaymentMethods;
 }
 
 interface CheckoutFormProps {
@@ -15,9 +17,15 @@ interface CheckoutFormProps {
 export default function CheckoutForm({ onSubmit, loading = false }: CheckoutFormProps) {
   const [formData, setFormData] = useState<CheckoutFormData>({
     address: "",
-    paymentMethod: "cash",
+    paymentMethod: PaymentMethods.CASH,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const PAYMENT_LABELS: Record<PaymentMethods, string> = {
+    [PaymentMethods.CASH]: "Contanti (Pagamento alla consegna)",
+    [PaymentMethods.STRIPE]: "Carta di Credito (Stripe)",
+    [PaymentMethods.PAYPAL]: "PayPal",
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -66,9 +74,8 @@ export default function CheckoutForm({ onSubmit, loading = false }: CheckoutForm
           value={formData.address}
           onChange={handleChange}
           rows={3}
-          className={`w-full px-3 py-2 border rounded-md text-sm ${
-            errors.address ? "border-red-500" : "border-slate-300"
-          } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          className={`w-full px-3 py-2 border rounded-md text-sm ${errors.address ? "border-red-500" : "border-slate-300"
+            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
           placeholder="Via, numero civico, città, provincia, CAP"
           disabled={loading}
         />
@@ -85,21 +92,20 @@ export default function CheckoutForm({ onSubmit, loading = false }: CheckoutForm
           name="paymentMethod"
           value={formData.paymentMethod}
           onChange={handleChange}
-          className={`w-full px-3 py-2 border rounded-md text-sm ${
-            errors.paymentMethod ? "border-red-500" : "border-slate-300"
-          } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          className={`w-full px-3 py-2 border rounded-md text-sm ${errors.paymentMethod ? "border-red-500" : "border-slate-300"
+            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
           disabled={loading}
         >
-          <option value="cash">Contrassegno (Pagamento alla consegna)</option>
-          <option value="stripe">Carta di Credito (Stripe)</option>
-          <option value="paypal">PayPal</option>
+          {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
         </select>
         {errors.paymentMethod && <p className="mt-1 text-sm text-red-600">{errors.paymentMethod}</p>}
       </div>
 
       {/* Info */}
       <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-        ℹ️ <strong>Nota:</strong> Attualmente è disponibile solo il metodo "Contrassegno". Gli altri metodi verranno presto integrati.
+        ℹ️ <strong>Nota:</strong> Attualmente è disponibile solo il metodo "Contanti". Gli altri metodi verranno presto integrati.
       </div>
 
       {/* Submit Button */}

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { validateAuthFromServerSession, UserRole } from "@/lib/auth-helpers";
 import { notFound } from "next/navigation";
 import AccessDenied from "@/components/AccessDenied";
+import { PaymentMethods } from "@/app/generated/prisma/enums";
 
 export default async function OrderConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,6 +33,13 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
   if (auth.session.user.role === UserRole.CUSTOMER && order.userId !== auth.session.user.id) {
     notFound(); // non riveliamo che l'ordine esiste ma appartiene a qualcun altro
   }
+
+  const PAYMENT_LABELS: Record<PaymentMethods, string> = {
+    [PaymentMethods.CASH]: "Contanti (Pagamento alla consegna)",
+    [PaymentMethods.STRIPE]: "Carta di Credito (Stripe)",
+    [PaymentMethods.PAYPAL]: "PayPal",
+  };
+
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -90,14 +98,10 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
               <h2 className="mb-4 text-lg font-bold">Informazioni Pagamento</h2>
               <p className="mb-2 text-slate-700">
                 <strong>Metodo:</strong>{" "}
-                {order.paymentMethod === "cash"
-                  ? "Contrassegno (Pagamento alla consegna)"
-                  : order.paymentMethod === "stripe"
-                    ? "Carta di Credito"
-                    : "PayPal"}
+                {PAYMENT_LABELS[order.paymentMethod]}
               </p>
               <p className="text-sm text-slate-600">
-                {order.paymentMethod === "cash"
+                {order.paymentMethod === PaymentMethods.CASH
                   ? "Pagherai al ritiro del pacco dal corriere."
                   : "Il pagamento è stato elaborato con successo."}
               </p>

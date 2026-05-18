@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
+import { OrderStatus } from "@/app/generated/prisma/enums";
 import CreateOrderForm from "./CreateOrderForm";
 import EditOrderPanel from "./EditOrderPanel";
 
@@ -10,17 +11,15 @@ interface OrderWithDetails extends OrderModel {
     user: Pick<UserModel, "id" | "name" | "email">;
 }
 
-const ORDER_STATUSES = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
-type OrderStatus = typeof ORDER_STATUSES[number];
 type SortField = "createdAt" | "total";
 type SortDir = "asc" | "desc";
 
-const STATUS_COLORS: Record<string, string> = {
-    PENDING: "bg-yellow-100 text-yellow-900",
-    PAID: "bg-blue-100 text-blue-900",
-    SHIPPED: "bg-purple-100 text-purple-900",
-    DELIVERED: "bg-green-100 text-green-900",
-    CANCELLED: "bg-red-100 text-red-900",
+const STATUS_COLORS: Record<OrderStatus, string> = {
+    [OrderStatus.PENDING]: "bg-yellow-100 text-yellow-900",
+    [OrderStatus.PAID]: "bg-blue-100 text-blue-900",
+    [OrderStatus.SHIPPED]: "bg-purple-100 text-purple-900",
+    [OrderStatus.DELIVERED]: "bg-green-100 text-green-900",
+    [OrderStatus.CANCELLED]: "bg-red-100 text-red-900",
 };
 
 interface OrdersTableProps {
@@ -118,7 +117,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                         >
                             Tutti ({orders.length})
                         </button>
-                        {ORDER_STATUSES.map((status) => {
+                        {Object.values(OrderStatus).map((status) => {
                             const count = orders.filter((o) => o.status === status).length;
                             return (
                                 <button

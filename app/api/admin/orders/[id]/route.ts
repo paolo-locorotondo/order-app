@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
+import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 
 const updateOrderSchema = z.object({
-  status: z.enum(["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"]).optional(),
+  status: z.enum([OrderStatus.PENDING, OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.CANCELLED]).optional(),
   address: z.string().min(10, "Indirizzo deve essere almeno 10 caratteri").optional(),
-  paymentMethod: z.enum(["stripe", "paypal", "cash"]).optional(),
+  paymentMethod: z.enum([PaymentMethods.STRIPE, PaymentMethods.PAYPAL, PaymentMethods.CASH]).optional(),
 });
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {

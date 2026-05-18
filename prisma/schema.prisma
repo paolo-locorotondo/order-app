@@ -81,7 +81,7 @@ model Order {
   total           Float
   status          OrderStatus @default(PENDING)
   address         String      // Shipping address
-  paymentMethod   String      @default("cash") // stripe, paypal, cash
+  paymentMethod   PaymentMethods @default(CASH)
   stripePaymentId String?
   items           OrderItem[]
   createdAt       DateTime @default(now())
@@ -94,6 +94,12 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+enum PaymentMethods { 
+  CASH
+  PAYPAL
+  STRIPE
 }
 
 model OrderItem {

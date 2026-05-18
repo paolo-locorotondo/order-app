@@ -84,67 +84,37 @@
 - `app/api/orders/route.ts` (UPDATED) - POST con address/paymentMethod, inventory update
 - `app/shop/cart/page.tsx` (UPDATED) - Aggiunto checkout button
 
-
-### 2B. Bug Fix & Improvements
-
-#### BUG:
-
-#### MIGLIORIE:
-
-**MIGLIORAMENTO #2: Customer Orders History**
-- **File**: Aggiornare `app/dashboard/orders/page.tsx`
-- **Descrizione**: Aggiungere la possibilità di visualizzare dettaglio ordine
-- **Features**:
-  - Lista ordini (già c'è)
-  - Click su ordine → mostra modal con:
-    - Numero ordine, data, status
-    - Indirizzo spedizione
-    - Lista articoli con prezzi
-    - Totale
-  - Bottone "Scarica fattura" (placeholder per Step 3)
-- **Priority**: 🟡 MEDIUM
-- **Stato**: 🔴 TODO 
-
-**MIGLIORAMENTO #7: Gestione paymentMethod come Enum**
-- **File**: `prisma\schema.prisma`
-- **Descrizione**: Usare una Enum per il paymentMethod ed usare questa enum generata da prisma in tutta l'applicazione.
-- **Implementazione**:
-  - Usare enum PaymentMethods invece di String come tipo del campo paymentMethod
-      enum PaymentMethods { 
-        CASH
-        PAYPAL
-        STRIPE
-      }
-- **Priority**: 🟢 LOW (nice to have, advanced feature)
-- **Stato**: 🔴 TODO
-
-**MIGLIORAMENTO #8: Conformare struttura delle pagine Admin**
-- **Descrizione**: Le pagine Admin hanno una tabella con una lista di record ed accanto un form di dettagio del record che permette di modificare il record selezionato. Se invece non è selezionato nessun record, o si clicca sul tasto "Annulla/Chiudi" il form permette di creare un nuovo record.
-Struttura e comportamento atteso:
-- ogni riga della tabella deve avere la colonna finale "Azioni" con i tasti "Modifica" e "Elimina". Al click di "Modifica" deve essere popolato il form, mentre al click di "Elimina" deve essere eseguita l'operazione di delete del record con la logica di 2 step confirm.
-- cliccando sulla riga della tabella, il form diventa di "modifica" record e viene popolato con i dati del record selezionato nella tabella.
-- cliccando sul tasto "X Annulla" in alto a destra del form, si deve svuotare il form e deve mostrare il "crea" record.
-- onSubmit del form non deve essere svuotato, perchè deve mostrare il messaggo di successo "creato/modificato con successo".
-- **Implementazione**: da definire
-- **Priority**: 🟢 LOW (nice to have, advanced feature)
-- **Stato**: 🔴 TODO
-
 ---
 
 ### 3. Admin Orders Dashboard
-**Stato**: 🔴 TODO  
+**Stato**: ✅ COMPLETATO  
 **Descrizione**: Pagina CRUD per admin per gestire ordini
 
 **Task**:
 - [X] Tabella con lista degli ordini filtrabile per stato ordine
 - [X] Modifica ordine (Per ora si può aggiornare solo lo stato)
 - [X] Elimina ordine + restore inventory per ogni OrderItem
-- [ ] Crea ordine per conto di altro utente + update inventory per ogni OrderItem
+- [X] Crea ordine per conto di altro utente + update inventory per ogni OrderItem
 
 ---
 
+### 4. Customer Orders History
+**Stato**: 🔴 TODO  
+**Descrizione**: Aggiungere la possibilità di visualizzare dettaglio ordine
+**File**: Aggiornare `app/dashboard/orders/page.tsx`
+**Features**:
+  - Lista ordini già c'è, ma la refattorizzarei in tabella filtrabile per stato, prodotto e ordinabile per data
+  - Click su "Dettaglio" → mostra modal con:
+    - Numero ordine, data, status
+    - Indirizzo spedizione
+    - Lista articoli con prezzi
+    - Totale
+- **Priority**: 🟡 MEDIUM
+- **Stato**: 🔴 TODO 
 
-### 4. Product Reservation System**
+---
+
+### 4. Product Reservation System
 **Stato**: 🔴 TODO  
 **Descrizione**: Durante checkout, "riservare" i prodotti per 5 minuti. Se timer scade, liberarli e uscire.
 
@@ -162,18 +132,19 @@ Struttura e comportamento atteso:
 **Descrizione**: Implementare invio email automatiche (conferme ordini, notifiche, etc.)
 
 **Task**:
+- [ ] Spiegare cosa è SendGrid e metterlo a confronto con le altre opzioni
 - [ ] Configurare SendGrid API key su Vercel
-- [ ] Creare template email per conferma ordine
+- [ ] Creare template email da poter riusare?
 - [ ] Creare endpoint per inviare email post-ordine
-- [ ] Aggiungere email di benvenuto post-registrazione
+- [ ] Aggiungere email di benvenuto post-registrazione e gestire la conferma dell'utente aggiornando poi la colonna emailVerified della tabella User
 - [ ] Aggiungere email di notifica admin per nuovi ordini
 - [ ] Gestione errori invio email
 - [ ] Testing email in locale
 
 **File coinvolti**:
 - `lib/email.ts` (new - utility per SendGrid)
-- `app/api/orders/route.ts` (trigger email post-creazione)
 - `app/api/auth/register/route.ts` (email benvenuto)
+- `app/api/orders/route.ts` (trigger email post-creazione)
 
 ---
 
@@ -200,6 +171,47 @@ Struttura e comportamento atteso:
 - [ ] Grafici ordini per mese/settimana
 - [ ] Esportazione report (CSV/PDF)
 - [ ] Analisi inventory: prodotti in stock, low stock alerts
+
+---
+
+
+### Bug Fix & Improvements
+
+#### BUG:
+
+**Ordine con due prodotti uguali la somma delle quantità deve essere controllata per verifica disponibilità**
+- **Descrizione**: Nella pagina "Gestione - Ordini" nel form di modifica ordine, supponendo che in inventory il prodotto X ha disponibilità 10, quando aggiungo un prodotto X con quantità 5 e poi clicco "Aggiungi prodotto" e aggiungo sempre il prodotto X ma con quantità 6, l'ordine va a buon fine, invece avrebbe dovuto dare errore "Superata disponibilità del prodotto. Disponibili: 10, richieste: 11"
+- **File**: `app\dashboard\admin\orders\EditOrderPanel.tsx`
+- **Priority**: 🔴 HIGH (inconsistenza dati)
+- **Stato**: 🔴 TODO 
+
+
+#### MIGLIORIE:
+
+**MIGLIORAMENTO #7: Gestione paymentMethod come Enum**
+- **File**: `prisma\schema.prisma`
+- **Descrizione**: Usare una Enum per il paymentMethod ed usare questa enum generata da prisma in tutta l'applicazione.
+- **Implementazione**:
+  ✅ COMPLETATO - Usare enum PaymentMethods invece di String come tipo del campo paymentMethod
+      enum PaymentMethods { 
+        CASH
+        PAYPAL
+        STRIPE
+      }
+  ✅ COMPLETATO - refactor: tutti i valori hardcoded relativi alle enum prisma, sostituire con queste enum
+- **Priority**: 🟢 LOW (nice to have, advanced feature)
+- **Stato**: ✅ COMPLETATO
+
+**MIGLIORAMENTO #8: Conformare struttura delle pagine Admin**
+- **Descrizione**: Le pagine Admin hanno una tabella con una lista di record ed accanto un form di dettagio del record che permette di modificare il record selezionato. Se invece non è selezionato nessun record, o si clicca sul tasto "Annulla/Chiudi" il form permette di creare un nuovo record.
+Struttura e comportamento atteso:
+- La pagina Admin deve avere una tabella la cui ultima colonna "Azioni" deve avere i tasti "Modifica" ed "Elimina".
+- Al click di "Modifica" deve comparire un modal che permette di modificare il record. Una volta confermata la modifica deve presentarsi messaggio di success o di errore (appena sopra il tasto conferma).
+- Al click di "Elimina" deve essere eseguita l'operazione di delete del record con la logica di 2 step confirm (Vedi Gestione - Utenti).
+- Sopra la tabella ci deve essere il tasto "Crea nuovo record" (es: Crea nuovo utente) al cui click deve comparire il modal che permette di creare il nuovo record. Una volta confermata la creazione deve presentarsi messaggio di success o di errore (appena sopra il tasto conferma).
+- **Implementazione**: da definire
+- **Priority**: 🟢 LOW (nice to have, advanced feature)
+- **Stato**: 🔴 TODO
 
 ---
 

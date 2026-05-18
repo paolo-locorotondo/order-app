@@ -3,21 +3,25 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
+import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 
 interface OrderWithDetails extends OrderModel {
     items: (OrderItemModel & { product: ProductModel })[];
     user: Pick<UserModel, "id" | "name" | "email">;
 }
 
-const ORDER_STATUSES = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
-type OrderStatus = typeof ORDER_STATUSES[number];
+const STATUS_COLORS: Record<OrderStatus, string> = {
+    [OrderStatus.PENDING]: "bg-yellow-100 text-yellow-900",
+    [OrderStatus.PAID]: "bg-blue-100 text-blue-900",
+    [OrderStatus.SHIPPED]: "bg-purple-100 text-purple-900",
+    [OrderStatus.DELIVERED]: "bg-green-100 text-green-900",
+    [OrderStatus.CANCELLED]: "bg-red-100 text-red-900",
+};
 
-const STATUS_COLORS: Record<string, string> = {
-    PENDING: "bg-yellow-100 text-yellow-900",
-    PAID: "bg-blue-100 text-blue-900",
-    SHIPPED: "bg-purple-100 text-purple-900",
-    DELIVERED: "bg-green-100 text-green-900",
-    CANCELLED: "bg-red-100 text-red-900",
+const PAYMENT_LABELS: Record<PaymentMethods, string> = {
+    [PaymentMethods.CASH]: "Contanti (Pagamento alla consegna)",
+    [PaymentMethods.STRIPE]: "Carta di Credito (Stripe)",
+    [PaymentMethods.PAYPAL]: "PayPal",
 };
 
 interface EditOrderPanelProps {
@@ -118,7 +122,7 @@ export default function EditOrderPanel({ order, onCancel }: EditOrderPanelProps)
                 <div className="rounded-lg bg-slate-50 p-3">
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Pagamento</p>
                     <p className="text-sm text-slate-700">
-                        {order.paymentMethod === "cash" ? "Contrassegno" : order.paymentMethod === "stripe" ? "Carta di credito" : "PayPal"}
+                        {PAYMENT_LABELS[order.paymentMethod]}
                     </p>
                 </div>
 
@@ -148,7 +152,8 @@ export default function EditOrderPanel({ order, onCancel }: EditOrderPanelProps)
                     {editingStatus ? (
                         <div className="space-y-2">
                             <div className="grid grid-cols-2 gap-2">
-                                {ORDER_STATUSES.map((status) => (
+                                {
+                                Object.values(OrderStatus).map((status) => (
                                     <button
                                         key={status}
                                         onClick={() => handleUpdateStatus(status)}

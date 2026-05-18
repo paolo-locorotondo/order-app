@@ -1,4 +1,4 @@
-import { UserRole } from "@/app/generated/prisma/enums";
+import { PaymentMethods, UserRole } from "@/app/generated/prisma/enums";
 import { z } from "zod";
 
 export const productSchema = z.object({
@@ -18,7 +18,7 @@ export const cartItemSchema = z.object({
 export const orderCreateSchema = z.object({
   cartItemIds: z.string().array().min(1),
   address: z.string().min(5),
-  paymentMethod: z.enum(["stripe", "paypal", "cash"]).optional().default("cash"),
+  paymentMethod: z.enum([PaymentMethods.STRIPE, PaymentMethods.PAYPAL, PaymentMethods.CASH]).optional().default(PaymentMethods.CASH),
 });
 
 // Security validation schemas

@@ -13,9 +13,13 @@ Progetto di gestione ordini con autenticazione Google (NextAuth), database Prism
 2. Copia `.env` da `.env.example` (o modifica `.env` esistente)
 3. Imposta `DATABASE_URL`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SENDGRID_API_KEY`, `SUPPORT_EMAIL`
 4. Avvia database: `docker-compose up -d`
-5. `npx prisma db push`
-6. `npx prisma generate`
-7. `npm run db:seed` (opzionale, per dati di test sicuri)
+5. Aggiornare lo schema db:
+    - al primo avvio in sviluppo: `npx prisma migrate dev --name first_migration` (crea i file di migration sql)
+    - ad ogni modifica allo `prisma/schema.prisma` successiva: `npx prisma migrate dev --name descrizione_modifica` (crea nuova migration)
+    - per deploy in produzione: `npx prisma migrate deploy`
+    - in alternativa, se non si vuole versionare i cambiamenti al db: `npx prisma db push` e `npx prisma generate`
+6. `npm run db:seed` (opzionale, per dati di test sicuri)
+
 
 ## Configurazione Ambiente
 

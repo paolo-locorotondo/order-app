@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProductModel, UserModel } from "@/app/generated/prisma/models";
+import { PaymentMethods } from "@/app/generated/prisma/enums";
 
 interface OrderItem {
     productId: string;
@@ -19,7 +20,7 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
     const router = useRouter();
     const [userId, setUserId] = useState("");
     const [address, setAddress] = useState("");
-    const [paymentMethod, setPaymentMethod] = useState<"cash" | "stripe" | "paypal">("cash");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethods>(PaymentMethods.CASH);
     const [items, setItems] = useState<OrderItem[]>([{ productId: "", quantity: 1 }]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -27,6 +28,11 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
 
     const inputClass = "w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none";
     const labelClass = "block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1";
+    const PAYMENT_LABELS: Record<PaymentMethods, string> = {
+        [PaymentMethods.CASH]: "Contanti (Pagamento alla consegna)",
+        [PaymentMethods.STRIPE]: "Carta di Credito (Stripe)",
+        [PaymentMethods.PAYPAL]: "PayPal",
+    };
 
     const addItem = () => setItems((prev) => [...prev, { productId: "", quantity: 1 }]);
 
@@ -68,7 +74,7 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
             setSuccess("Ordine creato con successo.");
             setUserId("");
             setAddress("");
-            setPaymentMethod("cash");
+            setPaymentMethod(PaymentMethods.CASH);
             setItems([{ productId: "", quantity: 1 }]);
             router.refresh();
         } catch (err) {
@@ -131,9 +137,9 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                 <div>
                     <label className={labelClass}>Metodo di pagamento</label>
                     <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)} className={inputClass}>
-                        <option value="cash">Contrassegno</option>
-                        <option value="stripe">Carta di credito</option>
-                        <option value="paypal">PayPal</option>
+                        {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                        ))}
                     </select>
                 </div>
 

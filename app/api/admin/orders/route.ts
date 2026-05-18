@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
-
-const orderSchema = z.object({
-  address: z.string().min(10, "Indirizzo deve essere almeno 10 caratteri"),
-  paymentMethod: z.enum(["stripe", "paypal", "cash"]).default("cash"),
-});
+import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 
 const adminOrderSchema = z.object({
   userId: z.string().min(1, "User ID è obbligatorio"),
@@ -17,7 +13,7 @@ const adminOrderSchema = z.object({
     })
   ).min(1, "Almeno un articolo è richiesto"),
   address: z.string().min(10, "Indirizzo deve essere almeno 10 caratteri"),
-  paymentMethod: z.enum(["stripe", "paypal", "cash"]).default("cash"),
+  paymentMethod: z.enum([PaymentMethods.STRIPE, PaymentMethods.PAYPAL, PaymentMethods.CASH]).default(PaymentMethods.CASH),
 });
 
 export async function GET(request: NextRequest) {
@@ -91,7 +87,7 @@ export async function POST(request: NextRequest) {
       total,
       address: parsed.data.address,
       paymentMethod: parsed.data.paymentMethod,
-      status: "PENDING", // TODO usare enum prisma
+      status: OrderStatus.PENDING,
       stripePaymentId: null,
       items: {
         create: parsed.data.items.map((item) => {
