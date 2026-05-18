@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import AdminModal from "@/components/AdminModal";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 import CreateOrderForm from "./CreateOrderForm";
@@ -34,11 +35,22 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
 }
 
 export default function OrdersTable({ orders, users, products }: OrdersTableProps) {
+    const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | undefined>();
     const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
     const [userFilter, setUserFilter] = useState("");
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+    const openModal = (order: OrderWithDetails) => {
+        setSelectedOrder(order);
+        setModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setSelectedOrder(undefined);
+        setModalOpen(false);
+    };
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -85,16 +97,15 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     }, [orders, statusFilter, userFilter, sortField, sortDir]);
 
     const rightPanel = selectedOrder
-        ? <EditOrderPanel order={selectedOrder} onCancel={() => setSelectedOrder(undefined)} />
+        ? <EditOrderPanel order={selectedOrder} onCancel={closeModal} />
         : <CreateOrderForm users={users} products={products} />;
 
     const thClass = "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500";
     const thSortClass = `${thClass} cursor-pointer select-none hover:text-slate-800`;
 
     return (
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
-
-            {/* Colonna sinistra */}
+        <>
+            {/* Colonna sinistra - Tabella */}
             <div className="space-y-4">
 
                 {/* Filtri */}
@@ -161,6 +172,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                 >
                                     Data <SortIcon field="createdAt" sortField={sortField} sortDir={sortDir} />
                                 </th>
+                                <th className={thClass}>Azioni</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
@@ -174,8 +186,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                 processedOrders.map((order) => (
                                     <tr
                                         key={order.id}
-                                        className={`hover:bg-slate-50 ${selectedOrder?.id === order.id ? "bg-blue-50" : ""}`}
-                                        onClick={() => setSelectedOrder(order)}
+                                        className="hover:bg-slate-50"
                                     >
                                         <td className="px-4 py-3 font-mono text-xs text-slate-500">{order.id.slice(0, 8)}</td>
                                         <td className="px-4 py-3">
@@ -196,6 +207,14 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                         <td className="px-4 py-3 text-xs text-slate-500">
                                             {new Date(order.createdAt).toLocaleDateString("it-IT")} - {new Date(order.createdAt).toLocaleTimeString("it-IT")}
                                         </td>
+                                        <td className="px-4 py-3 text-sm">
+                                            <button
+                                                onClick={() => openModal(order)}
+                                                className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
+                                            >
+                                                Modifica
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))
                             )}
@@ -204,10 +223,14 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 </div>
             </div>
 
-            {/* Colonna destra: form crea / pannello modifica */}
-            <div>
-                {rightPanel}
-            </div>
-        </div>
+            {/* Modal */}
+            <AdminModal
+                isOpen={modalOpen}
+                onClose={closeModal}
+                title={selectedOrder ? `Ordine #${selectedOrder.id.slice(0, 8)}` : ""}
+            >
+                {selectedOrder && <EditOrderPanel order={selectedOrder} onCancel={closeModal} />}
+            </AdminModal>
+        </>
     );
 }

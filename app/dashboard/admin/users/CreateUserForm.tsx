@@ -14,9 +14,10 @@ interface User {
 interface CreateUserFormProps {
   user?: User;         // se presente → modalità modifica
   onCancel?: () => void;
+  onSuccess?: () => void;
 }
 
-export default function CreateUserForm({ user, onCancel }: CreateUserFormProps) {
+export default function CreateUserForm({ user, onCancel, onSuccess }: CreateUserFormProps) {
   const isEdit = !!user;
   const router = useRouter();
 
@@ -89,6 +90,11 @@ export default function CreateUserForm({ user, onCancel }: CreateUserFormProps) 
         setPassword("");
         setConfirmPassword("");
         setRole(UserRole.CUSTOMER);
+      }
+
+      // Chiama callback di successo se fornito
+      if (onSuccess) {
+        setTimeout(() => onSuccess(), 1500);
       }
 
       router.refresh();
