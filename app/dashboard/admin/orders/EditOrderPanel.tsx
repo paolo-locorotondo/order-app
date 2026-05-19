@@ -27,15 +27,17 @@ const PAYMENT_LABELS: Record<PaymentMethods, string> = {
 interface EditOrderPanelProps {
     order: OrderWithDetails;
     onCancel: () => void;
+    onSuccess?: () => void;
 }
 
-export default function EditOrderPanel({ order, onCancel }: EditOrderPanelProps) {
+export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrderPanelProps) {
     const router = useRouter();
     const [editingStatus, setEditingStatus] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState("");
 
     const handleUpdateStatus = useCallback(async (newStatus: OrderStatus) => {
         setStatusLoading(true);
@@ -51,8 +53,14 @@ export default function EditOrderPanel({ order, onCancel }: EditOrderPanelProps)
                 throw new Error(data.error || `Errore ${response.status}`);
             }
             setEditingStatus(false);
+            setSuccess("Stato ordine aggiornato con successo.");
+
+            if (onSuccess) {
+                setTimeout(() => onSuccess(), 1500);
+            }
+
             router.refresh();
-            onCancel();
+            // onCancel();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Errore sconosciuto");
         } finally {
@@ -97,12 +105,6 @@ export default function EditOrderPanel({ order, onCancel }: EditOrderPanelProps)
                     ✕ Chiudi
                 </button>
             </div>
-
-            {error && (
-                <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {error}
-                </div>
-            )}
 
             <div className="space-y-4">
                 {/* Cliente */}
@@ -153,19 +155,19 @@ export default function EditOrderPanel({ order, onCancel }: EditOrderPanelProps)
                         <div className="space-y-2">
                             <div className="grid grid-cols-2 gap-2">
                                 {
-                                Object.values(OrderStatus).map((status) => (
-                                    <button
-                                        key={status}
-                                        onClick={() => handleUpdateStatus(status)}
-                                        disabled={statusLoading}
-                                        className={`rounded px-3 py-2 text-xs font-medium transition disabled:opacity-50 ${status === order.status
-                                            ? "bg-slate-900 text-white"
-                                            : "bg-slate-200 text-slate-900 hover:bg-slate-300"
-                                            }`}
-                                    >
-                                        {statusLoading ? "..." : status}
-                                    </button>
-                                ))}
+                                    Object.values(OrderStatus).map((status) => (
+                                        <button
+                                            key={status}
+                                            onClick={() => handleUpdateStatus(status)}
+                                            disabled={statusLoading}
+                                            className={`rounded px-3 py-2 text-xs font-medium transition disabled:opacity-50 ${status === order.status
+                                                ? "bg-slate-900 text-white"
+                                                : "bg-slate-200 text-slate-900 hover:bg-slate-300"
+                                                }`}
+                                        >
+                                            {statusLoading ? "..." : status}
+                                        </button>
+                                    ))}
                             </div>
                             <button
                                 onClick={() => setEditingStatus(false)}
@@ -189,6 +191,16 @@ export default function EditOrderPanel({ order, onCancel }: EditOrderPanelProps)
                         </div>
                     )}
                 </div>
+                {error && (
+                    <div className="mt-4 rounded-lg border border-red-300 bg-red-100 px-4 py-3 text-sm text-red-700">
+                        {error}
+                    </div>
+                )}
+                {success && (
+                    <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-100 px-4 py-3 text-sm text-emerald-700">
+                        {success}
+                    </div>
+                )}
 
                 {/* Elimina */}
                 {deleteConfirm ? (

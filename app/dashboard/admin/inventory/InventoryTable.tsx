@@ -89,7 +89,7 @@ export default function InventoryTable({ inventory }: { inventory: InventoryWith
                     key={selectedInventory?.id ?? "new"}
                     inventory={selectedInventory}
                     onCancel={closeModal}
-                /* onSuccess={closeModal} */
+                    onSuccess={undefined}
                 />
             </AdminModal>
         </>

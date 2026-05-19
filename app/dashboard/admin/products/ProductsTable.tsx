@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ProductForm, { ProductFormData } from "@/components/ProductForm";
+import AdminModal from "@/components/AdminModal";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 
 interface ProductWithInventory extends ProductModel {
@@ -10,12 +11,28 @@ interface ProductWithInventory extends ProductModel {
 }
 
 export default function ProductsTable({ products }: { products: ProductWithInventory[] }) {
+  const [modalOpen, setModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductWithInventory | undefined>();
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const router = useRouter();
+
+  const openModal = (product?: ProductWithInventory) => {
+    setSelectedProduct(product);
+    setFormError(null);
+    setFormSuccess(false);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setSelectedProduct(undefined);
+    setFormError(null);
+    setFormSuccess(false);
+    setModalOpen(false);
+  };
 
   const handleSubmit = useCallback(
     async (formData: ProductFormData) => {
@@ -61,8 +78,11 @@ export default function ProductsTable({ products }: { products: ProductWithInven
           }
         }
 
-        setSelectedProduct(undefined);
-        router.refresh(); // ricarica i dati dal Server Component
+        setFormSuccess(true);
+        /* setTimeout(() => {
+          closeModal();
+          router.refresh();
+        }, 1500); */
       } catch (err) {
         setFormError(err instanceof Error ? err.message : "Errore sconosciuto");
       } finally {
@@ -81,7 +101,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         alert(data?.error || "Errore eliminazione prodotto");
         return;
       }
-      if (selectedProduct?.id === id) setSelectedProduct(undefined);
+      if (selectedProduct?.id === id) closeModal();
       setDeleteConfirm(null);
       router.refresh();
     } catch {
@@ -92,13 +112,23 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+    <>
+
+      {/* Pulsante crea prodotto */}
+      <div className="flex justify-center">
+        <button
+          onClick={() => openModal()}
+          className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+        >
+          + Nuovo Prodotto
+        </button>
+      </div>
 
       {/* Tabella */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         {products.length === 0 ? (
           <div className="py-12 text-center text-sm text-slate-500">
-            Nessun prodotto. Creane uno con il form →
+            Nessun prodotto. Creane uno dal pulsante in basso →
           </div>
         ) : (
           <table className="min-w-full divide-y divide-slate-200">
@@ -113,27 +143,23 @@ export default function ProductsTable({ products }: { products: ProductWithInven
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {products.map((product) => (
-                <tr
-                  key={product.id}
-                  className={`hover:bg-slate-50 ${selectedProduct?.id === product.id ? "bg-blue-50" : ""}`}
-                  onClick={() => { setSelectedProduct(product); setFormError(null); }}
-                >
+                <tr key={product.id} className="hover:bg-slate-50"
+                  onClick={() => openModal(product)}>
                   <td className="px-4 py-3 text-sm font-medium text-slate-700">{product.name}</td>
                   <td className="px-4 py-3 text-sm text-slate-500">{product.sku}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">€{product.price.toFixed(2)}</td>
                   <td className="px-4 py-3 text-sm">
-                    <span className={`rounded px-2 py-1 text-xs font-medium ${
-                      (product.inventory?.quantity ?? 0) > 0
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}>
+                    <span className={`rounded px-2 py-1 text-xs font-medium ${(product.inventory?.quantity ?? 0) > 0
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                      }`}>
                       {product.inventory?.quantity ?? 0}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex flex-wrap gap-1">
                       <button
-                        onClick={() => { setSelectedProduct(product); setFormError(null); }}
+                        onClick={() => openModal(product)}
                         className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
                       >
                         Modifica
@@ -171,35 +197,29 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         )}
       </div>
 
-      {/* Form inline */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-800">
-            {selectedProduct ? `Modifica: ${selectedProduct.name}` : "Nuovo Prodotto"}
-          </h2>
-          {selectedProduct && (
-            <button
-              onClick={() => { setSelectedProduct(undefined); setFormError(null); }}
-              className="text-sm text-slate-400 hover:text-slate-600"
-            >
-              ✕ Annulla
-            </button>
-          )}
-        </div>
-
-        {formError && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {formError}
-          </div>
-        )}
-
+      {/* Modal */}
+      <AdminModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        title={selectedProduct ? `Modifica: ${selectedProduct.name}` : "Nuovo Prodotto"}
+      >
         <ProductForm
           key={selectedProduct?.id ?? "new"}
           product={selectedProduct}
           onSubmit={handleSubmit}
           loading={formLoading}
         />
-      </div>
-    </div>
+        {formError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {formError}
+          </div>
+        )}
+        {formSuccess && (
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {selectedProduct ? "Prodotto aggiornato con successo." : "Prodotto creato con successo."}
+          </div>
+        )}
+      </AdminModal>
+    </>
   );
 }

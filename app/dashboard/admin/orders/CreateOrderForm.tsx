@@ -95,17 +95,6 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                 )}
             </div>
 
-            {error && (
-                <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {error}
-                </div>
-            )}
-            {success && (
-                <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-                    {success}
-                </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Utente */}
                 <div>
@@ -200,6 +189,17 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                     <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
                         <span className="text-slate-500">Totale stimato: </span>
                         <span className="font-bold text-slate-800">€{estimatedTotal.toFixed(2)}</span>
+                    </div>
+                )}
+
+                {error && (
+                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {error}
+                    </div>
+                )}
+                {success && (
+                    <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                        {success}
                     </div>
                 )}
 

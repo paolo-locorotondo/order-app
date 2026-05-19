@@ -14,9 +14,10 @@ interface User {
 interface CreateUserFormProps {
   user?: User;         // se presente → modalità modifica
   onCancel?: () => void;
+  onSuccess?: () => void;
 }
 
-export default function CreateUserForm({ user, onCancel }: CreateUserFormProps) {
+export default function CreateUserForm({ user, onCancel, onSuccess }: CreateUserFormProps) {
   const isEdit = !!user;
   const router = useRouter();
 
@@ -91,6 +92,11 @@ export default function CreateUserForm({ user, onCancel }: CreateUserFormProps) 
         setRole(UserRole.CUSTOMER);
       }
 
+      // Chiama callback di successo se fornito
+      if (onSuccess) {
+        setTimeout(() => onSuccess(), 1500);
+      }
+
       router.refresh();
     } catch {
       setError("Errore di rete. Riprova più tardi.");
@@ -124,17 +130,6 @@ export default function CreateUserForm({ user, onCancel }: CreateUserFormProps) 
           </button>
         )}
       </div>
-
-      {error && (
-        <div className="mt-4 rounded-lg border border-red-300 bg-red-100 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-100 px-4 py-3 text-sm text-emerald-700">
-          {success}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div>
@@ -204,6 +199,17 @@ export default function CreateUserForm({ user, onCancel }: CreateUserFormProps) 
             <option value={UserRole.ADMIN}>Admin</option>
           </select>
         </div>
+
+        {error && (
+          <div className="mt-4 rounded-lg border border-red-300 bg-red-100 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-100 px-4 py-3 text-sm text-emerald-700">
+            {success}
+          </div>
+        )}
 
         <button
           type="submit"
