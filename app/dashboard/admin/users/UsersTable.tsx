@@ -83,7 +83,7 @@ export default function UsersTable({ users }: { users: User[] }) {
                 <td className="px-4 py-3 text-sm text-slate-700">
                   {new Date(user.createdAt).toLocaleDateString()}
                 </td>
-                <td className="px-4 py-3 text-sm">
+                <td className="px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
                   <div className="flex flex-wrap gap-1">
                     <button
                       onClick={() => openModal(user)}

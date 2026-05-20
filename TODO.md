@@ -115,15 +115,51 @@
 ---
 
 ### 4. Product Reservation System
-**Stato**: 🔴 TODO  
+**Stato**: ✅ COMPLETATO
 **Descrizione**: Durante checkout, "riservare" i prodotti per 5 minuti. Se timer scade, liberarli e uscire.
 
-**Task**:
-- [X] Aggiungere campo `reserved` a Inventory (✅ già esiste!)
-- [ ] OnCheckoutPageLoad: incrementare `reserved` per ogni cartItem
-- [ ] UseEffect con timer: dopo 5 min, decrementare `reserved` e redirect a `/shop/cart` con messaggio "Sessione checkout scaduta"
-- [ ] OnOrderSuccess: `reserved` diventa parte di `quantity` decrement
-- [ ] OnOrderCancel: riportare `reserved` a zero
+**Task completati**:
+- [X] Aggiungere campo `reserved` a Inventory
+- [X] Aggiungere model `CartReservation` + `CartReservationItem` (server come fonte di verità)
+- [X] OnCheckoutPageLoad: GET reservation esistente o POST per crearne una (idempotente)
+- [X] UseEffect con timer: alla scadenza, decrementare `reserved` e redirect a `/shop/cart?expired=true`
+- [X] OnOrderSuccess: `quantity` e `reserved` decrementati, `CartReservation` cancellata
+- [X] OnOrderCancel ("Torna al carrello"): release reservation con quantità salvate sul server
+- [X] Cart in pagina checkout ora `readOnly` (nessun bottone Rimuovi/quantity per evitare modifiche durante checkout)
+- [X] Test E2E manuali: happy path, reload, torna al carrello, scadenza timer, stato sporco, multi-prodotto, Strict Mode
+
+**Architettura adottata**: server-authoritative reservations
+- Model `CartReservation` con `@unique(userId)` garantisce 1 sola reservation attiva per utente
+- Endpoint `/api/cart/reserve` GET (recupera) + POST (idempotente)
+- Endpoint `/api/cart/release` decrementa con le quantità salvate (non quelle del cart corrente)
+- Endpoint `/api/orders` consuma la reservation atomicamente (decrement quantity+reserved, cancel reservation, clear cart)
+- Client senza `sessionStorage` (era fragile): server come unica fonte di verità
+
+**Bug originali risolti**:
+- ✅ Doppio increment di `reserved` per React 18 Strict Mode (`useEffect` × 2): risolto con `useRef` + unique constraint server
+- ✅ Reload checkout non incrementa più `reserved` (server riconosce reservation esistente, restituisce stesso `expiresAt`)
+- ✅ Race condition concorrenti: gestita con catch su unique constraint che ritorna la reservation creata dal vincitore
+- ✅ `releaseCart` non scoordinato col cart: ora usa quantità della reservation
+- ✅ `/api/orders` non rivalida più `reserved` globale: consuma direttamente la reservation dell'utente
+- ✅ Rimosso `sessionStorage` come fonte di verità
+
+**File creati/modificati**:
+- `prisma/schema.prisma` — aggiunti modelli `CartReservation`, `CartReservationItem`
+- `prisma/migrations/20260522141723_add_cart_reservation/` — migration
+- `lib/reservation.ts` (NEW) — helper `releaseReservation` riutilizzabile
+- `app/api/cart/reserve/route.ts` — riscritto: GET (recupera) + POST (idempotente)
+- `app/api/cart/release/route.ts` — semplificato: usa `releaseReservation`
+- `app/api/orders/route.ts` — consuma `CartReservation` invece di rivalidare
+- `app/shop/checkout/CheckoutClient.tsx` — rimosso sessionStorage, server-driven, `useRef` per Strict Mode
+- `app/shop/cart/page.tsx` — `searchParams` Promise (Next 16) + messaggio scadenza migliorato
+- `components/CartItemsList.tsx` — aggiunta prop `readOnly`
+- `scripts/reset-reservations.ts` (NEW) — utility reset DB
+- `scripts/verify-reservation.ts` (NEW) — script E2E HTTP verifier
+
+**Possibili miglioramenti futuri (non bloccanti)**:
+- [ ] Endpoint admin `POST /api/admin/inventory/reconcile` per ricalcolare `Inventory.reserved` dalla somma delle `CartReservationItem` non scadute (utile in caso di drift dovuto a manipolazione manuale del DB)
+- [ ] Cron job per cleanup di `CartReservation` scadute (al momento il cleanup è lazy: avviene su prossima GET/POST reserve dell'utente stesso)
+- [ ] Advisory lock / `SELECT FOR UPDATE` su Inventory per concorrenza estrema cross-user (ora basta unique constraint per-user)
 
 ---
 
@@ -174,21 +210,16 @@
 
 ---
 
+## Bug Fix & Improvements
 
-### Bug Fix & Improvements
-
-#### BUG:
-
-**Ordine con due prodotti uguali la somma delle quantità deve essere controllata per verifica disponibilità**
-- **Descrizione**: Nella pagina "Gestione - Ordini" nel form di modifica ordine, supponendo che in inventory il prodotto X ha disponibilità 10, quando aggiungo un prodotto X con quantità 5 e poi clicco "Aggiungi prodotto" e aggiungo sempre il prodotto X ma con quantità 6, l'ordine va a buon fine, invece avrebbe dovuto dare errore "Superata disponibilità del prodotto. Disponibili: 10, richieste: 11"
-- **File**: `app\dashboard\admin\orders\EditOrderPanel.tsx`
+### **BUG 1**: Ordine con due prodotti uguali la somma delle quantità deve essere controllata per verifica disponibilità
+- **Descrizione**: Nella pagina "Gestione - Ordini" nel form di creazione ordine, supponendo che in inventory il prodotto X ha disponibilità 10, quando aggiungo un prodotto X con quantità 5 e poi clicco "Aggiungi prodotto" e aggiungo sempre il prodotto X ma con quantità 6, l'ordine va a buon fine, invece avrebbe dovuto dare errore "Superata disponibilità del prodotto. Disponibili: 10, richieste: 11"
+- **File**: `app/api/admin/orders/route.ts` (la validazione era client+server item-per-item, non aggregata per productId)
+- **Fix**: aggregazione delle quantità per `productId` prima della validazione + decrement; tutto wrappato in transazione `prisma.$transaction` per atomicità
 - **Priority**: 🔴 HIGH (inconsistenza dati)
-- **Stato**: 🔴 TODO 
+- **Stato**: ✅ COMPLETATO
 
-
-#### MIGLIORIE:
-
-**MIGLIORAMENTO #7: Gestione paymentMethod come Enum**
+### **MIGLIORAMENTO #7**: Gestione paymentMethod come Enum
 - **File**: `prisma\schema.prisma`
 - **Descrizione**: Usare una Enum per il paymentMethod ed usare questa enum generata da prisma in tutta l'applicazione.
 - **Implementazione**:
@@ -202,7 +233,7 @@
 - **Priority**: 🟢 LOW (nice to have, advanced feature)
 - **Stato**: ✅ COMPLETATO
 
-**MIGLIORAMENTO #8: Conformare struttura delle pagine Admin**
+### **MIGLIORAMENTO #8**: Conformare struttura delle pagine Admin
 - **Descrizione**: Le pagine Admin hanno una tabella con una lista di record ed accanto un form di dettagio del record che permette di modificare il record selezionato. Se invece non è selezionato nessun record, o si clicca sul tasto "Annulla/Chiudi" il form permette di creare un nuovo record.
 Struttura e comportamento atteso:
 - La pagina Admin deve avere una tabella la cui ultima colonna "Azioni" deve avere i tasti "Modifica" ed "Elimina".

@@ -61,7 +61,7 @@ export default function InventoryTable({ inventory }: { inventory: InventoryWith
                                     </td>
                                     <td className="px-4 py-3 text-sm text-slate-700">{item.reserved}</td>
                                     <td className="px-4 py-3 text-sm text-slate-700">{item.reorderPoint}</td>
-                                    <td className="px-4 py-3 text-sm">
+                                    <td className="px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex flex-wrap gap-1">
                                             <button
                                                 onClick={() => openModal(item)}

@@ -15,7 +15,13 @@ interface CartItem {
   quantity: number;
 }
 
-export default function CartClient({ initialItems }: { initialItems: CartItem[] }) {
+export default function CartClient({
+  initialItems,
+  noticeMessage,
+}: {
+  initialItems: CartItem[];
+  noticeMessage?: string;
+}) {
   const [items, setItems] = useState<CartItem[]>(initialItems);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -53,6 +59,11 @@ export default function CartClient({ initialItems }: { initialItems: CartItem[] 
 
   return (
     <div className="mt-6">
+      {noticeMessage && (
+        <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 text-blue-700">
+          {noticeMessage}
+        </div>
+      )}
       {error && <p className="mb-4 text-red-600">{error}</p>}
 
       <div className="grid gap-6 lg:grid-cols-3">

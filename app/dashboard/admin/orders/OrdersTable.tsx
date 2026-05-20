@@ -217,7 +217,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                         <td className="px-4 py-3 text-xs text-slate-500">
                                             {new Date(order.createdAt).toLocaleDateString("it-IT")} - {new Date(order.createdAt).toLocaleTimeString("it-IT")}
                                         </td>
-                                        <td className="px-4 py-3 text-sm">
+                                        <td className="px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
                                             <button
                                                 onClick={() => openModal(order)}
                                                 className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
