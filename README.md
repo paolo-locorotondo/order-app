@@ -190,5 +190,5 @@ Step:
 1. Git push
 2. Aspettare che parta e finisca con successo il deploy
 3. Aggiornare lo schema del DB, se necessario:
-    - al momento tramite il comando `npx prisma db push` da lancaire quin su VSCode puntando, nel .env, al DB remoto Supabase
+    - al momento tramite il comando `npx prisma db push` da lancaire qui su VSCode puntando, nel .env, al DB remoto Supabase
     - in futuro capire come integrare questo comando su Vercel nella fase di build

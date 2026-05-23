@@ -35,7 +35,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  // In produzione (Vercel HTTPS) il cookie si chiama `__Secure-next-auth.session-token`;
+  // in dev (HTTP) si chiama `next-auth.session-token`. `secureCookie` esplicito forza
+  // getToken a cercare il cookie giusto — l'auto-detection dal req in alcuni edge case
+  // su Vercel non basta e il middleware redirezionerebbe utenti già autenticati.
+  const isSecure =
+    process.env.NEXTAUTH_URL?.startsWith("https://") ||
+    process.env.NODE_ENV === "production";
+
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: isSecure,
+  });
 
   if (!token) {
     const url = request.nextUrl.clone();

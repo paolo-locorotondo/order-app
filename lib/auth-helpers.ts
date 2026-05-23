@@ -59,7 +59,17 @@ export async function validateAuth(
   request: NextRequest,
   requiredRoles?: UserRole | UserRole[]
 ): Promise<AuthResult> {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  // Vedi commento in middleware.ts: secureCookie esplicito per evitare cookie-mismatch
+  // in produzione (Vercel HTTPS usa __Secure- prefix; auto-detect non sempre tiene).
+  const isSecure =
+    process.env.NEXTAUTH_URL?.startsWith("https://") ||
+    process.env.NODE_ENV === "production";
+
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: isSecure,
+  });
 
   if (!token || !token.id) {
     return { ok: false, errorResponse: unauthorizedResponse("Unauthorized") };
