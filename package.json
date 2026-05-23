@@ -8,7 +8,10 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "verify": "tsx scripts/verify/run-all.ts",
+    "verify:cart": "tsx scripts/verify/cart-reservation.ts",
+    "verify:admin": "tsx scripts/verify/admin-delete-order.ts && tsx scripts/verify/admin-delete-user.ts && tsx scripts/verify/admin-delete-product.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
