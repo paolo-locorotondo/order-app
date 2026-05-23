@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import QuantityStepper from "@/components/QuantityStepper";
 
 interface CartItem {
   id: string;
@@ -61,13 +62,12 @@ export default function CartItemsList({ items, onRemove, onUpdateQty, readOnly =
               {readOnly ? (
                 <span className="w-16 text-center text-sm text-slate-600">x{item.quantity}</span>
               ) : (
-                <input
-                  type="number"
-                  min={1}
+                <QuantityStepper
                   value={item.quantity}
-                  onChange={(e) => handleQtyChange(item.id, Number(e.target.value))}
+                  onChange={(n) => handleQtyChange(item.id, n)}
+                  min={1}
                   disabled={loading === item.id}
-                  className="w-16 rounded border p-1 text-center"
+                  size="sm"
                 />
               )}
               <p className="w-20 text-right font-semibold">€{(item.product.price * item.quantity).toFixed(2)}</p>

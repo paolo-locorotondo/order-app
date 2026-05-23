@@ -57,7 +57,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
             {/* Numero Ordine */}
             <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-bold">Numero Ordine</h2>
-              <p className="font-mono text-2xl text-blue-600">{order.id}</p>
+              <p className="font-mono text-base sm:text-2xl text-blue-600 break-all">{order.id}</p>
               <p className="mt-2 text-sm text-slate-600">
                 Data:{" "}
                 {new Date(order.createdAt).toLocaleDateString("it-IT", {

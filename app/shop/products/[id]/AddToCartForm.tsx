@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import QuantityStepper from "@/components/QuantityStepper";
+import { notifyCartChanged } from "@/lib/cart-events";
 
 interface Props {
   productId: string;
+  maxQty?: number;
 }
 
-export default function AddToCartForm({ productId }: Props) {
+export default function AddToCartForm({ productId, maxQty }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, status } = useSession();
@@ -40,6 +43,7 @@ export default function AddToCartForm({ productId }: Props) {
       if (res.ok) {
         setMessage("✓ Prodotto aggiunto al carrello");
         setQty(1);
+        notifyCartChanged();
       } else {
         setError(data?.error ?? "Errore nell'aggiunta al carrello");
       }
@@ -53,12 +57,11 @@ export default function AddToCartForm({ productId }: Props) {
   return (
     <div className="mt-4 space-y-2">
       <div className="flex items-center gap-2">
-        <input
-          type="number"
-          min={1}
+        <QuantityStepper
           value={qty}
-          onChange={(e) => setQty(Number(e.target.value))}
-          className="w-20 rounded border p-1"
+          onChange={setQty}
+          min={1}
+          max={maxQty}
           disabled={loading || status === "loading"}
         />
         <button

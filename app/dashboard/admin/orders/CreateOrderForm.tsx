@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { PaymentMethods } from "@/app/generated/prisma/enums";
+import FormFeedback from "@/components/FormFeedback";
+import QuantityStepper from "@/components/QuantityStepper";
 
 interface OrderItem {
     productId: string;
@@ -144,7 +146,7 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                                         value={item.productId}
                                         onChange={(e) => updateItem(index, "productId", e.target.value)}
                                         required
-                                        className="flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+                                        className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
                                     >
                                         <option value="">Seleziona prodotto...</option>
                                         {products.map((p) => (
@@ -153,13 +155,12 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                                             </option>
                                         ))}
                                     </select>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={available || 9999}
+                                    <QuantityStepper
                                         value={item.quantity}
-                                        onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
-                                        className="w-16 rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 text-center text-sm focus:border-blue-500 focus:outline-none"
+                                        onChange={(n) => updateItem(index, "quantity", n)}
+                                        min={1}
+                                        max={available || undefined}
+                                        size="md"
                                     />
                                     {items.length > 1 && (
                                         <button
@@ -191,16 +192,7 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                     </div>
                 )}
 
-                {error && (
-                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                        {error}
-                    </div>
-                )}
-                {success && (
-                    <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-                        {success}
-                    </div>
-                )}
+                <FormFeedback error={error} success={success} />
 
                 <button
                     type="submit"

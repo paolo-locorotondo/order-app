@@ -94,15 +94,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       );
     }
 
-    // Delete related data first (orders, cart items)
-    await prisma.cartItem.deleteMany({ where: { userId } });
-    await prisma.orderItem.deleteMany({
-      where: { order: { userId } },
-    });
-    await prisma.order.deleteMany({ where: { userId } });
-
-    // Delete user
-    await prisma.user.delete({ where: { id: userId } });
+    // Atomic: cleanup cart + orderItems + orders + user.
+    // Se uno step fallisce, niente viene applicato (no orfani in nessuna tabella).
+    await prisma.$transaction([
+      prisma.cartItem.deleteMany({ where: { userId } }),
+      prisma.cartReservationItem.deleteMany({ where: { reservation: { userId } } }),
+      prisma.cartReservation.deleteMany({ where: { userId } }),
+      prisma.orderItem.deleteMany({ where: { order: { userId } } }),
+      prisma.order.deleteMany({ where: { userId } }),
+      prisma.user.delete({ where: { id: userId } }),
+    ]);
 
     return NextResponse.json({ message: "Utente eliminato con successo." });
   } catch (error) {

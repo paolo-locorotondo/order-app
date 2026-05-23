@@ -2,6 +2,7 @@ import { UserRole, validateAuthFromServerSession } from "@/lib/auth-helpers";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import Header from "@/components/Header";
+import AddToCartForm from "@/app/shop/products/[id]/AddToCartForm";
 
 export const revalidate = 10;
 
@@ -47,9 +48,12 @@ export default async function ShopPage() {
               <p className="text-slate-600">{product.description ?? "Nessuna descrizione"}</p>
               <p className="mt-2 font-bold">€{product.price.toFixed(2)}</p>
               <p className="text-sm text-slate-500">Disponibilità: {product.inventory?.quantity ?? 0}</p>
-              <Link href={`/shop/products/${product.id}`} className="mt-3 inline-block rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
-                Visualizza
-              </Link>
+              <div className="mt-3">
+                <Link href={`/shop/products/${product.id}`} className="inline-block rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
+                  Visualizza
+                </Link>
+              </div>
+              <AddToCartForm productId={product.id} maxQty={product.inventory?.quantity ?? 0} />
             </article>
           ))}
         </div>

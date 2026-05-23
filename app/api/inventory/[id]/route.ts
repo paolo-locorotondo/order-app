@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
@@ -32,6 +33,8 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       include: { product: true },
     });
 
+    revalidatePath("/shop");
+    revalidatePath(`/shop/products/${inventory.productId}`);
     return NextResponse.json({ data: inventory });
   } catch (error) {
     console.error("Inventory update error:", error);

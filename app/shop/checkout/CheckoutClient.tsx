@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import CartItemsList from "../_components/CartItemsList";
 import CheckoutForm, { CheckoutFormData } from "./CheckoutForm";
+import { notifyCartChanged } from "@/lib/cart-events";
 
 interface CartItem {
   id: string;
@@ -150,6 +151,7 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
         throw new Error(typeof data.error === "string" ? data.error : "Errore nella creazione dell'ordine");
       }
 
+      notifyCartChanged();
       router.push(`/shop/order-confirmation/${data.data.id}`);
     } catch (err) {
       setReservationError((err as Error).message);

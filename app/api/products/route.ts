@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { productSchema } from "@/lib/validators";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
       include: { inventory: true },
     });
 
+    revalidatePath("/shop");
     return NextResponse.json({ data: product }, { status: 201 });
   } catch (error) {
     console.error("Product creation error:", error);

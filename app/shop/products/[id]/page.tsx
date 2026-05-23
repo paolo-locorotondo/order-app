@@ -45,7 +45,7 @@ export default async function ProductPage({ params }: Props) {
             <p className="text-sm text-slate-600">
               Disponibilità: {product.inventory?.quantity ?? 0}
             </p>
-            <AddToCartForm productId={product.id} />
+            <AddToCartForm productId={product.id} maxQty={product.inventory?.quantity ?? 0} />
             <div className="mt-6 flex flex-wrap gap-4">
               <Link href="/shop" className="text-blue-600 hover:underline">
                 ← Continua lo shopping

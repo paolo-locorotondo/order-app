@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { UserRole } from "@/app/generated/prisma/enums";
+import FormFeedback from "@/components/FormFeedback";
 
 interface User {
   id: string;
@@ -200,16 +201,7 @@ export default function CreateUserForm({ user, onCancel, onSuccess }: CreateUser
           </select>
         </div>
 
-        {error && (
-          <div className="mt-4 rounded-lg border border-red-300 bg-red-100 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-100 px-4 py-3 text-sm text-emerald-700">
-            {success}
-          </div>
-        )}
+        <FormFeedback error={error} success={success} className="mt-4" />
 
         <button
           type="submit"

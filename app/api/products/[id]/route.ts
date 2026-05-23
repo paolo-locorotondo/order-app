@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { productSchema } from "@/lib/validators";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
@@ -56,6 +57,8 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     include: { inventory: true },
   });
 
+  revalidatePath("/shop");
+  revalidatePath(`/shop/products/${params.id}`);
   return NextResponse.json({ data: updated });
 }
 
@@ -68,19 +71,23 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   const params = await context.params;
 
   try {
-    // Delete all related data first (foreign key constraints)
-    // 1. Delete cart items containing this product
-    await prisma.cartItem.deleteMany({ where: { productId: params.id } });
+    // Block-if-orders: preserva lo storico ordini.
+    const orderItemCount = await prisma.orderItem.count({ where: { productId: params.id } });
+    if (orderItemCount > 0) {
+      return NextResponse.json(
+        { error: "Impossibile eliminare: prodotto presente in ordini storici. Considera di disattivarlo invece." },
+        { status: 409 }
+      );
+    }
 
-    // 2. Delete order items containing this product
-    await prisma.orderItem.deleteMany({ where: { productId: params.id } });
+    await prisma.$transaction([
+      prisma.cartItem.deleteMany({ where: { productId: params.id } }),
+      prisma.cartReservationItem.deleteMany({ where: { productId: params.id } }),
+      prisma.inventory.deleteMany({ where: { productId: params.id } }),
+      prisma.product.delete({ where: { id: params.id } }),
+    ]);
 
-    // 3. Delete inventory
-    await prisma.inventory.deleteMany({ where: { productId: params.id } });
-
-    // 4. Finally delete the product
-    await prisma.product.delete({ where: { id: params.id } });
-
+    revalidatePath("/shop");
     return NextResponse.json({ data: { id: params.id } });
   } catch (error) {
     console.error("Delete product error:", error);

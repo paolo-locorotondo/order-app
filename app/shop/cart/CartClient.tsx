@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import CartItemsList from "../_components/CartItemsList";
+import { notifyCartChanged } from "@/lib/cart-events";
 
 interface CartItem {
   id: string;
@@ -31,6 +32,7 @@ export default function CartClient({
       const res = await fetch(`/api/cart?id=${itemId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Errore nella rimozione");
       setItems((prev) => prev.filter((item) => item.id !== itemId));
+      notifyCartChanged();
     } catch (err) {
       setError((err as Error).message);
     }
@@ -48,6 +50,7 @@ export default function CartClient({
       setItems((prev) =>
         prev.map((item) => (item.id === itemId ? updated.data : item))
       );
+      notifyCartChanged();
     } catch (err) {
       setError((err as Error).message);
     }

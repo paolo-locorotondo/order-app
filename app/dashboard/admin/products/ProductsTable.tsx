@@ -16,7 +16,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   const [selectedProduct, setSelectedProduct] = useState<ProductWithInventory | undefined>();
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState(false);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   // Incrementato dopo creazione riuscita: cambiare il `key` di ProductForm
@@ -27,14 +27,14 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   const openModal = (product?: ProductWithInventory) => {
     setSelectedProduct(product);
     setFormError(null);
-    setFormSuccess(false);
+    setFormSuccess(null);
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setSelectedProduct(undefined);
     setFormError(null);
-    setFormSuccess(false);
+    setFormSuccess(null);
     setModalOpen(false);
   };
 
@@ -82,7 +82,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
           }
         }
 
-        setFormSuccess(true);
+        setFormSuccess(selectedProduct ? "Prodotto aggiornato con successo." : "Prodotto creato con successo.");
         // Refresh la tabella subito: il messaggio di successo resta visibile nel modale
         // finché l'utente non lo chiude manualmente.
         router.refresh();
@@ -217,17 +217,9 @@ export default function ProductsTable({ products }: { products: ProductWithInven
           product={selectedProduct}
           onSubmit={handleSubmit}
           loading={formLoading}
+          error={formError}
+          success={formSuccess}
         />
-        {formError && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {formError}
-          </div>
-        )}
-        {formSuccess && (
-          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            {selectedProduct ? "Prodotto aggiornato con successo." : "Prodotto creato con successo."}
-          </div>
-        )}
       </AdminModal>
     </>
   );

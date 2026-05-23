@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { InventoryModel, ProductModel } from "@/app/generated/prisma/models";
+import FormFeedback from "@/components/FormFeedback";
 
 interface InventoryWithProduct extends InventoryModel {
     product: ProductModel | null;
@@ -87,16 +88,6 @@ export default function InventoryForm({ inventory, onCancel, onSuccess }: Invent
                 </div>
             </div>
 
-            {error && (
-                <div className="mt-4 rounded-lg border border-red-300 bg-red-100 px-4 py-3 text-sm text-red-700">
-                    {error}
-                </div>
-            )}
-            {success && (
-                <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-100 px-4 py-3 text-sm text-emerald-700">
-                    {success}
-                </div>
-            )}
             <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                 <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-slate-700">Quantità</label>
@@ -133,6 +124,8 @@ export default function InventoryForm({ inventory, onCancel, onSuccess }: Invent
                         className={inputClass}
                     />
                 </div>
+
+                <FormFeedback error={error} success={success} className="mt-4" />
 
                 <button
                     type="submit"

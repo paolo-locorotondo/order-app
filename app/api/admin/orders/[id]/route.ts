@@ -93,25 +93,23 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // Restore inventory per ogni OrderItem
-  await Promise.all(
-    order.items.map((item) =>
-      prisma.inventory.update({
-        where: { productId: item.productId },
-        data: { quantity: { increment: item.quantity } },
-      }),
-    ),
-  );
+  try {
+    // Atomic: restore inventory + delete items + delete order.
+    // Se uno step fallisce, niente viene applicato (no stock fantasma né ordini orfani).
+    await prisma.$transaction([
+      ...order.items.map((item) =>
+        prisma.inventory.update({
+          where: { productId: item.productId },
+          data: { quantity: { increment: item.quantity } },
+        }),
+      ),
+      prisma.orderItem.deleteMany({ where: { orderId: params.id } }),
+      prisma.order.delete({ where: { id: params.id } }),
+    ]);
 
-  // Delete OrderItems
-  await prisma.orderItem.deleteMany({
-    where: { orderId: params.id },
-  });
-
-  // Delete Order
-  await prisma.order.delete({
-    where: { id: params.id },
-  });
-
-  return NextResponse.json({ message: "Order deleted successfully" });
+    return NextResponse.json({ message: "Order deleted successfully" });
+  } catch (error) {
+    console.error("Delete order error:", error);
+    return NextResponse.json({ error: "Failed to delete order" }, { status: 500 });
+  }
 }

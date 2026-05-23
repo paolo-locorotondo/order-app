@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
+import FormFeedback from "@/components/FormFeedback";
 
 interface ProductFormProps {
   product?: ProductModel & { inventory: InventoryModel | null };
   onSubmit: (data: ProductFormData) => Promise<void>;
   loading?: boolean;
+  error?: string | null;
+  success?: string | null;
 }
 
 export interface ProductFormData {
@@ -19,7 +22,7 @@ export interface ProductFormData {
   quantity: number;
 }
 
-export default function ProductForm({ product, onSubmit, loading = false }: ProductFormProps) {
+export default function ProductForm({ product, onSubmit, loading = false, error, success }: ProductFormProps) {
   const [formData, setFormData] = useState<ProductFormData>({
     name: product?.name || "",
     slug: product?.slug || "",
@@ -232,6 +235,8 @@ export default function ProductForm({ product, onSubmit, loading = false }: Prod
         />
         {errors.quantity && <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>}
       </div>
+
+      <FormFeedback error={error} success={success} className="mt-2" />
 
       {/* Submit */}
       <div className="flex justify-end gap-2 pt-4">
