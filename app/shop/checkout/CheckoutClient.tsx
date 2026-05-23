@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import CartItemsList from "@/components/CartItemsList";
 import CheckoutForm, { CheckoutFormData } from "@/components/CheckoutForm";
-import Link from "next/link";
 
 interface CartItem {
   id: string;
@@ -213,7 +212,7 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
 
           <CheckoutForm onSubmit={handleCheckout} loading={submitting || reservationLoading} />
 
-          <div className="mt-4 flex gap-3 flex-col sm:flex-row">
+          <div className="mt-4">
             <button
               type="button"
               onClick={handleBackToCart}
@@ -221,9 +220,6 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
             >
               ← Torna al carrello
             </button>
-            <Link href="/shop/cart" className="w-full text-center text-sm text-blue-600 hover:underline sm:w-auto">
-              Oppure modifica il carrello
-            </Link>
           </div>
         </div>
       </div>
