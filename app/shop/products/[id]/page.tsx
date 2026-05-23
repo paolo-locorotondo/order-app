@@ -1,6 +1,6 @@
 import { validateAuthFromServerSession, UserRole } from "@/lib/auth-helpers";
 import Header from "@/components/Header";
-import AddToCartForm from "@/components/AddToCartForm";
+import AddToCartForm from "./AddToCartForm";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import AccessDenied from "@/components/AccessDenied";
@@ -46,9 +46,12 @@ export default async function ProductPage({ params }: Props) {
               Disponibilità: {product.inventory?.quantity ?? 0}
             </p>
             <AddToCartForm productId={product.id} />
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap gap-4">
               <Link href="/shop" className="text-blue-600 hover:underline">
                 ← Continua lo shopping
+              </Link>
+              <Link href="/shop/cart" prefetch={false} className="text-blue-600 hover:underline">
+                Vai al carrello →
               </Link>
             </div>
           </div>

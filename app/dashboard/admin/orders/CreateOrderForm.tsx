@@ -111,11 +111,10 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
 
                 {/* Indirizzo */}
                 <div>
-                    <label className={labelClass}>Indirizzo spedizione *</label>
+                    <label className={labelClass}>Indirizzo spedizione (opzionale)</label>
                     <textarea
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
-                        required
                         rows={2}
                         placeholder="Via Roma 1, 00100 Roma"
                         className={inputClass}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import CartItemsList from "@/components/CartItemsList";
+import CartItemsList from "../_components/CartItemsList";
 
 interface CartItem {
   id: string;

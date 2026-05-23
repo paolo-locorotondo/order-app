@@ -6,7 +6,10 @@ import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 
 const updateOrderSchema = z.object({
   status: z.enum([OrderStatus.PENDING, OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.CANCELLED]).optional(),
-  address: z.string().min(10, "Indirizzo deve essere almeno 10 caratteri").optional(),
+  address: z
+    .string()
+    .refine((v) => v.length === 0 || v.length >= 10, "Indirizzo deve essere almeno 10 caratteri")
+    .optional(),
   paymentMethod: z.enum([PaymentMethods.STRIPE, PaymentMethods.PAYPAL, PaymentMethods.CASH]).optional(),
 });
 

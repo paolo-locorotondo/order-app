@@ -30,8 +30,11 @@ export default function CheckoutForm({ onSubmit, loading = false }: CheckoutForm
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.address.trim()) newErrors.address = "Indirizzo richiesto";
-    if (formData.address.trim().length < 10) newErrors.address = "Indirizzo deve essere almeno 10 caratteri";
+    // Indirizzo opzionale: se inserito, deve essere almeno 10 caratteri
+    const addressTrimmed = formData.address.trim();
+    if (addressTrimmed.length > 0 && addressTrimmed.length < 10) {
+      newErrors.address = "Indirizzo deve essere almeno 10 caratteri";
+    }
     if (!formData.paymentMethod) newErrors.paymentMethod = "Metodo di pagamento richiesto";
 
     setErrors(newErrors);
@@ -66,7 +69,7 @@ export default function CheckoutForm({ onSubmit, loading = false }: CheckoutForm
       {/* Indirizzo Spedizione */}
       <div>
         <label htmlFor="address" className="block text-sm font-medium text-slate-700 mb-2">
-          Indirizzo di Spedizione *
+          Indirizzo di Spedizione <span className="text-slate-400">(opzionale)</span>
         </label>
         <textarea
           id="address"

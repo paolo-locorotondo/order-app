@@ -71,7 +71,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
             {/* Indirizzo Spedizione */}
             <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-bold">Indirizzo di Spedizione</h2>
-              <p className="whitespace-pre-wrap text-slate-700">{order.address}</p>
+              <p className="whitespace-pre-wrap text-slate-700">{order.address || <span className="italic text-slate-400">Non specificato</span>}</p>
             </div>
 
             {/* Articoli */}

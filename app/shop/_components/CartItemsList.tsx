@@ -52,12 +52,12 @@ export default function CartItemsList({ items, onRemove, onUpdateQty, readOnly =
     <div className="space-y-4">
       {items.map((item) => (
         <div key={item.id} className="rounded border bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <h3 className="font-semibold">{item.product.name}</h3>
               <p className="text-sm text-slate-600">€{item.product.price.toFixed(2)}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-end gap-3">
               {readOnly ? (
                 <span className="w-16 text-center text-sm text-slate-600">x{item.quantity}</span>
               ) : (

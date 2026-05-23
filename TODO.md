@@ -234,15 +234,48 @@
 - **Stato**: ✅ COMPLETATO
 
 ### **MIGLIORAMENTO #8**: Conformare struttura delle pagine Admin
-- **Descrizione**: Le pagine Admin hanno una tabella con una lista di record ed accanto un form di dettagio del record che permette di modificare il record selezionato. Se invece non è selezionato nessun record, o si clicca sul tasto "Annulla/Chiudi" il form permette di creare un nuovo record.
-Struttura e comportamento atteso:
-- La pagina Admin deve avere una tabella la cui ultima colonna "Azioni" deve avere i tasti "Modifica" ed "Elimina".
-- Al click di "Modifica" deve comparire un modal che permette di modificare il record. Una volta confermata la modifica deve presentarsi messaggio di success o di errore (appena sopra il tasto conferma).
-- Al click di "Elimina" deve essere eseguita l'operazione di delete del record con la logica di 2 step confirm (Vedi Gestione - Utenti).
-- Sopra la tabella ci deve essere il tasto "Crea nuovo record" (es: Crea nuovo utente) al cui click deve comparire il modal che permette di creare il nuovo record. Una volta confermata la creazione deve presentarsi messaggio di success o di errore (appena sopra il tasto conferma).
-- **Implementazione**: da definire
+- **Descrizione**: Le 4 tabelle admin (Users/Products/Orders/Inventory) avevano ~70% di markup duplicato (header, row clickabile + stopPropagation in colonna Azioni, modale, bottoni 2-step delete).
+- **Implementazione**:
+  - ✅ Nuovo componente generico `components/AdminTable.tsx` con API `AdminTableColumn<T>` (key, header, cell, align, sortable, hideOnMobile, mobileLabel) e props `rows`, `columns`, `rowKey`, `onRowClick`, `renderActions`, `emptyMessage`, sort opzionale
+  - ✅ Pattern responsive: `<table>` desktop (`hidden sm:block`) + cards mobile (`block sm:hidden`) — stessa data, layout adattato
+  - ✅ Refactor di tutte le 4 tabelle admin su `AdminTable`
+  - ✅ Aggiunto Elimina 2-step in colonna Azioni di `OrdersTable` (era solo dentro `EditOrderPanel`)
+  - ✅ Rimosso il blocco "Annulla ordine" da `EditOrderPanel` (ridondante)
 - **Priority**: 🟢 LOW (nice to have, advanced feature)
-- **Stato**: 🔴 TODO
+- **Stato**: ✅ COMPLETATO
+
+### **MIGLIORAMENTO #9**: Mobile responsiveness
+- **Descrizione**: L'app era usabile solo su desktop. Header in overflow sotto md, tabelle admin con scroll-x illeggibile, modale stretto.
+- **Implementazione**:
+  - ✅ `Header.tsx`: hamburger menu sotto md (logo + ☰), dropdown con click-outside dismiss via useRef + mousedown listener
+  - ✅ `AdminModal.tsx`: `max-w-md sm:max-w-lg lg:max-w-2xl` + `mx-4` su mobile + `max-h-[90vh]`
+  - ✅ `AdminTable` con cards on mobile (vedi #8)
+  - ✅ `CartItemsList` con `flex-wrap` per evitare schiacciamento qty/price/remove
+- **Priority**: 🟢 LOW
+- **Stato**: ✅ COMPLETATO
+
+### **MIGLIORAMENTO #10**: UX polish minori
+- **Descrizione**: 4 piccole migliorie UX raccolte dopo MVP.
+- **Implementazione**:
+  - ✅ Rimosso "Role:" dalla dashboard utente
+  - ✅ Aggiunto link "Vai al carrello" sulla pagina prodotto (con `prefetch={false}`)
+  - ✅ Indirizzo spedizione ora opzionale: vincolo ≥10 caratteri solo se compilato (sia checkout customer sia create-order admin)
+  - ✅ `router.refresh()` dopo create/edit nei modali admin → tabella aggiornata appena chiuso il modale
+  - ✅ Reset form dopo create riuscito (via cambio `key` → remount)
+- **Priority**: 🟢 LOW
+- **Stato**: ✅ COMPLETATO
+
+### **MIGLIORAMENTO #11**: Riorganizzazione componenti
+- **Descrizione**: Alcuni form stavano in `components/` pur essendo usati da una sola pagina, altri erano già co-locati. Inconsistente.
+- **Implementazione**:
+  - ✅ `ProductForm.tsx` → `app/dashboard/admin/products/`
+  - ✅ `CheckoutForm.tsx` → `app/shop/checkout/`
+  - ✅ `AddToCartForm.tsx` → `app/shop/products/[id]/`
+  - ✅ `CartItemsList.tsx` → `app/shop/_components/` (folder `_`-prefixed = non-routable, condiviso solo dentro `app/shop`)
+  - ✅ Eliminato `components/ProductDialog.tsx` (dead code, zero import)
+  - ✅ `components/` ora contiene solo componenti effettivamente cross-page (Header, AdminModal, AdminTable, AccessDenied)
+- **Priority**: 🟢 LOW
+- **Stato**: ✅ COMPLETATO
 
 ---
 

@@ -17,7 +17,6 @@ export default async function DashboardPage() {
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="mt-4">Bentornato, {auth.session.user.name ?? auth.session.user.email}</p>
-        <p className="mt-2 text-sm text-slate-600">Role: {auth.session.user.role ?? "unknown"}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <a href="/dashboard/orders" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
             Miei Ordini

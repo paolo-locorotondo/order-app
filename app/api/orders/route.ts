@@ -5,7 +5,12 @@ import { validateAuth, UserRole } from "@/lib/auth-helpers";
 import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 
 const orderSchema = z.object({
-  address: z.string().min(10, "Indirizzo deve essere almeno 10 caratteri"),
+  // Indirizzo opzionale: ammette stringa vuota oppure almeno 10 caratteri.
+  address: z
+    .string()
+    .refine((v) => v.length === 0 || v.length >= 10, "Indirizzo deve essere almeno 10 caratteri")
+    .optional()
+    .default(""),
   paymentMethod: z.enum([PaymentMethods.STRIPE, PaymentMethods.PAYPAL, PaymentMethods.CASH]).default(PaymentMethods.CASH),
 });
 

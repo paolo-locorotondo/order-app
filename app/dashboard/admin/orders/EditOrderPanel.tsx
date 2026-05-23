@@ -34,8 +34,6 @@ export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrder
     const router = useRouter();
     const [editingStatus, setEditingStatus] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
-    const [deleteConfirm, setDeleteConfirm] = useState(false);
-    const [deleteLoading, setDeleteLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState("");
 
@@ -68,25 +66,6 @@ export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrder
         }
     }, [order.id, router, onCancel]);
 
-    const handleDelete = async () => {
-        setDeleteLoading(true);
-        setError(null);
-        try {
-            const response = await fetch(`/api/admin/orders/${order.id}`, { method: "DELETE" });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || `Errore ${response.status}`);
-            }
-            setDeleteConfirm(false);
-            router.refresh();
-            onCancel();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Errore sconosciuto");
-        } finally {
-            setDeleteLoading(false);
-        }
-    };
-
     return (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             {/* Header */}
@@ -117,7 +96,7 @@ export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrder
                 {/* Indirizzo */}
                 <div className="rounded-lg bg-slate-50 p-3">
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Indirizzo spedizione</p>
-                    <p className="text-sm text-slate-700">{order.address}</p>
+                    <p className="text-sm text-slate-700">{order.address || <span className="italic text-slate-400">Non specificato</span>}</p>
                 </div>
 
                 {/* Pagamento */}
@@ -130,7 +109,7 @@ export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrder
 
                 {/* Prodotti */}
                 <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Prodotti OLD</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Prodotti</p>
                     <div className="space-y-2">
                         {order.items.map((item) => (
                             <div key={item.id} className="flex items-center justify-between text-sm">
@@ -202,32 +181,6 @@ export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrder
                     </div>
                 )}
 
-                {/* Elimina */}
-                {deleteConfirm ? (
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleDelete}
-                            disabled={deleteLoading}
-                            className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                            {deleteLoading ? "Eliminando..." : "Conferma eliminazione"}
-                        </button>
-                        <button
-                            onClick={() => setDeleteConfirm(false)}
-                            disabled={deleteLoading}
-                            className="flex-1 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-300 disabled:opacity-50"
-                        >
-                            Annulla
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => setDeleteConfirm(true)}
-                        className="w-full rounded-lg bg-red-100 px-4 py-2 text-sm font-semibold text-red-900 hover:bg-red-200"
-                    >
-                        Annulla ordine
-                    </button>
-                )}
             </div>
         </div>
     );

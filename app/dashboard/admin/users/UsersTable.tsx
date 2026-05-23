@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CreateUserForm from "./CreateUserForm";
 import AdminModal from "@/components/AdminModal";
+import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import { UserRole } from "@/app/generated/prisma/enums";
 
 interface User {
@@ -50,10 +51,34 @@ export default function UsersTable({ users }: { users: User[] }) {
     }
   };
 
+  const columns: AdminTableColumn<User>[] = [
+    {
+      key: "name",
+      header: "Nome",
+      cell: (u) => <span className="font-medium">{u.name || "-"}</span>,
+    },
+    {
+      key: "email",
+      header: "Email",
+      cell: (u) => u.email,
+    },
+    {
+      key: "role",
+      header: "Ruolo",
+      cell: (u) => u.role,
+    },
+    {
+      key: "createdAt",
+      header: "Creato il",
+      hideOnMobile: true,
+      cell: (u) => new Date(u.createdAt).toLocaleDateString(),
+    },
+  ];
+
   return (
     <>
       {/* Pulsante crea utente */}
-      <div className="flex justify-center">
+      <div className="mb-4 flex justify-center">
         <button
           onClick={() => openModal()}
           className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
@@ -61,67 +86,48 @@ export default function UsersTable({ users }: { users: User[] }) {
           + Nuovo Utente
         </button>
       </div>
-      {/* Tabella */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Nome</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Ruolo</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Creato il</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Azioni</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200 bg-white">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-slate-50"
-                onClick={() => openModal(user)}>
-                <td className="px-4 py-3 text-sm text-slate-700">{user.name || "-"}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">{user.email}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">{user.role}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex flex-wrap gap-1">
-                    <button
-                      onClick={() => openModal(user)}
-                      className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
-                    >
-                      Modifica
-                    </button>
-                    {deleteConfirm === user.id ? (
-                      <>
-                        <button
-                          onClick={() => handleDelete(user.id)}
-                          disabled={deleteLoading}
-                          className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {deleteLoading ? "..." : "Conferma"}
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(null)}
-                          className="rounded bg-slate-400 px-3 py-1 text-xs font-medium text-white hover:bg-slate-500"
-                        >
-                          Annulla
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => setDeleteConfirm(user.id)}
-                        className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
-                      >
-                        Elimina
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+
+      <AdminTable
+        rows={users}
+        columns={columns}
+        rowKey={(u) => u.id}
+        onRowClick={(u) => openModal(u)}
+        emptyMessage="Nessun utente trovato."
+        renderActions={(user) => (
+          <>
+            <button
+              onClick={() => openModal(user)}
+              className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
+            >
+              Modifica
+            </button>
+            {deleteConfirm === user.id ? (
+              <>
+                <button
+                  onClick={() => handleDelete(user.id)}
+                  disabled={deleteLoading}
+                  className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleteLoading ? "..." : "Conferma"}
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="rounded bg-slate-400 px-3 py-1 text-xs font-medium text-white hover:bg-slate-500"
+                >
+                  Annulla
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setDeleteConfirm(user.id)}
+                className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+              >
+                Elimina
+              </button>
+            )}
+          </>
+        )}
+      />
 
       {/* Modal */}
       <AdminModal

@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import ProductForm, { ProductFormData } from "@/components/ProductForm";
+import ProductForm, { ProductFormData } from "./ProductForm";
 import AdminModal from "@/components/AdminModal";
+import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 
 interface ProductWithInventory extends ProductModel {
@@ -18,6 +19,9 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   const [formSuccess, setFormSuccess] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // Incrementato dopo creazione riuscita: cambiare il `key` di ProductForm
+  // ne forza il remount con stato vuoto (reset dei campi).
+  const [createResetCount, setCreateResetCount] = useState(0);
   const router = useRouter();
 
   const openModal = (product?: ProductWithInventory) => {
@@ -79,10 +83,13 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         }
 
         setFormSuccess(true);
-        /* setTimeout(() => {
-          closeModal();
-          router.refresh();
-        }, 1500); */
+        // Refresh la tabella subito: il messaggio di successo resta visibile nel modale
+        // finché l'utente non lo chiude manualmente.
+        router.refresh();
+        // In creazione, reset del form (per consentire creazione consecutiva).
+        if (!selectedProduct) {
+          setCreateResetCount((n) => n + 1);
+        }
       } catch (err) {
         setFormError(err instanceof Error ? err.message : "Errore sconosciuto");
       } finally {
@@ -111,11 +118,44 @@ export default function ProductsTable({ products }: { products: ProductWithInven
     }
   };
 
+  const columns: AdminTableColumn<ProductWithInventory>[] = [
+    {
+      key: "name",
+      header: "Nome",
+      cell: (p) => <span className="font-medium">{p.name}</span>,
+    },
+    {
+      key: "sku",
+      header: "Sku",
+      cell: (p) => <span className="text-slate-500">{p.sku}</span>,
+      hideOnMobile: true,
+    },
+    {
+      key: "price",
+      header: "Prezzo",
+      cell: (p) => `€${p.price.toFixed(2)}`,
+    },
+    {
+      key: "stock",
+      header: "Stock",
+      cell: (p) => (
+        <span
+          className={`rounded px-2 py-1 text-xs font-medium ${
+            (p.inventory?.quantity ?? 0) > 0
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
+          }`}
+        >
+          {p.inventory?.quantity ?? 0}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <>
-
       {/* Pulsante crea prodotto */}
-      <div className="flex justify-center">
+      <div className="mb-4 flex justify-center">
         <button
           onClick={() => openModal()}
           className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
@@ -124,78 +164,47 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         </button>
       </div>
 
-      {/* Tabella */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        {products.length === 0 ? (
-          <div className="py-12 text-center text-sm text-slate-500">
-            Nessun prodotto. Creane uno dal pulsante in basso →
-          </div>
-        ) : (
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Nome</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Sku</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Prezzo</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stock</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Azioni</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-slate-50"
-                  onClick={() => openModal(product)}>
-                  <td className="px-4 py-3 text-sm font-medium text-slate-700">{product.name}</td>
-                  <td className="px-4 py-3 text-sm text-slate-500">{product.sku}</td>
-                  <td className="px-4 py-3 text-sm text-slate-700">€{product.price.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className={`rounded px-2 py-1 text-xs font-medium ${(product.inventory?.quantity ?? 0) > 0
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                      }`}>
-                      {product.inventory?.quantity ?? 0}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-wrap gap-1">
-                      <button
-                        onClick={() => openModal(product)}
-                        className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
-                      >
-                        Modifica
-                      </button>
-                      {deleteConfirm === product.id ? (
-                        <>
-                          <button
-                            onClick={() => handleDelete(product.id)}
-                            disabled={deleteLoading}
-                            className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                          >
-                            {deleteLoading ? "..." : "Conferma"}
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(null)}
-                            className="rounded bg-slate-400 px-3 py-1 text-xs font-medium text-white hover:bg-slate-500"
-                          >
-                            Annulla
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => setDeleteConfirm(product.id)}
-                          className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
-                        >
-                          Elimina
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <AdminTable
+        rows={products}
+        columns={columns}
+        rowKey={(p) => p.id}
+        onRowClick={(p) => openModal(p)}
+        emptyMessage="Nessun prodotto. Creane uno con il pulsante qui sopra."
+        renderActions={(product) => (
+          <>
+            <button
+              onClick={() => openModal(product)}
+              className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
+            >
+              Modifica
+            </button>
+            {deleteConfirm === product.id ? (
+              <>
+                <button
+                  onClick={() => handleDelete(product.id)}
+                  disabled={deleteLoading}
+                  className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleteLoading ? "..." : "Conferma"}
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="rounded bg-slate-400 px-3 py-1 text-xs font-medium text-white hover:bg-slate-500"
+                >
+                  Annulla
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setDeleteConfirm(product.id)}
+                className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+              >
+                Elimina
+              </button>
+            )}
+          </>
         )}
-      </div>
+      />
 
       {/* Modal */}
       <AdminModal
@@ -204,7 +213,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         title={selectedProduct ? `Modifica: ${selectedProduct.name}` : "Nuovo Prodotto"}
       >
         <ProductForm
-          key={selectedProduct?.id ?? "new"}
+          key={selectedProduct?.id ?? `new-${createResetCount}`}
           product={selectedProduct}
           onSubmit={handleSubmit}
           loading={formLoading}

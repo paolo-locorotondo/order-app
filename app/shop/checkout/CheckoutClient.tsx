@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import CartItemsList from "@/components/CartItemsList";
-import CheckoutForm, { CheckoutFormData } from "@/components/CheckoutForm";
+import CartItemsList from "../_components/CartItemsList";
+import CheckoutForm, { CheckoutFormData } from "./CheckoutForm";
 
 interface CartItem {
   id: string;
