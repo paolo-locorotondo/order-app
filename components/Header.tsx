@@ -14,8 +14,11 @@ export default function Header() {
       <nav className="flex items-center gap-4">
         <Link href="/">Home</Link>
         <Link href="/shop">Shop</Link>
-        <Link href="/shop/cart">Carrello</Link>
-        {session?.user ? <Link href="/dashboard">Dashboard</Link> : null}
+        {/* prefetch={false} su route protette: il prefetch fatto da non-autenticati
+            verrebbe redirezionato dal middleware e cacherebbe il 307, rompendo i
+            click successivi dopo login. */}
+        <Link href="/shop/cart" prefetch={false}>Carrello</Link>
+        {session?.user ? <Link href="/dashboard" prefetch={false}>Dashboard</Link> : null}
         {status === "authenticated" ? (
           <>
             <span className="text-sm">Ciao, {session.user.name ?? session.user.email}</span>

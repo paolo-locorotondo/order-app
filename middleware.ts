@@ -54,7 +54,12 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/auth/login";
     url.searchParams.set("callbackUrl", pathname);
     // if unauthenticated, redirect to login page with callbackUrl to return after login
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    // Evita che Next/Vercel/browser cachino questa redirect: il prefetch del Link
+    // fatto da non-autenticati cacherebbe il 307 e dopo login il click userebbe
+    // ancora la cache vecchia rispedendo a /auth/login.
+    redirect.headers.set("Cache-Control", "no-store, must-revalidate");
+    return redirect;
   } else {
     // If token exists, allow access to the protected route
     return NextResponse.next();
