@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
-import { RESERVATION_WINDOW_MS, releaseReservation } from "@/lib/reservation";
+import { RESERVATION_WINDOW_MS, releaseReservation, releaseExpiredReservations } from "@/lib/reservation";
 
 // GET: ritorna la reservation attiva (se presente e non scaduta) senza modificare nulla.
 // Usato dal client al mount per riprendere lo stato del timer.
@@ -38,6 +38,10 @@ export async function POST(request: NextRequest) {
     return auth.errorResponse;
   }
   const userId = auth.token.id;
+
+  // Cleanup-on-read: libera tutte le reservation scadute (di qualunque utente) prima di
+  // procedere. Evita che lo stock di sessioni abbandonate resti bloccato come "reserved".
+  await releaseExpiredReservations();
 
   // 1. Se esiste già una reservation valida, ritorna senza fare nulla (idempotenza).
   const existing = await prisma.cartReservation.findUnique({
