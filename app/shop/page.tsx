@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import Header from "@/components/Header";
 import AddToCartForm from "@/app/shop/products/[id]/AddToCartForm";
+import { getProductImage } from "@/lib/product-image";
 
 export const revalidate = 10;
 
@@ -43,17 +44,27 @@ export default async function ShopPage() {
         <h1 className="text-3xl font-bold mb-4">Prodotti</h1>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product: (typeof products)[number]) => (
-            <article key={product.id} className="rounded-lg border bg-white p-4 shadow-sm">
-              <h2 className="text-xl font-semibold">{product.name}</h2>
-              <p className="text-slate-600">{product.description ?? "Nessuna descrizione"}</p>
-              <p className="mt-2 font-bold">€{product.price.toFixed(2)}</p>
-              <p className="text-sm text-slate-500">Disponibilità: {product.inventory?.quantity ?? 0}</p>
-              <div className="mt-3">
-                <Link href={`/shop/products/${product.id}`} className="inline-block rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
-                  Visualizza
-                </Link>
+            <article key={product.id} className="flex flex-col overflow-hidden rounded-lg border bg-white shadow-sm">
+              <div className="aspect-square w-full overflow-hidden bg-slate-100">
+                <img
+                  src={getProductImage(product.image)}
+                  alt={product.name}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
               </div>
-              <AddToCartForm productId={product.id} maxQty={product.inventory?.quantity ?? 0} />
+              <div className="flex flex-1 flex-col p-4">
+                <h2 className="text-xl font-semibold">{product.name}</h2>
+                <p className="text-slate-600">{product.description ?? "Nessuna descrizione"}</p>
+                <p className="mt-2 font-bold">€{product.price.toFixed(2)}</p>
+                <p className="text-sm text-slate-500">Disponibilità: {product.inventory?.quantity ?? 0}</p>
+                <div className="mt-3">
+                  <Link href={`/shop/products/${product.id}`} className="inline-block rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
+                    Visualizza
+                  </Link>
+                </div>
+                <AddToCartForm productId={product.id} maxQty={product.inventory?.quantity ?? 0} />
+              </div>
             </article>
           ))}
         </div>

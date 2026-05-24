@@ -6,6 +6,7 @@ import ProductForm, { ProductFormData } from "./ProductForm";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
+import { getProductImage } from "@/lib/product-image";
 
 interface ProductWithInventory extends ProductModel {
   inventory: InventoryModel | null;
@@ -119,6 +120,19 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   };
 
   const columns: AdminTableColumn<ProductWithInventory>[] = [
+    {
+      key: "image",
+      header: "",
+      mobileLabel: "Immagine",
+      cell: (p) => (
+        <img
+          src={getProductImage(p.image)}
+          alt={p.name}
+          className="h-10 w-10 rounded border bg-slate-100 object-cover"
+          loading="lazy"
+        />
+      ),
+    },
     {
       key: "name",
       header: "Nome",

@@ -12,6 +12,7 @@ interface CartItem {
     id: string;
     name: string;
     price: number;
+    image: string | null;
   };
   quantity: number;
 }
@@ -186,14 +187,14 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm mb-6">
+        <div className="min-w-0 lg:col-span-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm mb-6 sm:p-6">
             <h2 className="mb-4 text-lg font-bold">Riepilogo Carrello</h2>
             <CartItemsList items={items} readOnly />
           </div>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="mb-4 text-lg font-bold">Totale Ordine</h3>
             <div className="space-y-2 text-sm">

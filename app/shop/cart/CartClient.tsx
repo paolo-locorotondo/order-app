@@ -12,6 +12,7 @@ interface CartItem {
     id: string;
     name: string;
     price: number;
+    image: string | null;
   };
   quantity: number;
 }
@@ -70,7 +71,7 @@ export default function CartClient({
       {error && <p className="mb-4 text-red-600">{error}</p>}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <CartItemsList
             items={items}
             onRemove={handleRemove}
@@ -78,7 +79,7 @@ export default function CartClient({
           />
         </div>
 
-        <aside className="h-fit rounded border bg-white p-4 shadow-sm">
+        <aside className="h-fit min-w-0 rounded border bg-white p-4 shadow-sm">
           <h2 className="mb-4 font-bold">Riepilogo</h2>
           <p className="mb-4 text-sm text-slate-600">
             {items.length} prodott{items.length !== 1 ? "i" : "o"}

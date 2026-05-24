@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import QuantityStepper from "@/components/QuantityStepper";
+import { getProductImage } from "@/lib/product-image";
 
 interface CartItem {
   id: string;
@@ -9,6 +10,7 @@ interface CartItem {
     id: string;
     name: string;
     price: number;
+    image?: string | null;
   };
   quantity: number;
 }
@@ -53,10 +55,18 @@ export default function CartItemsList({ items, onRemove, onUpdateQty, readOnly =
     <div className="space-y-4">
       {items.map((item) => (
         <div key={item.id} className="rounded border bg-white p-4 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h3 className="font-semibold">{item.product.name}</h3>
-              <p className="text-sm text-slate-600">€{item.product.price.toFixed(2)}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+              <img
+                src={getProductImage(item.product.image)}
+                alt={item.product.name}
+                className="h-14 w-14 flex-shrink-0 rounded border bg-slate-100 object-cover sm:h-16 sm:w-16"
+                loading="lazy"
+              />
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate font-semibold">{item.product.name}</h3>
+                <p className="text-sm text-slate-600">€{item.product.price.toFixed(2)}</p>
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-3">
               {readOnly ? (
