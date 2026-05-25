@@ -21,6 +21,7 @@ export default async function AdminUsers() {
       email: true,
       role: true,
       createdAt: true,
+      updatedAt: true,
     },
   });
 
