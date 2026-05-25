@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
+import FiltersAccordion from "@/components/FiltersAccordion";
 import ExportOrdersButton from "./ExportOrdersButton";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
@@ -48,7 +49,17 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
     const [totalsOpen, setTotalsOpen] = useState(true);
-    const [filtersOpen, setFiltersOpen] = useState(true);
+
+    const filtersActive =
+        statusFilter !== "ALL" || userFilter.trim() !== "" || dateFrom !== "" || dateTo !== "";
+
+    const resetFilters = () => {
+        setStatusFilter("ALL");
+        setUserFilter("");
+        setDateField("createdAt");
+        setDateFrom("");
+        setDateTo("");
+    };
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -301,97 +312,79 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 )}
 
                 {/* Filtri — accordion */}
-                <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <button
-                        type="button"
-                        onClick={() => setFiltersOpen((v) => !v)}
-                        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-slate-50"
-                        aria-expanded={filtersOpen}
-                    >
-                        <h3 className="text-sm font-semibold text-slate-700">
-                            Filtri
-                            {processedOrders.length !== orders.length && (
-                                <span className="ml-2 text-xs font-normal text-slate-500">
-                                    ({processedOrders.length} di {orders.length} ordini)
-                                </span>
-                            )}
-                        </h3>
-                        <span className="text-slate-400" aria-hidden>{filtersOpen ? "▾" : "▸"}</span>
-                    </button>
-                    {filtersOpen && (
-                        <div className="flex flex-col gap-3 border-t border-slate-100 p-4 sm:flex-row sm:items-center sm:flex-wrap">
+                <FiltersAccordion
+                    summary={
+                        processedOrders.length !== orders.length
+                            ? `(${processedOrders.length} di ${orders.length} ordini)`
+                            : undefined
+                    }
+                    onReset={resetFilters}
+                    canReset={filtersActive}
+                >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+                        <input
+                            type="text"
+                            value={userFilter}
+                            onChange={(e) => setUserFilter(e.target.value)}
+                            placeholder="Cerca per nome o email..."
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
+                        />
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <select
+                                value={dateField}
+                                onChange={(e) => setDateField(e.target.value as "createdAt" | "updatedAt")}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            >
+                                <option value="createdAt">Data creazione</option>
+                                <option value="updatedAt">Data modifica</option>
+                            </select>
+                            <label className="text-xs text-slate-500">Da</label>
                             <input
-                                type="text"
-                                value={userFilter}
-                                onChange={(e) => setUserFilter(e.target.value)}
-                                placeholder="Cerca per nome o email..."
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
                             />
+                            <label className="text-xs text-slate-500">A</label>
+                            <input
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            />
+                        </div>
 
-                            <div className="flex flex-wrap items-center gap-2">
-                                <select
-                                    value={dateField}
-                                    onChange={(e) => setDateField(e.target.value as "createdAt" | "updatedAt")}
-                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-                                >
-                                    <option value="createdAt">Data creazione</option>
-                                    <option value="updatedAt">Data modifica</option>
-                                </select>
-                                <label className="text-xs text-slate-500">Da</label>
-                                <input
-                                    type="date"
-                                    value={dateFrom}
-                                    onChange={(e) => setDateFrom(e.target.value)}
-                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-                                />
-                                <label className="text-xs text-slate-500">A</label>
-                                <input
-                                    type="date"
-                                    value={dateTo}
-                                    onChange={(e) => setDateTo(e.target.value)}
-                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-                                />
-                                {(dateFrom || dateTo) && (
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setStatusFilter("ALL")}
+                                className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+                                    statusFilter === "ALL"
+                                        ? "bg-slate-900 text-white"
+                                        : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                }`}
+                            >
+                                Tutti ({orders.length})
+                            </button>
+                            {Object.values(OrderStatus).map((status) => {
+                                const count = orders.filter((o) => o.status === status).length;
+                                return (
                                     <button
-                                        onClick={() => { setDateFrom(""); setDateTo(""); }}
-                                        className="text-xs text-slate-500 hover:text-slate-700 underline"
+                                        key={status}
+                                        onClick={() => setStatusFilter(status)}
+                                        className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+                                            statusFilter === status
+                                                ? "bg-slate-900 text-white"
+                                                : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                        }`}
                                     >
-                                        Reset
+                                        {status} ({count})
                                     </button>
-                                )}
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    onClick={() => setStatusFilter("ALL")}
-                                    className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                        statusFilter === "ALL"
-                                            ? "bg-slate-900 text-white"
-                                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                                    }`}
-                                >
-                                    Tutti ({orders.length})
-                                </button>
-                                {Object.values(OrderStatus).map((status) => {
-                                    const count = orders.filter((o) => o.status === status).length;
-                                    return (
-                                        <button
-                                            key={status}
-                                            onClick={() => setStatusFilter(status)}
-                                            className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                                statusFilter === status
-                                                    ? "bg-slate-900 text-white"
-                                                    : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                                            }`}
-                                        >
-                                            {status} ({count})
-                                        </button>
                                     );
                                 })}
                             </div>
                         </div>
-                    )}
-                </div>
+                </FiltersAccordion>
 
                 <AdminTable
                     rows={processedOrders}

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
+import FiltersAccordion from "@/components/FiltersAccordion";
 import { OrderModel, OrderItemModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 import OrderDetailsPanel from "./OrderDetailsPanel";
@@ -39,6 +40,17 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
     const [dateTo, setDateTo] = useState<string>("");
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+    const filtersActive =
+        statusFilter !== "ALL" || productFilter !== "ALL" || dateFrom !== "" || dateTo !== "";
+
+    const resetFilters = () => {
+        setStatusFilter("ALL");
+        setProductFilter("ALL");
+        setDateField("createdAt");
+        setDateFrom("");
+        setDateTo("");
+    };
 
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : undefined;
 
@@ -164,83 +176,85 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
     return (
         <>
             <div className="space-y-4">
-                {/* Filtri */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-                    <select
-                        value={productFilter}
-                        onChange={(e) => setProductFilter(e.target.value)}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none w-full sm:w-64"
-                    >
-                        <option value="ALL">Tutti i prodotti</option>
-                        {purchasedProducts.map((p) => (
-                            <option key={p.productId} value={p.productId}>
-                                {p.productName}
-                            </option>
-                        ))}
-                    </select>
-
-                    <div className="flex flex-wrap items-center gap-2">
+                {/* Filtri — accordion */}
+                <FiltersAccordion
+                    summary={
+                        processedOrders.length !== orders.length
+                            ? `(${processedOrders.length} di ${orders.length} ordini)`
+                            : undefined
+                    }
+                    onReset={resetFilters}
+                    canReset={filtersActive}
+                >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
                         <select
-                            value={dateField}
-                            onChange={(e) => setDateField(e.target.value as SortField)}
-                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            value={productFilter}
+                            onChange={(e) => setProductFilter(e.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none w-full sm:w-64"
                         >
-                            <option value="createdAt">Data creazione</option>
-                            <option value="updatedAt">Data modifica</option>
+                            <option value="ALL">Tutti i prodotti</option>
+                            {purchasedProducts.map((p) => (
+                                <option key={p.productId} value={p.productId}>
+                                    {p.productName}
+                                </option>
+                            ))}
                         </select>
-                        <label className="text-xs text-slate-500">Da</label>
-                        <input
-                            type="date"
-                            value={dateFrom}
-                            onChange={(e) => setDateFrom(e.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-                        />
-                        <label className="text-xs text-slate-500">A</label>
-                        <input
-                            type="date"
-                            value={dateTo}
-                            onChange={(e) => setDateTo(e.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-                        />
-                        {(dateFrom || dateTo) && (
-                            <button
-                                onClick={() => { setDateFrom(""); setDateTo(""); }}
-                                className="text-xs text-slate-500 hover:text-slate-700 underline"
-                            >
-                                Reset
-                            </button>
-                        )}
-                    </div>
 
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            onClick={() => setStatusFilter("ALL")}
-                            className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                statusFilter === "ALL"
-                                    ? "bg-slate-900 text-white"
-                                    : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                            }`}
-                        >
-                            Tutti ({orders.length})
-                        </button>
-                        {Object.values(OrderStatus).map((status) => {
-                            const count = orders.filter((o) => o.status === status).length;
-                            return (
-                                <button
-                                    key={status}
-                                    onClick={() => setStatusFilter(status)}
-                                    className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                        statusFilter === status
-                                            ? "bg-slate-900 text-white"
-                                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                                    }`}
-                                >
-                                    {status} ({count})
-                                </button>
-                            );
-                        })}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <select
+                                value={dateField}
+                                onChange={(e) => setDateField(e.target.value as SortField)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            >
+                                <option value="createdAt">Data creazione</option>
+                                <option value="updatedAt">Data modifica</option>
+                            </select>
+                            <label className="text-xs text-slate-500">Da</label>
+                            <input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            />
+                            <label className="text-xs text-slate-500">A</label>
+                            <input
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            />
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setStatusFilter("ALL")}
+                                className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+                                    statusFilter === "ALL"
+                                        ? "bg-slate-900 text-white"
+                                        : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                }`}
+                            >
+                                Tutti ({orders.length})
+                            </button>
+                            {Object.values(OrderStatus).map((status) => {
+                                const count = orders.filter((o) => o.status === status).length;
+                                return (
+                                    <button
+                                        key={status}
+                                        onClick={() => setStatusFilter(status)}
+                                        className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+                                            statusFilter === status
+                                                ? "bg-slate-900 text-white"
+                                                : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                        }`}
+                                    >
+                                        {status} ({count})
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                </FiltersAccordion>
 
                 {/* Risultati */}
                 {processedOrders.length !== orders.length && (

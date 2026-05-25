@@ -6,6 +6,7 @@ import CreateUserForm from "./CreateUserForm";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
+import FiltersAccordion from "@/components/FiltersAccordion";
 import { UserRole } from "@/app/generated/prisma/enums";
 
 interface User {
@@ -33,6 +34,17 @@ export default function UsersTable({ users }: { users: User[] }) {
   const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+
+  const filtersActive =
+    searchFilter.trim() !== "" || roleFilter !== "ALL" || dateFrom !== "" || dateTo !== "";
+
+  const resetFilters = () => {
+    setSearchFilter("");
+    setRoleFilter("ALL");
+    setDateField("createdAt");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   const router = useRouter();
 
@@ -155,78 +167,80 @@ export default function UsersTable({ users }: { users: User[] }) {
       </div>
 
       <div className="space-y-4">
-        {/* Filtri */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-          <input
-            type="text"
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
-            placeholder="Cerca per nome o email..."
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
-          />
+        {/* Filtri — accordion */}
+        <FiltersAccordion
+          summary={
+            processedUsers.length !== users.length
+              ? `(${processedUsers.length} di ${users.length} utenti)`
+              : undefined
+          }
+          onReset={resetFilters}
+          canReset={filtersActive}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+            <input
+              type="text"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Cerca per nome o email..."
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
+            />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={dateField}
-              onChange={(e) => setDateField(e.target.value as "createdAt" | "updatedAt")}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-            >
-              <option value="createdAt">Data creazione</option>
-              <option value="updatedAt">Data modifica</option>
-            </select>
-            <label className="text-xs text-slate-500">Da</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-            />
-            <label className="text-xs text-slate-500">A</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-            />
-            {(dateFrom || dateTo) && (
-              <button
-                onClick={() => { setDateFrom(""); setDateTo(""); }}
-                className="text-xs text-slate-500 hover:text-slate-700 underline"
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={dateField}
+                onChange={(e) => setDateField(e.target.value as "createdAt" | "updatedAt")}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
               >
-                Reset
-              </button>
-            )}
-          </div>
+                <option value="createdAt">Data creazione</option>
+                <option value="updatedAt">Data modifica</option>
+              </select>
+              <label className="text-xs text-slate-500">Da</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+              />
+              <label className="text-xs text-slate-500">A</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setRoleFilter("ALL")}
-              className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                roleFilter === "ALL"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-              }`}
-            >
-              Tutti ({users.length})
-            </button>
-            {Object.values(UserRole).map((role) => {
-              const count = users.filter((u) => u.role === role).length;
-              return (
-                <button
-                  key={role}
-                  onClick={() => setRoleFilter(role)}
-                  className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                    roleFilter === role
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                  }`}
-                >
-                  {role} ({count})
-                </button>
-              );
-            })}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setRoleFilter("ALL")}
+                className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+                  roleFilter === "ALL"
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                }`}
+              >
+                Tutti ({users.length})
+              </button>
+              {Object.values(UserRole).map((role) => {
+                const count = users.filter((u) => u.role === role).length;
+                return (
+                  <button
+                    key={role}
+                    onClick={() => setRoleFilter(role)}
+                    className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+                      roleFilter === role
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                    }`}
+                  >
+                    {role} ({count})
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </FiltersAccordion>
 
         {/* Risultati */}
         {processedUsers.length !== users.length && (
