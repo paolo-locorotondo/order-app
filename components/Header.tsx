@@ -106,10 +106,34 @@ export default function Header() {
     </>
   );
 
+  const userAvatar = (() => {
+    if (status !== "authenticated") return null;
+    const displayName = session.user?.name ?? session.user?.email ?? "?";
+    const initial = displayName.charAt(0).toUpperCase();
+    if (session.user?.image) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={session.user.image}
+          alt={displayName}
+          className="h-7 w-7 rounded-full border border-slate-200 object-cover"
+        />
+      );
+    }
+    return (
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
+        {initial}
+      </span>
+    );
+  })();
+
   const authSection = (onClick?: () => void) =>
     status === "authenticated" ? (
       <>
-        <span className="text-sm">Ciao, {session.user?.name ?? session.user?.email}</span>
+        <div className="flex items-center gap-2">
+          {userAvatar}
+          <span className="text-sm">Ciao, {session.user?.name ?? session.user?.email}</span>
+        </div>
         <button
           onClick={() => {
             onClick?.();
@@ -128,8 +152,9 @@ export default function Header() {
 
   return (
     <header className="relative flex items-center justify-between border-b bg-white p-4 shadow-sm">
-      <Link href="/" aria-label="Home" className="flex items-center text-lg font-bold">
-        <span className="text-2xl leading-none md:hidden">🏠</span>
+      <Link href="/" aria-label="Home" className="flex items-center gap-2 text-lg font-bold">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/Logo.png" alt="Order App logo" className="h-8 w-8 object-contain" />
         <span className="hidden md:inline">Order App</span>
       </Link>
 

@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Order App",
   description: "Gestione ordini con autenticazione Google",
+  icons: {
+    icon: "/images/Logo.png",
+  },
 };
 
 export default function RootLayout({
