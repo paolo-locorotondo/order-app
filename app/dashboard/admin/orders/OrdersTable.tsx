@@ -184,7 +184,6 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             key: "id",
             header: "ID",
             cell: (o) => <span className="font-mono text-xs text-slate-500">{o.id.slice(0, 8)}</span>,
-            hideOnMobile: true,
         },
         {
             key: "user",
@@ -199,11 +198,21 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         {
             key: "items",
             header: "Articoli",
-            cell: (o) => {
-                const qty = o.items.reduce((s, i) => s + i.quantity, 0);
-                return `${qty} ${qty === 1 ? "articolo" : "articoli"}`;
-            },
-            hideOnMobile: true,
+            cell: (o) => (
+                <div className="flex flex-wrap gap-1">
+                    {o.items.map((item) => (
+                        <span
+                            key={item.id}
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900"
+                        >
+                            <span className="font-bold">{item.quantity}×</span>
+                            <span className="max-w-[140px] truncate" title={item.productName}>
+                                {item.productName}
+                            </span>
+                        </span>
+                    ))}
+                </div>
+            ),
         },
         {
             key: "total",
