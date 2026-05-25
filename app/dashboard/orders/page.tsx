@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import { prisma } from "@/lib/db";
 import { UserRole, validateAuthFromServerSession } from "@/lib/auth-helpers";
 import AccessDenied from "@/components/AccessDenied";
+import CustomerOrdersTable from "./CustomerOrdersTable";
 
 export default async function OrderHistoryPage() {
 
@@ -27,26 +28,8 @@ export default async function OrderHistoryPage() {
         {orders.length === 0 ? (
           <p className="mt-4">Non hai ancora ordini.</p>
         ) : (
-          <div className="mt-4 space-y-4">
-            {orders.map((order: (typeof orders)[number]) => {
-              const total = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-              return (
-                <article key={order.id} className="rounded border bg-white p-4 shadow-sm">
-                  <p className="font-semibold">Ordine {order.id}</p>
-                  <p>Status: {order.status}</p>
-                  <p>Totale: €{total.toFixed(2)}</p>
-                  <p>Data creazione: {order.createdAt.toLocaleString()}</p>
-                  <p>Data modifica: {order.updatedAt.toLocaleString()}</p>
-                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">
-                    {order.items.map((item: (typeof order.items)[number]) => (
-                      <li key={item.id}>
-                        {item.productName} x {item.quantity} - €{(item.price * item.quantity).toFixed(2)}
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              );
-            })}
+          <div className="mt-6">
+            <CustomerOrdersTable orders={orders} />
           </div>
         )}
       </main>

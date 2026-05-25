@@ -1,23 +1,20 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
-import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
+import { OrderModel, OrderItemModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
-import CreateOrderForm from "./CreateOrderForm";
-import EditOrderPanel from "./EditOrderPanel";
+import OrderDetailsPanel from "./OrderDetailsPanel";
 
-interface OrderWithDetails extends OrderModel {
-    items: (OrderItemModel & { product: ProductModel })[];
-    user: Pick<UserModel, "id" | "name" | "email">;
+interface OrderWithItems extends OrderModel {
+    items: OrderItemModel[];
 }
 
-const orderTotal = (o: OrderWithDetails) =>
+const orderTotal = (o: OrderWithItems) =>
     o.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-type SortField = "createdAt" | "updatedAt" | "total";
+type SortField = "createdAt" | "updatedAt";
 type SortDir = "asc" | "desc";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -28,36 +25,40 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
     [OrderStatus.CANCELLED]: "bg-red-100 text-red-900",
 };
 
-interface OrdersTableProps {
-    orders: OrderWithDetails[];
-    users: Pick<UserModel, "id" | "name" | "email">[];
-    products: (ProductModel & { inventory: { quantity: number } | null })[];
+interface CustomerOrdersTableProps {
+    orders: OrderWithItems[];
 }
 
-export default function OrdersTable({ orders, users, products }: OrdersTableProps) {
-    const router = useRouter();
+export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps) {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
     const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
-    const [userFilter, setUserFilter] = useState("");
-    const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
+    const [productFilter, setProductFilter] = useState<string>("ALL");
+    const [dateField, setDateField] = useState<SortField>("createdAt");
     const [dateFrom, setDateFrom] = useState<string>("");
     const [dateTo, setDateTo] = useState<string>("");
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
-    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-    const [deleteLoading, setDeleteLoading] = useState(false);
 
-    // Derivato dalla prop `orders`: dopo router.refresh() l'ordine selezionato riflette i nuovi dati.
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : undefined;
 
-    const openModal = (order: OrderWithDetails) => {
-        setSelectedOrderId(order.id);
-        setModalOpen(true);
-    };
+    // Lista prodotti unici acquistati (derivata): { productId, productName }
+    const purchasedProducts = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const order of orders) {
+            for (const item of order.items) {
+                if (!map.has(item.productId)) {
+                    map.set(item.productId, item.productName);
+                }
+            }
+        }
+        return Array.from(map.entries())
+            .map(([productId, productName]) => ({ productId, productName }))
+            .sort((a, b) => a.productName.localeCompare(b.productName));
+    }, [orders]);
 
-    const openModalForCreation = () => {
-        setSelectedOrderId(undefined);
+    const openDetails = (order: OrderWithItems) => {
+        setSelectedOrderId(order.id);
         setModalOpen(true);
     };
 
@@ -76,25 +77,6 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         }
     };
 
-    const handleDelete = async (id: string) => {
-        setDeleteLoading(true);
-        try {
-            const response = await fetch(`/api/admin/orders/${id}`, { method: "DELETE" });
-            if (!response.ok) {
-                const data = await response.json();
-                alert(data?.error || "Errore eliminazione ordine");
-                return;
-            }
-            if (selectedOrderId === id) closeModal();
-            setDeleteConfirm(null);
-            router.refresh();
-        } catch {
-            alert("Errore di rete. Riprova più tardi.");
-        } finally {
-            setDeleteLoading(false);
-        }
-    };
-
     const processedOrders = useMemo(() => {
         let result = [...orders];
 
@@ -102,13 +84,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             result = result.filter((o) => o.status === statusFilter);
         }
 
-        if (userFilter.trim()) {
-            const q = userFilter.trim().toLowerCase();
-            result = result.filter(
-                (o) =>
-                    o.user?.name?.toLowerCase().includes(q) ||
-                    o.user?.email?.toLowerCase().includes(q)
-            );
+        if (productFilter !== "ALL") {
+            result = result.filter((o) => o.items.some((it) => it.productId === productFilter));
         }
 
         if (dateFrom || dateTo) {
@@ -121,40 +98,19 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         }
 
         result.sort((a, b) => {
-            let valA: number;
-            let valB: number;
-            if (sortField === "createdAt") {
-                valA = new Date(a.createdAt).getTime();
-                valB = new Date(b.createdAt).getTime();
-            } else if (sortField === "updatedAt") {
-                valA = new Date(a.updatedAt).getTime();
-                valB = new Date(b.updatedAt).getTime();
-            } else {
-                valA = orderTotal(a);
-                valB = orderTotal(b);
-            }
+            const valA = new Date(sortField === "createdAt" ? a.createdAt : a.updatedAt).getTime();
+            const valB = new Date(sortField === "createdAt" ? b.createdAt : b.updatedAt).getTime();
             return sortDir === "asc" ? valA - valB : valB - valA;
         });
 
         return result;
-    }, [orders, statusFilter, userFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
+    }, [orders, statusFilter, productFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
 
-    const columns: AdminTableColumn<OrderWithDetails>[] = [
+    const columns: AdminTableColumn<OrderWithItems>[] = [
         {
             key: "id",
-            header: "ID",
+            header: "Ordine",
             cell: (o) => <span className="font-mono text-xs text-slate-500">{o.id.slice(0, 8)}</span>,
-            hideOnMobile: true,
-        },
-        {
-            key: "user",
-            header: "Cliente",
-            cell: (o) => (
-                <div>
-                    <p className="text-sm font-medium text-slate-700">{o.user?.name || "N/A"}</p>
-                    <p className="text-xs text-slate-500">{o.user?.email}</p>
-                </div>
-            ),
         },
         {
             key: "items",
@@ -165,7 +121,6 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         {
             key: "total",
             header: "Totale",
-            sortable: true,
             align: "right",
             cell: (o) => <span className="font-semibold">€{orderTotal(o).toFixed(2)}</span>,
         },
@@ -209,28 +164,25 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     return (
         <>
             <div className="space-y-4">
-                {/* Pulsante per creare un nuovo ordine */}
-                <button
-                    onClick={() => openModalForCreation()}
-                    className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                >
-                    Crea nuovo ordine
-                </button>
-
                 {/* Filtri */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-                    <input
-                        type="text"
-                        value={userFilter}
-                        onChange={(e) => setUserFilter(e.target.value)}
-                        placeholder="Cerca per nome o email..."
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
-                    />
+                    <select
+                        value={productFilter}
+                        onChange={(e) => setProductFilter(e.target.value)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none w-full sm:w-64"
+                    >
+                        <option value="ALL">Tutti i prodotti</option>
+                        {purchasedProducts.map((p) => (
+                            <option key={p.productId} value={p.productId}>
+                                {p.productName}
+                            </option>
+                        ))}
+                    </select>
 
                     <div className="flex flex-wrap items-center gap-2">
                         <select
                             value={dateField}
-                            onChange={(e) => setDateField(e.target.value as "createdAt" | "updatedAt")}
+                            onChange={(e) => setDateField(e.target.value as SortField)}
                             className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
                         >
                             <option value="createdAt">Data creazione</option>
@@ -301,59 +253,28 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                     rows={processedOrders}
                     columns={columns}
                     rowKey={(o) => o.id}
-                    onRowClick={(o) => openModal(o)}
+                    onRowClick={(o) => openDetails(o)}
                     emptyMessage="Nessun ordine trovato"
                     sortField={sortField}
                     sortDir={sortDir}
                     onSort={handleSort}
                     renderActions={(order) => (
-                        <>
-                            <button
-                                onClick={() => openModal(order)}
-                                className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"
-                            >
-                                Modifica
-                            </button>
-                            {deleteConfirm === order.id ? (
-                                <>
-                                    <button
-                                        onClick={() => handleDelete(order.id)}
-                                        disabled={deleteLoading}
-                                        className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                                    >
-                                        {deleteLoading ? "..." : "Conferma"}
-                                    </button>
-                                    <button
-                                        onClick={() => setDeleteConfirm(null)}
-                                        className="rounded bg-slate-400 px-3 py-1 text-xs font-medium text-white hover:bg-slate-500"
-                                    >
-                                        Annulla
-                                    </button>
-                                </>
-                            ) : (
-                                <button
-                                    onClick={() => setDeleteConfirm(order.id)}
-                                    className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
-                                >
-                                    Elimina
-                                </button>
-                            )}
-                        </>
+                        <button
+                            onClick={() => openDetails(order)}
+                            className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                        >
+                            Dettaglio
+                        </button>
                     )}
                 />
             </div>
 
-            {/* Modal */}
             <AdminModal
                 isOpen={modalOpen}
                 onClose={closeModal}
-                title={selectedOrder ? `Gestisci ordine #${selectedOrder.id}` : "Gestisci nuovo ordine"}
+                title={selectedOrder ? `Dettaglio ordine #${selectedOrder.id.slice(0, 8)}` : "Dettaglio ordine"}
             >
-                {selectedOrder ? (
-                    <EditOrderPanel order={selectedOrder} products={products} onCancel={closeModal} onSuccess={undefined} />
-                ) : (
-                    <CreateOrderForm users={users} products={products} />
-                )}
+                {selectedOrder && <OrderDetailsPanel order={selectedOrder} onClose={closeModal} />}
             </AdminModal>
         </>
     );

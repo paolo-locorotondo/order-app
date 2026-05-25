@@ -99,18 +99,26 @@
 ---
 
 ### 4. Customer Orders History
-**Stato**: 🔴 TODO  
-**Descrizione**: Aggiungere la possibilità di visualizzare dettaglio ordine
-**File**: Aggiornare `app/dashboard/orders/page.tsx`
-**Features**:
-  - Lista ordini già c'è, ma la refattorizzarei in tabella filtrabile per stato, prodotto e ordinabile per data
-  - Click su "Dettaglio" → mostra modal con:
-    - Numero ordine, data, status
-    - Indirizzo spedizione
-    - Lista articoli con prezzi
-    - Totale
+**Stato**: ✅ COMPLETATO
+**Descrizione**: Refactor della pagina "I miei ordini" in tabella filtrabile + modale di dettaglio read-only.
+
+**Task completati**:
+- [x] Refactor di `app/dashboard/orders/page.tsx`: server component che fetcha gli ordini dell'utente e li passa a un nuovo client component
+- [x] `app/dashboard/orders/CustomerOrdersTable.tsx` (NEW): tabella basata su `AdminTable` con filtri (status come pulsanti coerenti con admin + select prodotto derivata dagli ordini dell'utente) e sort cliccabile su `createdAt`/`updatedAt`
+- [x] `app/dashboard/orders/OrderDetailsPanel.tsx` (NEW): panel read-only mostrato dentro `AdminModal` con numero ordine (slice 8), date creazione/modifica, status badge, indirizzo, metodo pagamento, lista articoli (productName snapshot + qty × price) e totale calcolato on-the-fly
+- [x] Bottone "Dettaglio" in colonna Azioni + click su riga aprono lo stesso modale
+
+**Decisioni di design**:
+- **Filtro prodotto** = select popolata dai prodotti effettivamente presenti negli ordini dell'utente (derivata client-side da `orders[].items[].productId+productName`). Più preciso di un input testo libero, e non richiede fetch aggiuntivi.
+- **Componente dettaglio separato** (non `EditOrderPanel` con flag `readOnly`): evita di inquinare il panel admin con condizionali e riduce la superficie del codice customer.
+- **Totale calcolato** dagli items (`sum(qty × price)`), coerente con [[improvement-12]] (drop di `Order.total`).
+
+**File creati/modificati**:
+- `app/dashboard/orders/page.tsx` (UPDATED)
+- `app/dashboard/orders/CustomerOrdersTable.tsx` (NEW)
+- `app/dashboard/orders/OrderDetailsPanel.tsx` (NEW)
+
 - **Priority**: 🟡 MEDIUM
-- **Stato**: 🔴 TODO 
 
 ---
 
