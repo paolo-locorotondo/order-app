@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
+import ExportOrdersButton from "./ExportOrdersButton";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 import CreateOrderForm from "./CreateOrderForm";
@@ -46,6 +47,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [dateTo, setDateTo] = useState<string>("");
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
+    const [totalsOpen, setTotalsOpen] = useState(true);
+    const [filtersOpen, setFiltersOpen] = useState(true);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -140,6 +143,31 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         return result;
     }, [orders, statusFilter, userFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
 
+    // Aggregazione per prodotto sui soli ordini filtrati. Chiave = productId per
+    // evitare collisioni se due prodotti hanno snapshot di nome uguali.
+    const productTotals = useMemo(() => {
+        const map = new Map<string, { name: string; quantity: number; total: number }>();
+        for (const order of processedOrders) {
+            for (const item of order.items) {
+                const existing = map.get(item.productId);
+                if (existing) {
+                    existing.quantity += item.quantity;
+                    existing.total += item.quantity * item.price;
+                } else {
+                    map.set(item.productId, {
+                        name: item.productName,
+                        quantity: item.quantity,
+                        total: item.quantity * item.price,
+                    });
+                }
+            }
+        }
+        return Array.from(map.values()).sort((a, b) => b.total - a.total);
+    }, [processedOrders]);
+
+    const grandTotal = productTotals.reduce((s, p) => s + p.total, 0);
+    const grandQty = productTotals.reduce((s, p) => s + p.quantity, 0);
+
     const columns: AdminTableColumn<OrderWithDetails>[] = [
         {
             key: "id",
@@ -160,7 +188,10 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         {
             key: "items",
             header: "Articoli",
-            cell: (o) => `${o.items.length} ${o.items.length === 1 ? "articolo" : "articoli"}`,
+            cell: (o) => {
+                const qty = o.items.reduce((s, i) => s + i.quantity, 0);
+                return `${qty} ${qty === 1 ? "articolo" : "articoli"}`;
+            },
             hideOnMobile: true,
         },
         {
@@ -219,87 +250,148 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                         Crea nuovo ordine
                     </button>
                     <RefreshButton />
+                    <ExportOrdersButton orders={processedOrders} />
                 </div>
 
-                {/* Filtri */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-                    <input
-                        type="text"
-                        value={userFilter}
-                        onChange={(e) => setUserFilter(e.target.value)}
-                        placeholder="Cerca per nome o email..."
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
-                    />
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        <select
-                            value={dateField}
-                            onChange={(e) => setDateField(e.target.value as "createdAt" | "updatedAt")}
-                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                {/* Totali per prodotto (sui soli ordini filtrati) — accordion in cima */}
+                {productTotals.length > 0 && (
+                    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                        <button
+                            type="button"
+                            onClick={() => setTotalsOpen((v) => !v)}
+                            className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-slate-50"
+                            aria-expanded={totalsOpen}
                         >
-                            <option value="createdAt">Data creazione</option>
-                            <option value="updatedAt">Data modifica</option>
-                        </select>
-                        <label className="text-xs text-slate-500">Da</label>
-                        <input
-                            type="date"
-                            value={dateFrom}
-                            onChange={(e) => setDateFrom(e.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-                        />
-                        <label className="text-xs text-slate-500">A</label>
-                        <input
-                            type="date"
-                            value={dateTo}
-                            onChange={(e) => setDateTo(e.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-                        />
-                        {(dateFrom || dateTo) && (
-                            <button
-                                onClick={() => { setDateFrom(""); setDateTo(""); }}
-                                className="text-xs text-slate-500 hover:text-slate-700 underline"
-                            >
-                                Reset
-                            </button>
+                            <h3 className="text-sm font-semibold text-slate-700">
+                                Totali per prodotto
+                                <span className="ml-2 text-xs font-normal text-slate-500">
+                                    ({productTotals.length} {productTotals.length === 1 ? "prodotto" : "prodotti"} — €{grandTotal.toFixed(2)})
+                                </span>
+                            </h3>
+                            <span className="text-slate-400" aria-hidden>{totalsOpen ? "▾" : "▸"}</span>
+                        </button>
+                        {totalsOpen && (
+                            <div className="overflow-x-auto border-t border-slate-100 px-4 pb-4 pt-2">
+                                <table className="min-w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                                            <th className="py-2 pr-4 text-left font-semibold">Prodotto</th>
+                                            <th className="py-2 px-4 text-right font-semibold">Quantità</th>
+                                            <th className="py-2 pl-4 text-right font-semibold">Totale</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {productTotals.map((p) => (
+                                            <tr key={p.name} className="border-b border-slate-100 last:border-0">
+                                                <td className="py-1.5 pr-4 text-slate-800">{p.name}</td>
+                                                <td className="py-1.5 px-4 text-right text-slate-700">{p.quantity}</td>
+                                                <td className="py-1.5 pl-4 text-right font-medium text-slate-800">€{p.total.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                        <tr className="border-t-2 border-slate-300 bg-slate-50">
+                                            <td className="py-2 pr-4 font-semibold text-slate-700">Totale complessivo</td>
+                                            <td className="py-2 px-4 text-right font-semibold text-slate-700">{grandQty}</td>
+                                            <td className="py-2 pl-4 text-right font-bold text-green-700">€{grandTotal.toFixed(2)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
+                )}
 
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            onClick={() => setStatusFilter("ALL")}
-                            className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                statusFilter === "ALL"
-                                    ? "bg-slate-900 text-white"
-                                    : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                            }`}
-                        >
-                            Tutti ({orders.length})
-                        </button>
-                        {Object.values(OrderStatus).map((status) => {
-                            const count = orders.filter((o) => o.status === status).length;
-                            return (
+                {/* Filtri — accordion */}
+                <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <button
+                        type="button"
+                        onClick={() => setFiltersOpen((v) => !v)}
+                        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-slate-50"
+                        aria-expanded={filtersOpen}
+                    >
+                        <h3 className="text-sm font-semibold text-slate-700">
+                            Filtri
+                            {processedOrders.length !== orders.length && (
+                                <span className="ml-2 text-xs font-normal text-slate-500">
+                                    ({processedOrders.length} di {orders.length} ordini)
+                                </span>
+                            )}
+                        </h3>
+                        <span className="text-slate-400" aria-hidden>{filtersOpen ? "▾" : "▸"}</span>
+                    </button>
+                    {filtersOpen && (
+                        <div className="flex flex-col gap-3 border-t border-slate-100 p-4 sm:flex-row sm:items-center sm:flex-wrap">
+                            <input
+                                type="text"
+                                value={userFilter}
+                                onChange={(e) => setUserFilter(e.target.value)}
+                                placeholder="Cerca per nome o email..."
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
+                            />
+
+                            <div className="flex flex-wrap items-center gap-2">
+                                <select
+                                    value={dateField}
+                                    onChange={(e) => setDateField(e.target.value as "createdAt" | "updatedAt")}
+                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                                >
+                                    <option value="createdAt">Data creazione</option>
+                                    <option value="updatedAt">Data modifica</option>
+                                </select>
+                                <label className="text-xs text-slate-500">Da</label>
+                                <input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) => setDateFrom(e.target.value)}
+                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                                />
+                                <label className="text-xs text-slate-500">A</label>
+                                <input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                                />
+                                {(dateFrom || dateTo) && (
+                                    <button
+                                        onClick={() => { setDateFrom(""); setDateTo(""); }}
+                                        className="text-xs text-slate-500 hover:text-slate-700 underline"
+                                    >
+                                        Reset
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
                                 <button
-                                    key={status}
-                                    onClick={() => setStatusFilter(status)}
+                                    onClick={() => setStatusFilter("ALL")}
                                     className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                        statusFilter === status
+                                        statusFilter === "ALL"
                                             ? "bg-slate-900 text-white"
                                             : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                                     }`}
                                 >
-                                    {status} ({count})
+                                    Tutti ({orders.length})
                                 </button>
-                            );
-                        })}
-                    </div>
+                                {Object.values(OrderStatus).map((status) => {
+                                    const count = orders.filter((o) => o.status === status).length;
+                                    return (
+                                        <button
+                                            key={status}
+                                            onClick={() => setStatusFilter(status)}
+                                            className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+                                                statusFilter === status
+                                                    ? "bg-slate-900 text-white"
+                                                    : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                            }`}
+                                        >
+                                            {status} ({count})
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
-
-                {/* Risultati */}
-                {processedOrders.length !== orders.length && (
-                    <p className="text-xs text-slate-500">
-                        {processedOrders.length} di {orders.length} ordini
-                    </p>
-                )}
 
                 <AdminTable
                     rows={processedOrders}
