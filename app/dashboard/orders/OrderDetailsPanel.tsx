@@ -72,6 +72,14 @@ export default function OrderDetailsPanel({ order, onClose }: OrderDetailsPanelP
                     </p>
                 </div>
 
+                {/* Note */}
+                {order.notes && (
+                    <div className="rounded-lg bg-amber-50 p-3">
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700">Note</p>
+                        <p className="whitespace-pre-wrap text-sm text-slate-700">{order.notes}</p>
+                    </div>
+                )}
+
                 {/* Pagamento */}
                 <div className="rounded-lg bg-slate-50 p-3">
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Pagamento</p>

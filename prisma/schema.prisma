@@ -82,6 +82,7 @@ model Order {
   userId          String
   status          OrderStatus @default(PENDING)
   address         String      // Shipping address
+  notes           String?     // Note opzionali del cliente
   paymentMethod   PaymentMethods @default(CASH)
   stripePaymentId String?
   items           OrderItem[]

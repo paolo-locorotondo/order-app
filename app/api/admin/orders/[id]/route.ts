@@ -10,6 +10,7 @@ const updateOrderSchema = z.object({
     .string()
     .refine((v) => v.length === 0 || v.length >= 10, "Indirizzo deve essere almeno 10 caratteri")
     .optional(),
+  notes: z.string().max(2000).nullable().optional(),
   paymentMethod: z.enum([PaymentMethods.STRIPE, PaymentMethods.PAYPAL, PaymentMethods.CASH]).optional(),
   items: z
     .array(
@@ -145,6 +146,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
           updatedAt: new Date(),
           ...(parsed.data.status && { status: parsed.data.status }),
           ...(parsed.data.address && { address: parsed.data.address }),
+          ...(parsed.data.notes !== undefined && { notes: parsed.data.notes || null }),
           ...(parsed.data.paymentMethod && { paymentMethod: parsed.data.paymentMethod }),
           items: {
             create: newItems.map((it) => ({
@@ -168,6 +170,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     data: {
       ...(parsed.data.status && { status: parsed.data.status }),
       ...(parsed.data.address && { address: parsed.data.address }),
+      ...(parsed.data.notes !== undefined && { notes: parsed.data.notes || null }),
       ...(parsed.data.paymentMethod && { paymentMethod: parsed.data.paymentMethod }),
     },
     include: { items: { include: { product: true } }, user: true },

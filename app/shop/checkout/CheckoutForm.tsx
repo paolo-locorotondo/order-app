@@ -6,6 +6,7 @@ import { PaymentMethods } from "@/app/generated/prisma/enums";
 
 export interface CheckoutFormData {
   address: string;
+  notes: string;
   paymentMethod: PaymentMethods;
 }
 
@@ -17,6 +18,7 @@ interface CheckoutFormProps {
 export default function CheckoutForm({ onSubmit, loading = false }: CheckoutFormProps) {
   const [formData, setFormData] = useState<CheckoutFormData>({
     address: "",
+    notes: "",
     paymentMethod: PaymentMethods.CASH,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -83,6 +85,24 @@ export default function CheckoutForm({ onSubmit, loading = false }: CheckoutForm
           disabled={loading}
         />
         {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
+      </div>
+
+      {/* Note */}
+      <div>
+        <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
+          Note <span className="text-slate-400">(opzionali)</span>
+        </label>
+        <textarea
+          id="notes"
+          name="notes"
+          value={formData.notes}
+          onChange={handleChange}
+          rows={3}
+          maxLength={2000}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Es: mi faccio trovare alle 9:00, oppure le prendo dopo lavoro"
+          disabled={loading}
+        />
       </div>
 
       {/* Metodo di Pagamento */}

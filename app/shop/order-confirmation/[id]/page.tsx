@@ -72,6 +72,14 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
               <p className="whitespace-pre-wrap text-slate-700">{order.address || <span className="italic text-slate-400">Non specificato</span>}</p>
             </div>
 
+            {/* Note */}
+            {order.notes && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 shadow-sm">
+                <h2 className="mb-4 text-lg font-bold text-amber-900">Note</h2>
+                <p className="whitespace-pre-wrap text-slate-700">{order.notes}</p>
+              </div>
+            )}
+
             {/* Articoli */}
             <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-bold">Articoli Ordinati</h2>

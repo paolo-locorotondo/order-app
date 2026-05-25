@@ -18,6 +18,7 @@ export const cartItemSchema = z.object({
 export const orderCreateSchema = z.object({
   cartItemIds: z.string().array().min(1),
   address: z.string().min(5),
+  notes: z.string().max(2000).optional(),
   paymentMethod: z.enum([PaymentMethods.STRIPE, PaymentMethods.PAYPAL, PaymentMethods.CASH]).optional().default(PaymentMethods.CASH),
 });
 

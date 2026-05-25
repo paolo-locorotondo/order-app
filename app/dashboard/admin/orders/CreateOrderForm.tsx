@@ -22,6 +22,7 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
     const router = useRouter();
     const [userId, setUserId] = useState("");
     const [address, setAddress] = useState("");
+    const [notes, setNotes] = useState("");
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethods>(PaymentMethods.CASH);
     const [items, setItems] = useState<OrderItem[]>([{ productId: "", quantity: 1 }]);
     const [loading, setLoading] = useState(false);
@@ -64,7 +65,7 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
             const response = await fetch("/api/admin/orders", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId, address, paymentMethod, items }),
+                body: JSON.stringify({ userId, address, notes, paymentMethod, items }),
             });
 
             if (!response.ok) {
@@ -76,6 +77,7 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
             setSuccess("Ordine creato con successo.");
             setUserId("");
             setAddress("");
+            setNotes("");
             setPaymentMethod(PaymentMethods.CASH);
             setItems([{ productId: "", quantity: 1 }]);
             router.refresh();
@@ -119,6 +121,19 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                         onChange={(e) => setAddress(e.target.value)}
                         rows={2}
                         placeholder="Via Roma 1, 00100 Roma"
+                        className={inputClass}
+                    />
+                </div>
+
+                {/* Note */}
+                <div>
+                    <label className={labelClass}>Note (opzionali)</label>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={2}
+                        maxLength={2000}
+                        placeholder="Es: ritirerà il cliente, pagamento con assegno..."
                         className={inputClass}
                     />
                 </div>

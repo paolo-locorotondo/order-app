@@ -40,6 +40,7 @@ function buildCsv(orders: OrderWithDetails[]): string {
         "Email",
         "Status",
         "Indirizzo",
+        "Note",
         "Pagamento",
         "Totale Ordine (€)",
         "Articolo - Nome",
@@ -61,6 +62,7 @@ function buildCsv(orders: OrderWithDetails[]): string {
             order.user?.email ?? "",
             order.status,
             order.address ?? "",
+            order.notes ?? "",
             order.paymentMethod,
             formatPrice(orderTotal),
         ];

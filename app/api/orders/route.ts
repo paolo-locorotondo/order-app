@@ -11,6 +11,7 @@ const orderSchema = z.object({
     .refine((v) => v.length === 0 || v.length >= 10, "Indirizzo deve essere almeno 10 caratteri")
     .optional()
     .default(""),
+  notes: z.string().max(2000).optional().default(""),
   paymentMethod: z.enum([PaymentMethods.STRIPE, PaymentMethods.PAYPAL, PaymentMethods.CASH]).default(PaymentMethods.CASH),
 });
 
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         address: parsed.data.address,
+        notes: parsed.data.notes || null,
         paymentMethod: parsed.data.paymentMethod,
         status: OrderStatus.PENDING,
         stripePaymentId: null,

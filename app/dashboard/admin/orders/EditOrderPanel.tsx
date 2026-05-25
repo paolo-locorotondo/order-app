@@ -49,6 +49,9 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
 
     const [editingItems, setEditingItems] = useState(false);
     const [itemsLoading, setItemsLoading] = useState(false);
+    const [editingNotes, setEditingNotes] = useState(false);
+    const [notesLoading, setNotesLoading] = useState(false);
+    const [notesDraft, setNotesDraft] = useState(order.notes ?? "");
     const [items, setItems] = useState<EditableItem[]>(() =>
         order.items.map((it) => ({
             productId: it.productId,
@@ -134,6 +137,36 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
         setError(null);
     };
 
+    const handleSaveNotes = async () => {
+        setError(null);
+        setNotesLoading(true);
+        try {
+            const response = await fetch(`/api/admin/orders/${order.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ notes: notesDraft }),
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                const errMsg = data.error;
+                throw new Error(typeof errMsg === "object" ? JSON.stringify(errMsg) : errMsg || `Errore ${response.status}`);
+            }
+            setSuccess("Note aggiornate.");
+            setEditingNotes(false);
+            router.refresh();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Errore sconosciuto");
+        } finally {
+            setNotesLoading(false);
+        }
+    };
+
+    const cancelNotesEdit = () => {
+        setNotesDraft(order.notes ?? "");
+        setEditingNotes(false);
+        setError(null);
+    };
+
     const handleSaveItems = async () => {
         setError(null);
         if (items.length === 0) {
@@ -204,6 +237,53 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
                 <div className="rounded-lg bg-slate-50 p-3">
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Indirizzo spedizione</p>
                     <p className="text-sm text-slate-700">{order.address || <span className="italic text-slate-400">Non specificato</span>}</p>
+                </div>
+
+                {/* Note */}
+                <div className="rounded-lg bg-amber-50 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Note</p>
+                        {!editingNotes && (
+                            <button
+                                onClick={() => setEditingNotes(true)}
+                                className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                            >
+                                {order.notes ? "Modifica note" : "Aggiungi note"}
+                            </button>
+                        )}
+                    </div>
+                    {editingNotes ? (
+                        <div className="space-y-2">
+                            <textarea
+                                value={notesDraft}
+                                onChange={(e) => setNotesDraft(e.target.value)}
+                                rows={3}
+                                maxLength={2000}
+                                placeholder="Es: ritirerà il cliente, pagamento con assegno..."
+                                className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm focus:border-blue-400 focus:outline-none"
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleSaveNotes}
+                                    disabled={notesLoading}
+                                    className="flex-1 rounded bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                                >
+                                    {notesLoading ? "Salvataggio..." : "Salva note"}
+                                </button>
+                                <button
+                                    onClick={cancelNotesEdit}
+                                    disabled={notesLoading}
+                                    className="flex-1 rounded bg-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-300 disabled:opacity-50"
+                                >
+                                    Annulla
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="whitespace-pre-wrap text-sm text-slate-700">
+                            {order.notes || <span className="italic text-slate-400">Nessuna nota</span>}
+                        </p>
+                    )}
                 </div>
 
                 {/* Pagamento */}
