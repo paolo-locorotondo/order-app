@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
+import RefreshButton from "@/components/RefreshButton";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 import CreateOrderForm from "./CreateOrderForm";
@@ -209,13 +210,16 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     return (
         <>
             <div className="space-y-4">
-                {/* Pulsante per creare un nuovo ordine */}
-                <button
-                    onClick={() => openModalForCreation()}
-                    className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                >
-                    Crea nuovo ordine
-                </button>
+                {/* Azioni: crea ordine + refresh */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={() => openModalForCreation()}
+                        className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                        Crea nuovo ordine
+                    </button>
+                    <RefreshButton />
+                </div>
 
                 {/* Filtri */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">

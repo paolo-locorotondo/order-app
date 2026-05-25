@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ProductForm, { ProductFormData } from "./ProductForm";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
+import RefreshButton from "@/components/RefreshButton";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 import { getProductImage } from "@/lib/product-image";
 
@@ -168,14 +169,15 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
   return (
     <>
-      {/* Pulsante crea prodotto */}
-      <div className="mb-4 flex justify-center">
+      {/* Azioni: crea prodotto + refresh */}
+      <div className="mb-4 flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => openModal()}
           className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
         >
           + Nuovo Prodotto
         </button>
+        <RefreshButton />
       </div>
 
       <AdminTable

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import CreateUserForm from "./CreateUserForm";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
+import RefreshButton from "@/components/RefreshButton";
 import { UserRole } from "@/app/generated/prisma/enums";
 
 interface User {
@@ -142,14 +143,15 @@ export default function UsersTable({ users }: { users: User[] }) {
 
   return (
     <>
-      {/* Pulsante crea utente */}
-      <div className="mb-4 flex justify-center">
+      {/* Azioni: crea utente + refresh */}
+      <div className="mb-4 flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => openModal()}
           className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
         >
           + Nuovo Utente
         </button>
+        <RefreshButton />
       </div>
 
       <div className="space-y-4">

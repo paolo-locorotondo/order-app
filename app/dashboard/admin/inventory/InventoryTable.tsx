@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import InventoryForm from "./InventoryForm";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
+import RefreshButton from "@/components/RefreshButton";
 import { InventoryModel, ProductModel } from "@/app/generated/prisma/models";
 
 interface InventoryWithProduct extends InventoryModel {
@@ -61,6 +62,9 @@ export default function InventoryTable({ inventory }: { inventory: InventoryWith
     return (
         <>
             {/* TODO Filtri*/}
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+                <RefreshButton />
+            </div>
 
             <AdminTable
                 rows={inventory}
