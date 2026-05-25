@@ -88,28 +88,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const total = parsed.data.items.reduce((sum, item) => {
-    const product = products.find((p) => p.id === item.productId);
-    return sum + (item.quantity * (product?.price ?? 0));
-  }, 0);
-
   // Transazione: ordine + decrement inventory atomici
   const created = await prisma.$transaction(async (tx) => {
     const order = await tx.order.create({
       data: {
         userId: parsed.data.userId,
-        total,
         address: parsed.data.address,
         paymentMethod: parsed.data.paymentMethod,
         status: OrderStatus.PENDING,
         stripePaymentId: null,
         items: {
           create: parsed.data.items.map((item) => {
-            const product = products.find((p) => p.id === item.productId);
+            const product = products.find((p) => p.id === item.productId)!;
             return {
               productId: item.productId,
+              productName: product.name,
               quantity: item.quantity,
-              price: product?.price ?? 0,
+              price: product.price,
             };
           }),
         },

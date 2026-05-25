@@ -64,17 +64,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "La prenotazione è vuota" }, { status: 400 });
   }
 
-  const total = reservation.items.reduce(
-    (sum, item) => sum + item.quantity * item.product.price,
-    0
-  );
-
   // 2. Transazione: crea ordine, decrementa quantity e reserved, libera reservation, svuota cart.
   const created = await prisma.$transaction(async (tx) => {
     const order = await tx.order.create({
       data: {
         userId,
-        total,
         address: parsed.data.address,
         paymentMethod: parsed.data.paymentMethod,
         status: OrderStatus.PENDING,
@@ -82,6 +76,7 @@ export async function POST(request: NextRequest) {
         items: {
           create: reservation.items.map((item) => ({
             productId: item.productId,
+            productName: item.product.name,
             quantity: item.quantity,
             price: item.product.price,
           })),

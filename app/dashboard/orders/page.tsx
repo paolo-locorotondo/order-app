@@ -14,7 +14,7 @@ export default async function OrderHistoryPage() {
 
   const orders = await prisma.order.findMany({
     where: { userId: auth.session.user.id },
-    include: { items: { include: { product: true } } },
+    include: { items: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -28,21 +28,24 @@ export default async function OrderHistoryPage() {
           <p className="mt-4">Non hai ancora ordini.</p>
         ) : (
           <div className="mt-4 space-y-4">
-            {orders.map((order: (typeof orders)[number]) => (
-              <article key={order.id} className="rounded border bg-white p-4 shadow-sm">
-                <p className="font-semibold">Ordine {order.id}</p>
-                <p>Status: {order.status}</p>
-                <p>Totale: €{order.total.toFixed(2)}</p>
-                <p>Data: {order.createdAt.toLocaleString()}</p>
-                <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">
-                  {order.items.map((item: (typeof order.items)[number]) => (
-                    <li key={item.id}>
-                      {item.product.name} x {item.quantity} - €{(item.price * item.quantity).toFixed(2)}
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
+            {orders.map((order: (typeof orders)[number]) => {
+              const total = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+              return (
+                <article key={order.id} className="rounded border bg-white p-4 shadow-sm">
+                  <p className="font-semibold">Ordine {order.id}</p>
+                  <p>Status: {order.status}</p>
+                  <p>Totale: €{total.toFixed(2)}</p>
+                  <p>Data: {order.createdAt.toLocaleString()}</p>
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">
+                    {order.items.map((item: (typeof order.items)[number]) => (
+                      <li key={item.id}>
+                        {item.productName} x {item.quantity} - €{(item.price * item.quantity).toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              );
+            })}
           </div>
         )}
       </main>

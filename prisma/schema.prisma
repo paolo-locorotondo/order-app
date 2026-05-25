@@ -80,7 +80,6 @@ model Order {
   id              String      @id @default(cuid())
   user            User        @relation(fields: [userId], references: [id])
   userId          String
-  total           Float
   status          OrderStatus @default(PENDING)
   address         String      // Shipping address
   paymentMethod   PaymentMethods @default(CASH)
@@ -105,13 +104,14 @@ enum PaymentMethods {
 }
 
 model OrderItem {
-  id         String  @id @default(cuid())
-  order      Order   @relation(fields: [orderId], references: [id])
-  orderId    String
-  product    Product @relation(fields: [productId], references: [id])
-  productId  String
-  quantity   Int
-  price      Float
+  id           String  @id @default(cuid())
+  order        Order   @relation(fields: [orderId], references: [id])
+  orderId      String
+  product      Product @relation(fields: [productId], references: [id])
+  productId    String
+  productName  String  // Snapshot del nome al momento dell'ordine
+  quantity     Int
+  price        Float
 }
 
 model CartReservation {

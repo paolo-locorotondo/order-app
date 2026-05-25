@@ -19,11 +19,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
   // Fetch ordine con Prisma — verifica che appartenga all'utente (o che sia admin)
   const order = await prisma.order.findUnique({
     where: { id },
-    include: {
-      items: {
-        include: { product: true },
-      },
-    },
+    include: { items: true },
   });
 
   // Ordine non trovato
@@ -33,6 +29,8 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
   if (auth.session.user.role === UserRole.CUSTOMER && order.userId !== auth.session.user.id) {
     notFound(); // non riveliamo che l'ordine esiste ma appartiene a qualcun altro
   }
+
+  const orderTotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const PAYMENT_LABELS: Record<PaymentMethods, string> = {
     [PaymentMethods.CASH]: "Contanti (Pagamento alla consegna)",
@@ -81,7 +79,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center justify-between border-b pb-4 last:border-b-0">
                     <div>
-                      <p className="font-medium">{item.product.name}</p>
+                      <p className="font-medium">{item.productName}</p>
                       <p className="text-sm text-slate-600">Quantità: {item.quantity}</p>
                     </div>
                     <div className="text-right">
@@ -114,7 +112,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-slate-600">Subtotale:</span>
-                <span className="font-medium">€{order.total.toFixed(2)}</span>
+                <span className="font-medium">€{orderTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Spedizione:</span>
@@ -122,7 +120,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
               </div>
               <div className="flex justify-between border-t pt-3 text-base font-bold">
                 <span>Totale:</span>
-                <span>€{order.total.toFixed(2)}</span>
+                <span>€{orderTotal.toFixed(2)}</span>
               </div>
               <div className="pt-3">
                 <span className="inline-block rounded bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">

@@ -5,10 +5,18 @@ import { useRouter } from "next/navigation";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
+import QuantityStepper from "@/components/QuantityStepper";
 
 interface OrderWithDetails extends OrderModel {
     items: (OrderItemModel & { product: ProductModel })[];
     user: Pick<UserModel, "id" | "name" | "email">;
+}
+
+interface EditableItem {
+    productId: string;
+    productName: string;
+    quantity: number;
+    price: number;
 }
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -27,16 +35,31 @@ const PAYMENT_LABELS: Record<PaymentMethods, string> = {
 
 interface EditOrderPanelProps {
     order: OrderWithDetails;
+    products: (ProductModel & { inventory: { quantity: number } | null })[];
     onCancel: () => void;
     onSuccess?: () => void;
 }
 
-export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrderPanelProps) {
+export default function EditOrderPanel({ order, products, onCancel, onSuccess }: EditOrderPanelProps) {
     const router = useRouter();
     const [editingStatus, setEditingStatus] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState("");
+
+    const [editingItems, setEditingItems] = useState(false);
+    const [itemsLoading, setItemsLoading] = useState(false);
+    const [items, setItems] = useState<EditableItem[]>(() =>
+        order.items.map((it) => ({
+            productId: it.productId,
+            productName: it.productName,
+            quantity: it.quantity,
+            price: it.price,
+        }))
+    );
+
+    const orderTotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const editTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const handleUpdateStatus = useCallback(async (newStatus: OrderStatus) => {
         setStatusLoading(true);
@@ -59,13 +82,89 @@ export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrder
             }
 
             router.refresh();
-            // onCancel();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Errore sconosciuto");
         } finally {
             setStatusLoading(false);
         }
-    }, [order.id, router, onCancel]);
+    }, [order.id, router, onSuccess]);
+
+    const updateItem = (index: number, field: keyof EditableItem, value: string | number) =>
+        setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+
+    const removeItem = (index: number) =>
+        setItems((prev) => prev.filter((_, i) => i !== index));
+
+    const addItem = () => {
+        const firstAvailable = products.find((p) => (p.inventory?.quantity ?? 0) > 0);
+        if (!firstAvailable) return;
+        setItems((prev) => [
+            ...prev,
+            {
+                productId: firstAvailable.id,
+                productName: firstAvailable.name,
+                quantity: 1,
+                price: firstAvailable.price,
+            },
+        ]);
+    };
+
+    const onProductChange = (index: number, productId: string) => {
+        const product = products.find((p) => p.id === productId);
+        if (!product) return;
+        setItems((prev) =>
+            prev.map((item, i) =>
+                i === index
+                    ? { ...item, productId, productName: product.name, price: product.price }
+                    : item
+            )
+        );
+    };
+
+    const cancelItemsEdit = () => {
+        setItems(
+            order.items.map((it) => ({
+                productId: it.productId,
+                productName: it.productName,
+                quantity: it.quantity,
+                price: it.price,
+            }))
+        );
+        setEditingItems(false);
+        setError(null);
+    };
+
+    const handleSaveItems = async () => {
+        setError(null);
+        if (items.length === 0) {
+            setError("Un ordine deve contenere almeno un articolo.");
+            return;
+        }
+        if (items.some((i) => !i.productId || i.quantity < 1 || i.price < 0 || !i.productName.trim())) {
+            setError("Compila tutti i campi degli articoli (qty ≥ 1, prezzo ≥ 0, nome non vuoto).");
+            return;
+        }
+        setItemsLoading(true);
+        try {
+            const response = await fetch(`/api/admin/orders/${order.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items }),
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                const errMsg = data.error;
+                throw new Error(typeof errMsg === "object" ? JSON.stringify(errMsg) : errMsg || `Errore ${response.status}`);
+            }
+            setSuccess("Articoli aggiornati con successo.");
+            setEditingItems(false);
+            router.refresh();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Errore sconosciuto");
+        } finally {
+            setItemsLoading(false);
+        }
+    };
 
     return (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -110,22 +209,123 @@ export default function EditOrderPanel({ order, onCancel, onSuccess }: EditOrder
 
                 {/* Prodotti */}
                 <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Prodotti</p>
-                    <div className="space-y-2">
-                        {order.items.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between text-sm">
-                                <div>
-                                    <p className="font-medium text-slate-800">{item.product?.name}</p>
-                                    <p className="text-xs text-slate-500">Qtà: {item.quantity}</p>
-                                </div>
-                                <p className="font-semibold text-slate-800">€{(item.price * item.quantity).toFixed(2)}</p>
+                    <div className="mb-2 flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Prodotti</p>
+                        {!editingItems && (
+                            <button
+                                onClick={() => setEditingItems(true)}
+                                className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                            >
+                                Modifica articoli
+                            </button>
+                        )}
+                    </div>
+
+                    {editingItems ? (
+                        <div className="space-y-3">
+                            {items.map((item, index) => {
+                                const product = products.find((p) => p.id === item.productId);
+                                const original = order.items.find((it) => it.productId === item.productId);
+                                // Available = current free stock + quantity already in this order line.
+                                // (If user reduces qty, it'll be returned; if user adds new line for an existing product, deltas net out server-side.)
+                                const baseAvailable = product?.inventory?.quantity ?? 0;
+                                const max = baseAvailable + (original?.quantity ?? 0);
+                                return (
+                                    <div key={index} className="rounded border border-slate-200 bg-white p-2 space-y-2">
+                                        <select
+                                            value={item.productId}
+                                            onChange={(e) => onProductChange(index, e.target.value)}
+                                            className="w-full rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm"
+                                        >
+                                            {products.map((p) => (
+                                                <option key={p.id} value={p.id} disabled={(p.inventory?.quantity ?? 0) === 0 && p.id !== item.productId}>
+                                                    {p.name} — €{p.price.toFixed(2)} (disp: {p.inventory?.quantity ?? 0})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            type="text"
+                                            value={item.productName}
+                                            onChange={(e) => updateItem(index, "productName", e.target.value)}
+                                            placeholder="Nome (snapshot)"
+                                            className="w-full rounded border border-slate-300 bg-slate-50 px-2 py-1 text-xs"
+                                        />
+                                        <div className="flex items-center gap-2">
+                                            <QuantityStepper
+                                                value={item.quantity}
+                                                onChange={(n) => updateItem(index, "quantity", n)}
+                                                min={1}
+                                                max={max || undefined}
+                                                size="sm"
+                                            />
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={item.price}
+                                                onChange={(e) => updateItem(index, "price", parseFloat(e.target.value) || 0)}
+                                                className="w-24 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm text-right"
+                                            />
+                                            <span className="text-xs text-slate-500">€/u</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeItem(index)}
+                                                disabled={items.length === 1}
+                                                className="ml-auto rounded bg-red-100 px-2 py-1 text-xs text-red-700 hover:bg-red-200 disabled:opacity-40"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                onClick={addItem}
+                                className="text-xs text-blue-600 hover:underline"
+                            >
+                                + Aggiungi prodotto
+                            </button>
+                            <div className="flex items-center justify-between border-t pt-2">
+                                <span className="text-sm font-bold text-slate-700">Totale:</span>
+                                <span className="font-bold text-green-600">€{editTotal.toFixed(2)}</span>
                             </div>
-                        ))}
-                    </div>
-                    <div className="mt-3 flex items-center justify-between border-t pt-2">
-                        <span className="text-sm font-bold text-slate-700">Totale:</span>
-                        <span className="font-bold text-green-600">€{order.total.toFixed(2)}</span>
-                    </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleSaveItems}
+                                    disabled={itemsLoading}
+                                    className="flex-1 rounded bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                                >
+                                    {itemsLoading ? "Salvataggio..." : "Salva articoli"}
+                                </button>
+                                <button
+                                    onClick={cancelItemsEdit}
+                                    disabled={itemsLoading}
+                                    className="flex-1 rounded bg-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-300 disabled:opacity-50"
+                                >
+                                    Annulla
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="space-y-2">
+                                {order.items.map((item) => (
+                                    <div key={item.id} className="flex items-center justify-between text-sm">
+                                        <div>
+                                            <p className="font-medium text-slate-800">{item.productName}</p>
+                                            <p className="text-xs text-slate-500">Qtà: {item.quantity} × €{item.price.toFixed(2)}</p>
+                                        </div>
+                                        <p className="font-semibold text-slate-800">€{(item.price * item.quantity).toFixed(2)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 flex items-center justify-between border-t pt-2">
+                                <span className="text-sm font-bold text-slate-700">Totale:</span>
+                                <span className="font-bold text-green-600">€{orderTotal.toFixed(2)}</span>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Status */}

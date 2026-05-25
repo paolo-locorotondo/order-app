@@ -14,6 +14,9 @@ interface OrderWithDetails extends OrderModel {
     user: Pick<UserModel, "id" | "name" | "email">;
 }
 
+const orderTotal = (o: OrderWithDetails) =>
+    o.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
 type SortField = "createdAt" | "total";
 type SortDir = "asc" | "desc";
 
@@ -34,7 +37,7 @@ interface OrdersTableProps {
 export default function OrdersTable({ orders, users, products }: OrdersTableProps) {
     const router = useRouter();
     const [modalOpen, setModalOpen] = useState(false);
-    const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | undefined>();
+    const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
     const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
     const [userFilter, setUserFilter] = useState("");
     const [sortField, setSortField] = useState<SortField>("createdAt");
@@ -42,18 +45,21 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
+    // Derivato dalla prop `orders`: dopo router.refresh() l'ordine selezionato riflette i nuovi dati.
+    const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : undefined;
+
     const openModal = (order: OrderWithDetails) => {
-        setSelectedOrder(order);
+        setSelectedOrderId(order.id);
         setModalOpen(true);
     };
 
     const openModalForCreation = () => {
-        setSelectedOrder(undefined);
+        setSelectedOrderId(undefined);
         setModalOpen(true);
     };
 
     const closeModal = () => {
-        setSelectedOrder(undefined);
+        setSelectedOrderId(undefined);
         setModalOpen(false);
     };
 
@@ -76,7 +82,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 alert(data?.error || "Errore eliminazione ordine");
                 return;
             }
-            if (selectedOrder?.id === id) closeModal();
+            if (selectedOrderId === id) closeModal();
             setDeleteConfirm(null);
             router.refresh();
         } catch {
@@ -109,8 +115,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 valA = new Date(a.createdAt).getTime();
                 valB = new Date(b.createdAt).getTime();
             } else {
-                valA = a.total;
-                valB = b.total;
+                valA = orderTotal(a);
+                valB = orderTotal(b);
             }
             return sortDir === "asc" ? valA - valB : valB - valA;
         });
@@ -146,7 +152,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             header: "Totale",
             sortable: true,
             align: "right",
-            cell: (o) => <span className="font-semibold">€{o.total.toFixed(2)}</span>,
+            cell: (o) => <span className="font-semibold">€{orderTotal(o).toFixed(2)}</span>,
         },
         {
             key: "status",
@@ -285,7 +291,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 title={selectedOrder ? `Gestisci ordine #${selectedOrder.id}` : "Gestisci nuovo ordine"}
             >
                 {selectedOrder ? (
-                    <EditOrderPanel order={selectedOrder} onCancel={closeModal} onSuccess={undefined} />
+                    <EditOrderPanel order={selectedOrder} products={products} onCancel={closeModal} onSuccess={undefined} />
                 ) : (
                     <CreateOrderForm users={users} products={products} />
                 )}
