@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Link from "next/link";
+import { RestartTourButton } from "@/components/Tour";
 
 export default function Home() {
   return (
@@ -25,6 +26,9 @@ export default function Home() {
           </Link>
           .
         </p>
+        <div className="mt-6">
+          <RestartTourButton />
+        </div>
       </main>
     </div>
   );

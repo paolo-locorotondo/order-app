@@ -68,6 +68,7 @@ export default function Header() {
     <>
       <Link
         href="/shop"
+        id="tour-shop"
         onClick={closeMenu}
         className="flex items-center gap-1 rounded p-2 text-slate-700 hover:bg-slate-100"
         aria-label="Shop"
@@ -78,6 +79,7 @@ export default function Header() {
       </Link>
       <Link
         href="/shop/cart"
+        id="tour-cart"
         prefetch={false}
         onClick={closeMenu}
         className="relative flex items-center gap-1 rounded p-2 text-slate-700 hover:bg-slate-100"
@@ -93,6 +95,7 @@ export default function Header() {
       {session?.user ? (
         <Link
           href="/dashboard"
+          id="tour-dashboard"
           prefetch={false}
           onClick={closeMenu}
           className="flex items-center gap-1 rounded p-2 text-slate-700 hover:bg-slate-100"
