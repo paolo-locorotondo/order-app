@@ -35,7 +35,8 @@ export default async function OrderHistoryPage() {
                   <p className="font-semibold">Ordine {order.id}</p>
                   <p>Status: {order.status}</p>
                   <p>Totale: €{total.toFixed(2)}</p>
-                  <p>Data: {order.createdAt.toLocaleString()}</p>
+                  <p>Data creazione: {order.createdAt.toLocaleString()}</p>
+                  <p>Data modifica: {order.updatedAt.toLocaleString()}</p>
                   <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">
                     {order.items.map((item: (typeof order.items)[number]) => (
                       <li key={item.id}>

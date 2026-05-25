@@ -17,7 +17,7 @@ interface OrderWithDetails extends OrderModel {
 const orderTotal = (o: OrderWithDetails) =>
     o.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-type SortField = "createdAt" | "total";
+type SortField = "createdAt" | "updatedAt" | "total";
 type SortDir = "asc" | "desc";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -114,6 +114,9 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             if (sortField === "createdAt") {
                 valA = new Date(a.createdAt).getTime();
                 valB = new Date(b.createdAt).getTime();
+            } else if (sortField === "updatedAt") {
+                valA = new Date(a.updatedAt).getTime();
+                valB = new Date(b.updatedAt).getTime();
             } else {
                 valA = orderTotal(a);
                 valB = orderTotal(b);
@@ -169,12 +172,23 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         },
         {
             key: "createdAt",
-            header: "Data",
+            header: "Data creazione",
             sortable: true,
             cell: (o) => (
                 <span className="text-xs text-slate-500">
                     {new Date(o.createdAt).toLocaleDateString("it-IT")} -{" "}
                     {new Date(o.createdAt).toLocaleTimeString("it-IT")}
+                </span>
+            ),
+        },
+        {
+            key: "updatedAt",
+            header: "Data modifica",
+            sortable: true,
+            cell: (o) => (
+                <span className="text-xs text-slate-500">
+                    {new Date(o.updatedAt).toLocaleDateString("it-IT")} -{" "}
+                    {new Date(o.updatedAt).toLocaleTimeString("it-IT")}
                 </span>
             ),
         },

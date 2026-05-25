@@ -175,9 +175,16 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
                         Ordine #{order.id.slice(0, 8)}
                     </h2>
                     <p className="mt-1 text-xs text-slate-500">
+                        <span className="font-semibold">Data creazione:</span>{" "}
                         {new Date(order.createdAt).toLocaleDateString("it-IT", {
                             weekday: "long", year: "numeric", month: "long", day: "numeric",
                         })} - {new Date(order.createdAt).toLocaleTimeString("it-IT")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                        <span className="font-semibold">Data modifica:</span>{" "}
+                        {new Date(order.updatedAt).toLocaleDateString("it-IT", {
+                            weekday: "long", year: "numeric", month: "long", day: "numeric",
+                        })} - {new Date(order.updatedAt).toLocaleTimeString("it-IT")}
                     </p>
                 </div>
                 <button onClick={onCancel} className="text-sm text-slate-400 hover:text-slate-600">
