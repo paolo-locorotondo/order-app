@@ -1,5 +1,7 @@
 # Order App - TODO List
 
+> Per i task **completati** vedi [CHANGELOG.md](./CHANGELOG.md).
+
 ## 📋 Recap Contesto
 
 **Progetto**: Next.js Order Management App  
@@ -28,148 +30,246 @@
 
 ---
 
-## 🚀 Next Steps
+## 🔥 Nuova priorità (2026-05-26)
 
-### 1. Gestione Pagina Admin Prodotti (CRUD)
-**Stato**: ✅ COMPLETATO  
-**Descrizione**: Gestione completa dei prodotti con create, read, update, delete
+Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1 = primo da fare).
 
-**Task completati**:
-- [x] Implementare form di creazione prodotto con validazione client
-- [x] Implementare modal/form di modifica prodotto
-- [x] Implementare delete prodotto con conferma 2-step
-- [x] Creare inventory insieme al prodotto durante CREATE
-- [x] Aggiornare inventory tramite endpoint separato durante UPDATE
-- [x] Validazione form client-side e server-side
-- [x] Feedback visivo: loading state durante azioni
-- [x] Auto-generazione slug dal nome prodotto
-- [x] Validazione SKU univoco (controlla duplicati)
-- [x] Gestione errori e messaggi user-friendly
+### #1 — Stati ordine in italiano + nuovi stati di pagamento/consegna
+**Stato**: 🔴 TODO  
+**Priority**: 🔴 HIGH (cambia il modello dati e propaga su molti punti UI)
 
-**File creati/modificati**:
-- `components/ProductForm.tsx` (NEW) - Form riutilizzabile con validazione
-- `components/ProductDialog.tsx` (NEW) - Modal per create/edit
-- `app/api/inventory/[id]/route.ts` (NEW) - Endpoint PUT per aggiornare stock
-- `app/api/products/route.ts` (UPDATED) - POST con quantity nel body, validazione SKU
-- `app/api/products/[id]/route.ts` (UPDATED) - PUT con SKU handling, DELETE con cascading
-- `app/dashboard/admin/products/page.tsx` (UPDATED) - Client component con tabella CRUD
+**Descrizione**: Sostituire l'enum `OrderStatus` attuale con la lista italiana, introducendo nuovi stati che separano la dimensione "pagamento" da "consegna":
 
-**Bug fix implementati**:
-- ✅ Quantity: POST endpoint ora accetta e usa quantity dal body
-- ✅ SKU duplicati: Validazione pre-check + errore 400 user-friendly
-- ✅ SKU NULL: Stringa vuota convertita a NULL per evitare unique constraint
-- ✅ DELETE cascading: Elimina CartItem + OrderItem + Inventory prima del Product
+```
+IN_ATTESA              (era PENDING)
+CONFERMATO             (NUOVO — admin ha accettato l'ordine)
+SPEDITO                (era SHIPPED)
+PAGATO_DA_CONSEGNARE   (NUOVO — pagato in anticipo, da consegnare)
+CONSEGNATO_DA_PAGARE   (NUOVO — consegnato, pagamento alla consegna in attesa)
+CONSEGNATO_E_PAGATO    (era DELIVERED — stato finale "tutto fatto")
+ANNULLATO              (era CANCELLED)
+```
 
----
-
-### 2. Gestione Checkout Carrello → Ordini
-**Stato**: ✅ COMPLETATO  
-**Descrizione**: Implementare il flusso completo di checkout del carrello e creazione ordini
-
-**Task completati**:
-- [x] Creare pagina checkout (`app/shop/checkout/page.tsx`)
-- [x] Form indirizzo spedizione + metodo pagamento
-- [x] Validazione dati ordine (address min 10 char, paymentMethod enum)
-- [x] Creazione ordine nel database con OrderItems
-- [x] Svuotamento carrello post-ordine
-- [x] Pagina di conferma ordine con numero ordine (`app/shop/order-confirmation/[id]/page.tsx`)
-- [x] Aggiornamento inventario dopo ordine (decrement quantity)
-- [x] Aggiungere checkout button in cart page
-
-**File creati/modificati**:
-- `components/CheckoutForm.tsx` (NEW) - Form con indirizzo + metodo pagamento
-- `app/shop/checkout/page.tsx` (NEW) - Pagina checkout con layout 2 colonne
-- `app/shop/order-confirmation/[id]/page.tsx` (NEW) - Pagina conferma con dettagli ordine
-- `prisma/schema.prisma` (UPDATED) - Aggiunto address, paymentMethod a Order
-- `app/api/orders/route.ts` (UPDATED) - POST con address/paymentMethod, inventory update
-- `app/shop/cart/page.tsx` (UPDATED) - Aggiunto checkout button
-
----
-
-### 3. Admin Orders Dashboard
-**Stato**: ✅ COMPLETATO  
-**Descrizione**: Pagina CRUD per admin per gestire ordini
+**Mapping migration suggerito**:
+- `PENDING` → `IN_ATTESA`
+- `PAID` → `PAGATO_DA_CONSEGNARE` (default conservativo: sa che è pagato, non sa se ha consegnato)
+- `SHIPPED` → `SPEDITO`
+- `DELIVERED` → `CONSEGNATO_E_PAGATO` (assunzione: tutti i delivered erano completi)
+- `CANCELLED` → `ANNULLATO`
+- `CONFERMATO` non ha equivalente storico → nessun ordine retroattivo
 
 **Task**:
-- [X] Tabella con lista degli ordini filtrabile per stato ordine
-- [X] Modifica ordine (Per ora si può aggiornare solo lo stato)
-- [X] Elimina ordine + restore inventory per ogni OrderItem
-- [X] Crea ordine per conto di altro utente + update inventory per ogni OrderItem
+- [ ] Aggiornare enum `OrderStatus` in `prisma/schema.prisma` con i 7 valori
+- [ ] Migration con `UPDATE` di mapping per gli ordini esistenti (vedi mapping sopra)
+- [ ] Decidere la lifecycle valida (es. da IN_ATTESA si può andare solo a CONFERMATO o ANNULLATO?). Per ora **nessuna validazione di transizione**: l'admin può cambiare a qualunque stato. Da rivalutare quando i flussi saranno più stabili.
+- [ ] `STATUS_COLORS` map in tutti i componenti che mostrano badge (`OrdersTable`, `EditOrderPanel`, `OrderDetailsPanel`, `CustomerOrdersTable`, `order-confirmation`): aggiungere colori per i nuovi stati
+- [ ] Etichette UI italiane: probabilmente uno helper `lib/order-status.ts` con `STATUS_LABELS: Record<OrderStatus, string>` ("In attesa", "Confermato", "Spedito", "Pagato da consegnare", ecc.) per evitare di duplicare gli underscore nelle UI
+- [ ] Aggiornare i pulsanti dei filtri status in `OrdersTable` e `CustomerOrdersTable` (sono auto-generati da `Object.values(OrderStatus)`, ma il count + label vanno verificati)
+- [ ] Aggiornare CSV export ([ExportOrdersButton](app/dashboard/admin/orders/ExportOrdersButton.tsx)) — al momento esce il valore enum raw
+- [ ] Verificare che [api/orders/route.ts](app/api/orders/route.ts) crei l'ordine con `IN_ATTESA` (era `PENDING`)
+- [ ] Verificare [api/admin/orders/route.ts](app/api/admin/orders/route.ts) idem
+
+**File coinvolti**:
+- `prisma/schema.prisma` (enum)
+- `prisma/migrations/<timestamp>_rename_order_status/`
+- `lib/order-status.ts` (NEW) — labels + colors
+- Tutti i componenti che hanno `STATUS_COLORS` o `STATUS_LABELS`
+- Tutti gli endpoint che scrivono `status`
 
 ---
 
-### 4. Customer Orders History
-**Stato**: ✅ COMPLETATO
-**Descrizione**: Refactor della pagina "I miei ordini" in tabella filtrabile + modale di dettaglio read-only.
+### #2 — ANNULLATO ripristina inventory? — DECISO: SÌ
+**Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
+**Priority**: 🔴 HIGH (data integrity)
 
-**Task completati**:
-- [x] Refactor di `app/dashboard/orders/page.tsx`: server component che fetcha gli ordini dell'utente e li passa a un nuovo client component
-- [x] `app/dashboard/orders/CustomerOrdersTable.tsx` (NEW): tabella basata su `AdminTable` con filtri (status come pulsanti coerenti con admin + select prodotto derivata dagli ordini dell'utente) e sort cliccabile su `createdAt`/`updatedAt`
-- [x] `app/dashboard/orders/OrderDetailsPanel.tsx` (NEW): panel read-only mostrato dentro `AdminModal` con numero ordine (slice 8), date creazione/modifica, status badge, indirizzo, metodo pagamento, lista articoli (productName snapshot + qty × price) e totale calcolato on-the-fly
-- [x] Bottone "Dettaglio" in colonna Azioni + click su riga aprono lo stesso modale
+**Decisione**: il transition `status → ANNULLATO` (via `PUT /api/admin/orders/[id]`) deve **ripristinare l'inventory** (increment di `quantity` per ogni `OrderItem`), simmetrico al `DELETE` ordine. L'audit trail si preserva tenendo la riga ordine con `status = ANNULLATO`, non lasciando stock fantasma.
+
+**Task**:
+- [ ] [api/admin/orders/[id]/route.ts](app/api/admin/orders/%5Bid%5D/route.ts) PUT: se la transizione è verso `ANNULLATO` e lo status precedente NON era già `ANNULLATO`, ripristinare l'inventory in transazione (increment per ogni `OrderItem`)
+- [ ] Edge case: se da `ANNULLATO` si torna indietro (es. errore admin), ridecrementare l'inventory (verificando disponibilità prima)
+- [ ] Test E2E manuale: crea ordine, controlla qty, annulla, verifica qty ripristinata
+- [ ] Decidere se servirà mai un bottone "Annulla senza ripristino stock" (per casi di prodotto distrutto/perso). **Per ora NO**: al limite l'admin annulla l'ordine e poi corregge a mano l'inventory dal modulo Inventory.
+
+---
+
+### #3 — Data consegna come campo dedicato — DECISO: `Product.deliveryDate`
+**Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
+**Priority**: 🟡 MEDIUM
+
+**Decisione**: aggiungere `deliveryDate DateTime?` (opzionale) sulla tabella `Product`, NON su `Order`. Motivazione:
+- Il prezzo di un articolo cambia per data di consegna → la data è un attributo intrinseco del Product (variant), non dell'Order che lo ordina.
+- Con il modello attuale "un Product per (articolo, data)" la data esplicita rimpiazza la convenzione del nome (`"Prodotto X 28-05-2026"`) e abilita filtri/ordinamento tipizzati.
+- Quando il catalogo crescerà valuteremo un refactor a Product master + ProductVariant (rimandato come backlog).
+
+**Task**:
+- [ ] Migration Prisma: `Product.deliveryDate DateTime?`
+- [ ] Aggiornare `ProductForm` in `app/dashboard/admin/products/ProductForm.tsx`: `<input type="date">` con label "Data di consegna (opzionale)"
+- [ ] Endpoint `POST /api/products` e `PUT /api/products/[id]`: accettare e persistere `deliveryDate`
+- [ ] Validator `lib/validators.ts`: aggiungere campo a `productSchema`
+- [ ] Aggiungere colonna "Data consegna" in `ProductsTable` (admin), formattata `DD/MM/YYYY`, sortable
+- [ ] Aggiungere filtro range data in `ProductsTable` (riusare `FiltersAccordion` + pattern già usato in OrdersTable)
+- [ ] Decidere se mostrarla anche nello shop (probabile sì, sotto il nome). Da confermare prima di implementare lato customer.
+- [ ] Backfill manuale dei prodotti esistenti se hanno la data nel nome (es. `"Prodotto X 28-05-2026"` → estrarre data, ripulire nome). Opzionale, da decidere caso per caso.
+
+---
+
+### #4 — Parità tabella Storico Ordini ↔ Admin Ordini
+**Stato**: 🔴 TODO  
+**Priority**: 🟡 MEDIUM
+
+**Descrizione**: allineare le due tabelle dove differiscono. Oggi:
+- **Storico (customer)**: ha filtro per prodotto (select dei prodotti acquistati). Admin no.
+- **Admin**: ha pill colorate per articoli (snapshot `productName` × qty). Customer no — mostra solo il count.
+
+**Task**:
+- [ ] Aggiungere filtro prodotto a `OrdersTable` admin (select coi prodotti effettivamente presenti negli ordini → derivata da `orders[].items[].productId`, simile a [CustomerOrdersTable](app/dashboard/orders/CustomerOrdersTable.tsx))
+- [ ] Estendere il filtro per prodotto al reset filtri (`filtersActive` + `resetFilters`)
+- [ ] Sostituire la cella "Articoli" di `CustomerOrdersTable` con le pill blu (stesso markup di `OrdersTable`: badge `qty× nome` con flex-wrap)
+- [ ] Verificare che CSV export non sia impattato (l'export è solo admin, già OK)
+
+**File coinvolti**:
+- `app/dashboard/admin/orders/OrdersTable.tsx`
+- `app/dashboard/orders/CustomerOrdersTable.tsx`
+
+---
+
+### #5 — Stato utente "non convalidato": Role NUOVO
+**Stato**: 🔴 TODO  
+**Priority**: 🟡 MEDIUM (sicurezza/onboarding)
+
+**Descrizione**: introdurre un terzo ruolo `NUOVO` per utenti appena registrati (sia Google OAuth sia credenziali). L'admin promuove a `CUSTOMER` con un click. Un `NUOVO` può solo: fare login, vedere shop, cambiare password (se credenziali, vedi #6).
+
+**Task**:
+- [ ] Aggiungere `NUOVO` a `enum UserRole` in `prisma/schema.prisma`
+- [ ] Cambiare `@default(CUSTOMER)` su `User.role` → `@default(NUOVO)`
+- [ ] Migration con backfill: utenti già esistenti restano `CUSTOMER`/`ADMIN` (nessun cambio)
+- [ ] Callback NextAuth (`lib/auth.ts`): nuovi utenti Google → `role: NUOVO`
+- [ ] Endpoint `POST /api/auth/register` (credenziali): nuovi utenti → `role: NUOVO`
+- [ ] `validateAuthFromServerSession` e `validateAuth`: estendere il check per accettare l'array `[NUOVO, CUSTOMER, ADMIN]` quando serve, o solo `CUSTOMER+ADMIN` quando si vuole bloccare i NUOVO
+- [ ] Bloccare flusso checkout/cart per role `NUOVO` con messaggio "Account in attesa di approvazione admin"
+- [ ] In `UsersTable` admin: mostrare badge `NUOVO` (colore es. amber/orange come "warning") + bottone "Approva" che fa PUT user con `role: CUSTOMER`
+- [ ] Filtro `roleFilter` accetta i 3 valori
+- [ ] Eventuale notifica admin via email (vedi Next Step #5 SendGrid) di nuovo utente da approvare — futuro
+
+**File coinvolti**:
+- `prisma/schema.prisma`
+- `lib/auth.ts` (callback Google)
+- `app/api/auth/register/route.ts`
+- `lib/auth-helpers.ts` (validateAuth helpers)
+- `middleware.ts` (controllo route)
+- `app/dashboard/admin/users/UsersTable.tsx` + `CreateUserForm.tsx`
+- `app/shop/cart/page.tsx`, `app/shop/checkout/page.tsx` — gate sul ruolo
+
+---
+
+### #6 — Pagina cambio password (utenti credenziali)
+**Stato**: 🔴 TODO  
+**Priority**: 🟡 MEDIUM
+
+**Descrizione**: pagina dedicata per il cambio password, accessibile solo a utenti autenticati con qualsiasi ruolo (NUOVO, CUSTOMER, ADMIN). Per utenti Google OAuth la pagina mostra un messaggio "Gestisci la password dal tuo account Google" senza form.
 
 **Decisioni di design**:
-- **Filtro prodotto** = select popolata dai prodotti effettivamente presenti negli ordini dell'utente (derivata client-side da `orders[].items[].productId+productName`). Più preciso di un input testo libero, e non richiede fetch aggiuntivi.
-- **Componente dettaglio separato** (non `EditOrderPanel` con flag `readOnly`): evita di inquinare il panel admin con condizionali e riduce la superficie del codice customer.
-- **Totale calcolato** dagli items (`sum(qty × price)`), coerente con [[improvement-12]] (drop di `Order.total`).
+- Path: `/user/changepassword` (va bene quello che hai proposto)
+- Protezione doppia:
+  - **Server-side via `validateAuthFromServerSession([NUOVO, CUSTOMER, ADMIN])`** in `app/user/changepassword/page.tsx`
+  - **Endpoint POST con `validateAuth`** in `app/api/user/changepassword/route.ts`
+  - **Middleware**: aggiungere `/user/*` ai matcher protetti
+- UX: 3 campi (current password, new password, confirm new password). New password validata con stessa policy di registrazione (8+ char, uppercase, lowercase, digit, special).
 
-**File creati/modificati**:
-- `app/dashboard/orders/page.tsx` (UPDATED)
-- `app/dashboard/orders/CustomerOrdersTable.tsx` (NEW)
-- `app/dashboard/orders/OrderDetailsPanel.tsx` (NEW)
+**Task**:
+- [ ] Pagina `app/user/changepassword/page.tsx` (server component) con `validateAuthFromServerSession([NUOVO, CUSTOMER, ADMIN])` + AccessDenied
+- [ ] Form client component `app/user/changepassword/ChangePasswordForm.tsx`
+- [ ] Endpoint `app/api/user/changepassword/route.ts` (POST):
+  - validateAuth
+  - check `User.password !== null` (altrimenti 403, è OAuth-only)
+  - bcrypt compare current
+  - bcrypt hash new
+  - update User.password
+- [ ] Validator: riusare regex password da `userRegistrationSchema` in `lib/validators.ts`
+- [ ] Aggiornare `middleware.ts` matcher per proteggere `/user/*`
+- [ ] Link alla pagina dal menu utente nell'Header (solo se `User.password !== null`)
 
-- **Priority**: 🟡 MEDIUM
+**File coinvolti**:
+- `app/user/changepassword/page.tsx` (NEW)
+- `app/user/changepassword/ChangePasswordForm.tsx` (NEW)
+- `app/api/user/changepassword/route.ts` (NEW)
+- `lib/validators.ts` (estensione)
+- `middleware.ts`
+- `components/Header.tsx`
+
+---
+
+### #7 — Loader globale durante le fetch
+**Stato**: 🔴 TODO  
+**Priority**: 🟢 LOW (UX, non bloccante)
+
+**Descrizione**: durante chiamate al backend (POST/PUT/DELETE) bloccare le interazioni della pagina con un overlay loader, per evitare double-submit e click accidentali.
+
+**Approcci possibili**:
+- **A. Locale per form**: ogni form gestisce il proprio `loading` state e disabilita i bottoni (è quello che già abbiamo). Non blocca la pagina intera.
+- **B. Provider globale**: un context `<LoadingProvider>` montato in `app/layout.tsx` con metodo `withLoader(promise)` che mostra un overlay full-screen per la durata della Promise.
+- **C. Wrapper fetch**: un `fetchWithLoader` in `lib/fetch.ts` che incrementa/decrementa un counter globale (zustand store, jotai, o context). Tutte le chiamate passano da lì.
+
+**Decisione provvisoria**: **opzione C**, perché i fetch sono già sparsi in molti file e un wrapper minimizza i cambi. Counter globale (atomico) → overlay quando count > 0.
+
+**Task**:
+- [ ] Creare `lib/fetch.ts` con `apiFetch(url, init)` che incrementa counter prima, decrementa dopo (try/finally)
+- [ ] Store: zustand semplice (già una dep utile in altri punti) oppure context+useSyncExternalStore. Da valutare.
+- [ ] Componente `<GlobalLoader />` montato in layout: overlay `fixed inset-0 bg-black/30 z-[100]` con spinner al centro, visibile quando count > 0, `pointer-events-none` sul resto OFF (cioè overlay cattura i click)
+- [ ] Refactor incrementale: sostituire `fetch(...)` con `apiFetch(...)` nei file più sensibili (admin orders edit, checkout, ecc.). Non serve farlo tutto subito.
+- [ ] Verificare che il loader non mascheri errori di rete (toast/alert di errore devono comparire SOPRA l'overlay)
+
+**File coinvolti**:
+- `lib/fetch.ts` (NEW)
+- `components/GlobalLoader.tsx` (NEW)
+- `app/layout.tsx` (mount)
+- Refactor progressivo in tutti i client component che fanno fetch
 
 ---
 
-### 4. Product Reservation System
-**Stato**: ✅ COMPLETATO
-**Descrizione**: Durante checkout, "riservare" i prodotti per 5 minuti. Se timer scade, liberarli e uscire.
+### #8 — Bypass admin sulla disponibilità reale + workflow "block as draft order"
+**Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
+**Priority**: 🔴 HIGH (data integrity)
 
-**Task completati**:
-- [X] Aggiungere campo `reserved` a Inventory
-- [X] Aggiungere model `CartReservation` + `CartReservationItem` (server come fonte di verità)
-- [X] OnCheckoutPageLoad: GET reservation esistente o POST per crearne una (idempotente)
-- [X] UseEffect con timer: alla scadenza, decrementare `reserved` e redirect a `/shop/cart?expired=true`
-- [X] OnOrderSuccess: `quantity` e `reserved` decrementati, `CartReservation` cancellata
-- [X] OnOrderCancel ("Torna al carrello"): release reservation con quantità salvate sul server
-- [X] Cart in pagina checkout ora `readOnly` (nessun bottone Rimuovi/quantity per evitare modifiche durante checkout)
-- [X] Test E2E manuali: happy path, reload, torna al carrello, scadenza timer, stato sporco, multi-prodotto, Strict Mode
+**Use case che ha rivelato il bug**:
+1. Admin crea Prodotto X con `quantity=0`
+2. Admin va in Admin Inventory, mette `quantity=1`, `reserved=1`
+3. Customer vede shop con disponibilità 1, prova checkout → giustamente errore "Prodotto non disponibile" (perché `quantity - reserved = 0`)
+4. Admin va in Admin Ordini → crea ordine per altro utente, prodotto X qty 1 → **passa** (BUG)
 
-**Architettura adottata**: server-authoritative reservations
-- Model `CartReservation` con `@unique(userId)` garantisce 1 sola reservation attiva per utente
-- Endpoint `/api/cart/reserve` GET (recupera) + POST (idempotente)
-- Endpoint `/api/cart/release` decrementa con le quantità salvate (non quelle del cart corrente)
-- Endpoint `/api/orders` consuma la reservation atomicamente (decrement quantity+reserved, cancel reservation, clear cart)
-- Client senza `sessionStorage` (era fragile): server come unica fonte di verità
+**Causa**: [api/admin/orders/route.ts:80](app/api/admin/orders/route.ts#L80) e [api/admin/orders/[id]/route.ts:114](app/api/admin/orders/%5Bid%5D/route.ts#L114) controllano solo `inventory.quantity`, non `quantity - reserved`. Il customer flow (via `CartReservation`) rispetta `reserved`, l'admin flow no.
 
-**Bug originali risolti**:
-- ✅ Doppio increment di `reserved` per React 18 Strict Mode (`useEffect` × 2): risolto con `useRef` + unique constraint server
-- ✅ Reload checkout non incrementa più `reserved` (server riconosce reservation esistente, restituisce stesso `expiresAt`)
-- ✅ Race condition concorrenti: gestita con catch su unique constraint che ritorna la reservation creata dal vincitore
-- ✅ `releaseCart` non scoordinato col cart: ora usa quantità della reservation
-- ✅ `/api/orders` non rivalida più `reserved` globale: consuma direttamente la reservation dell'utente
-- ✅ Rimosso `sessionStorage` come fonte di verità
+**Decisione finale**: opzione **B** = "block as draft order"
+- Si **fixa** il bypass: admin endpoint valida contro `quantity - reserved` (= disponibilità reale, stessa che vede il customer)
+- Per il caso d'uso "admin blocca N pezzi per uso futuro": l'admin **crea direttamente l'ordine in `IN_ATTESA`** (anche per se stesso o un placeholder). L'ordine in IN_ATTESA decrementa `quantity` → il customer non lo vede più nello shop. Quando l'admin sa il destinatario reale, **cambia `Order.userId`** sull'ordine IN_ATTESA. Se cambia idea: annulla l'ordine → per #2 l'inventory si ripristina automaticamente.
+- L'admin flow NON deve usare `CartReservation` (è un meccanismo per coprire il gap temporale del checkout customer multi-step; l'admin fa Submit in un solo step e una transazione atomica basta).
 
-**File creati/modificati**:
-- `prisma/schema.prisma` — aggiunti modelli `CartReservation`, `CartReservationItem`
-- `prisma/migrations/20260522141723_add_cart_reservation/` — migration
-- `lib/reservation.ts` (NEW) — helper `releaseReservation` riutilizzabile
-- `app/api/cart/reserve/route.ts` — riscritto: GET (recupera) + POST (idempotente)
-- `app/api/cart/release/route.ts` — semplificato: usa `releaseReservation`
-- `app/api/orders/route.ts` — consuma `CartReservation` invece di rivalidare
-- `app/shop/checkout/CheckoutClient.tsx` — rimosso sessionStorage, server-driven, `useRef` per Strict Mode
-- `app/shop/cart/page.tsx` — `searchParams` Promise (Next 16) + messaggio scadenza migliorato
-- `components/CartItemsList.tsx` — aggiunta prop `readOnly`
-- `scripts/reset-reservations.ts` (NEW) — utility reset DB
-- `scripts/verify-reservation.ts` (NEW) — script E2E HTTP verifier
+**Task**:
+- [ ] **Fix bypass disponibilità**:
+  - [ ] `POST /api/admin/orders`: cambiare `availableQty = product.inventory?.quantity ?? 0` in `availableQty = (inv.quantity ?? 0) - (inv.reserved ?? 0)` con messaggio errore esplicito che cita entrambi i numeri
+  - [ ] `PUT /api/admin/orders/[id]` (branch items): stessa correzione su `available + oldQty per prodotto` (il calcolo del delta deve sottrarre anche le reservation altrui)
+- [ ] **Cambio userId su ordine esistente** (per il workflow "block now, assign later"):
+  - [ ] `PUT /api/admin/orders/[id]`: accettare `userId` nello schema; se cambia, validare che il nuovo userId esista
+  - [ ] `EditOrderPanel`: aggiungere select "Cliente" editabile (riusare i `users` già passati a `OrdersTable`); mostrare warning "Il cliente attuale è {nome}, vuoi cambiarlo?" prima di salvare
+  - [ ] Considerare se limitare il cambio userId solo agli ordini in stato `IN_ATTESA` (un ordine già `SPEDITO` o `CONSEGNATO_E_PAGATO` non dovrebbe cambiare cliente — sarebbe falsificare un audit trail)
+- [ ] **Visibilità "disponibile reale"**:
+  - [ ] In `Admin Inventory` aggiungere colonna calcolata "Disponibile" = `quantity - reserved`, per dare all'admin la stessa metrica che vede il customer
+  - [ ] In `CreateOrderForm` admin: nello dropdown prodotti mostrare `(disp: quantity - reserved)` invece di `(disp: quantity)`
+- [ ] **Smoke test**:
+  - [ ] Riprodurre lo scenario originale: dopo la fix, POST admin con `reserved >= quantity` deve fallire con messaggio chiaro
+  - [ ] Workflow "block as order": admin crea ordine IN_ATTESA per se stesso, customer in shop non vede stock, admin cambia userId all'ordine, promuove a CONFERMATO → tutto coerente
+- [ ] **(Opzionale, futuro)**: endpoint admin `POST /api/admin/inventory/reset-reservations` per liberare reservation scadute o stale (drift dovuto a cleanup mancante). Già tracciato nel "Backlog non bloccanti — Reservation system".
 
-**Possibili miglioramenti futuri (non bloccanti)**:
-- [ ] Endpoint admin `POST /api/admin/inventory/reconcile` per ricalcolare `Inventory.reserved` dalla somma delle `CartReservationItem` non scadute (utile in caso di drift dovuto a manipolazione manuale del DB)
-- [ ] Cron job per cleanup di `CartReservation` scadute (al momento il cleanup è lazy: avviene su prossima GET/POST reserve dell'utente stesso)
-- [ ] Advisory lock / `SELECT FOR UPDATE` su Inventory per concorrenza estrema cross-user (ora basta unique constraint per-user)
+**File coinvolti**:
+- `app/api/admin/orders/route.ts` (fix validazione)
+- `app/api/admin/orders/[id]/route.ts` (fix validazione + accept userId)
+- `app/dashboard/admin/orders/CreateOrderForm.tsx` (label "disp")
+- `app/dashboard/admin/orders/EditOrderPanel.tsx` (select cliente editabile, gating su status)
+- `app/dashboard/admin/inventory/InventoryTable.tsx` (colonna "Disponibile" calcolata)
 
 ---
+
+## 🚀 Next Steps
 
 ### 5. Email Notifications (SendGrid)
 **Stato**: 🔴 TODO  
@@ -263,125 +363,6 @@
 
 ## Bug Fix & Improvements
 
-### **BUG 1**: Ordine con due prodotti uguali la somma delle quantità deve essere controllata per verifica disponibilità
-- **Descrizione**: Nella pagina "Gestione - Ordini" nel form di creazione ordine, supponendo che in inventory il prodotto X ha disponibilità 10, quando aggiungo un prodotto X con quantità 5 e poi clicco "Aggiungi prodotto" e aggiungo sempre il prodotto X ma con quantità 6, l'ordine va a buon fine, invece avrebbe dovuto dare errore "Superata disponibilità del prodotto. Disponibili: 10, richieste: 11"
-- **File**: `app/api/admin/orders/route.ts` (la validazione era client+server item-per-item, non aggregata per productId)
-- **Fix**: aggregazione delle quantità per `productId` prima della validazione + decrement; tutto wrappato in transazione `prisma.$transaction` per atomicità
-- **Priority**: 🔴 HIGH (inconsistenza dati)
-- **Stato**: ✅ COMPLETATO
-
-### **MIGLIORAMENTO #7**: Gestione paymentMethod come Enum
-- **File**: `prisma\schema.prisma`
-- **Descrizione**: Usare una Enum per il paymentMethod ed usare questa enum generata da prisma in tutta l'applicazione.
-- **Implementazione**:
-  ✅ COMPLETATO - Usare enum PaymentMethods invece di String come tipo del campo paymentMethod
-      enum PaymentMethods { 
-        CASH
-        PAYPAL
-        STRIPE
-      }
-  ✅ COMPLETATO - refactor: tutti i valori hardcoded relativi alle enum prisma, sostituire con queste enum
-- **Priority**: 🟢 LOW (nice to have, advanced feature)
-- **Stato**: ✅ COMPLETATO
-
-### **MIGLIORAMENTO #8**: Conformare struttura delle pagine Admin
-- **Descrizione**: Le 4 tabelle admin (Users/Products/Orders/Inventory) avevano ~70% di markup duplicato (header, row clickabile + stopPropagation in colonna Azioni, modale, bottoni 2-step delete).
-- **Implementazione**:
-  - ✅ Nuovo componente generico `components/AdminTable.tsx` con API `AdminTableColumn<T>` (key, header, cell, align, sortable, hideOnMobile, mobileLabel) e props `rows`, `columns`, `rowKey`, `onRowClick`, `renderActions`, `emptyMessage`, sort opzionale
-  - ✅ Pattern responsive: `<table>` desktop (`hidden sm:block`) + cards mobile (`block sm:hidden`) — stessa data, layout adattato
-  - ✅ Refactor di tutte le 4 tabelle admin su `AdminTable`
-  - ✅ Aggiunto Elimina 2-step in colonna Azioni di `OrdersTable` (era solo dentro `EditOrderPanel`)
-  - ✅ Rimosso il blocco "Annulla ordine" da `EditOrderPanel` (ridondante)
-- **Priority**: 🟢 LOW (nice to have, advanced feature)
-- **Stato**: ✅ COMPLETATO
-
-### **MIGLIORAMENTO #9**: Mobile responsiveness
-- **Descrizione**: L'app era usabile solo su desktop. Header in overflow sotto md, tabelle admin con scroll-x illeggibile, modale stretto.
-- **Implementazione**:
-  - ✅ `Header.tsx`: hamburger menu sotto md (logo + ☰), dropdown con click-outside dismiss via useRef + mousedown listener
-  - ✅ `AdminModal.tsx`: `max-w-md sm:max-w-lg lg:max-w-2xl` + `mx-4` su mobile + `max-h-[90vh]`
-  - ✅ `AdminTable` con cards on mobile (vedi #8)
-  - ✅ `CartItemsList` con `flex-wrap` per evitare schiacciamento qty/price/remove
-- **Priority**: 🟢 LOW
-- **Stato**: ✅ COMPLETATO
-
-### **MIGLIORAMENTO #10**: UX polish minori
-- **Descrizione**: 4 piccole migliorie UX raccolte dopo MVP.
-- **Implementazione**:
-  - ✅ Rimosso "Role:" dalla dashboard utente
-  - ✅ Aggiunto link "Vai al carrello" sulla pagina prodotto (con `prefetch={false}`)
-  - ✅ Indirizzo spedizione ora opzionale: vincolo ≥10 caratteri solo se compilato (sia checkout customer sia create-order admin)
-  - ✅ `router.refresh()` dopo create/edit nei modali admin → tabella aggiornata appena chiuso il modale
-  - ✅ Reset form dopo create riuscito (via cambio `key` → remount)
-- **Priority**: 🟢 LOW
-- **Stato**: ✅ COMPLETATO
-
----
-
-### **MIGLIORAMENTO #11**: Riorganizzazione componenti
-- **Descrizione**: Alcuni form stavano in `components/` pur essendo usati da una sola pagina, altri erano già co-locati. Inconsistente.
-- **Implementazione**:
-  - ✅ `ProductForm.tsx` → `app/dashboard/admin/products/`
-  - ✅ `CheckoutForm.tsx` → `app/shop/checkout/`
-  - ✅ `AddToCartForm.tsx` → `app/shop/products/[id]/`
-  - ✅ `CartItemsList.tsx` → `app/shop/_components/` (folder `_`-prefixed = non-routable, condiviso solo dentro `app/shop`)
-  - ✅ Eliminato `components/ProductDialog.tsx` (dead code, zero import)
-  - ✅ `components/` ora contiene solo componenti effettivamente cross-page (Header, AdminModal, AdminTable, AccessDenied)
-- **Priority**: 🟢 LOW
-- **Stato**: ✅ COMPLETATO
-
----
-
-### **MIGLIORAMENTO #12**: Inconsistenza prezzo/nome prodotto negli ordini storici
-- **Descrizione**: Modificando un prodotto in "Admin Prodotti" (es. cambio di prezzo/nome), gli ordini già creati si comportano in modo non uniforme:
-  - In **Admin Ordini** (lato admin) NON si aggiorna né il prezzo né il nome (mostra i valori snapshot di quando l'ordine è stato creato).
-  - In **"I miei Ordini"** (lato customer) si aggiorna SOLO il nome (perché lo legge dal `Product` corrente), mentre il prezzo resta quello storico.
-  Il comportamento "snapshot" è corretto di regola (un ordine già emesso non deve cambiare di valore), ma:
-  1. l'inconsistenza tra le due viste (una mostra il nome corrente, l'altra il nome storico) va sanata
-  2. in Admin Ordini ha senso poter **modificare gli OrderItem** (quantity + price) per gestire correzioni manuali post-vendita
-
-- **Decisioni di design** (vincolanti per l'implementazione):
-
-  **A. NO cascade Product → OrderItem**. Quando un admin modifica `Product.price` o `Product.name` su Admin Prodotti, gli `OrderItem` degli ordini già creati NON vengono toccati. Motivazione:
-  - Un ordine emesso è una **transazione finanziaria sigillata nel tempo**: cambiare retroattivamente il prezzo di un OrderItem stravolgerebbe ricevute, fatture, contabilità, audit trail e gestione resi/rimborsi.
-  - L'esistenza stessa di `OrderItem.price` come colonna separata da `Product.price` esprime questa intenzione: è uno **snapshot** del valore al momento dell'ordine, non un riferimento vivo. Lo stesso vale per il nome (da snapshottare in `OrderItem.productName`).
-  - L'unico path legittimo per modificare un OrderItem dopo la creazione è la **modifica manuale esplicita** dell'admin (vedi task "EditOrderPanel" sotto), tracciata e intenzionale — non un effetto collaterale della modifica di un altro record.
-
-  **B. Drop di `Order.total`**. Rimuoviamo il campo `total` dalla tabella `Order` e lo calcoliamo on-the-fly come `sum(items.quantity * items.price)` ovunque serva (UI cliente, UI admin, conferma ordine).
-  - **Pro**: single source of truth (i `OrderItem` *sono* la verità sull'ammontare). Elimina una classe di bug di staleness, particolarmente acuti ora che gli admin potranno editare quantity/price (ogni edit dovrebbe altrimenti ricomputare e ripersistere `total` — un passo extra che è facile dimenticare). Semplifica l'edit flow.
-  - **Contro accettato**: a scala MVP è equivalente come perf (gli items sono già caricati con l'ordine ovunque). A volume molto alto si potrebbe reintrodurre `total` come cache denormalizzata (con ricomputo coerente sugli edit).
-  - **Caveat futuro**: se un giorno entreranno campi a livello ordine (shipping, tax, discount, fee), `total ≠ sum(items)` e la formula andrà estesa (`sum(items) + shipping + tax - discount`). A quel punto il campo `total` può anche essere reintrodotto come cache, ma la formula resta calcolabile.
-
-- **Task**:
-  - [x] **Schema Prisma**: aggiunto `productName String` su `OrderItem` (snapshot del nome al momento dell'ordine). Migration con backfill dai record esistenti (`UPDATE "OrderItem" SET "productName" = p.name FROM "Product" p WHERE "OrderItem"."productId" = p.id`).
-  - [x] **Schema Prisma**: rimosso il campo `total` da `Order`. Migration con drop column (nessun backfill: ricomputabile dai `OrderItem`).
-  - [x] **Endpoint `POST /api/orders` e `POST /api/admin/orders`**: scrivono `productName` accanto a `price` su create OrderItem. Rimosso write di `total`.
-  - [x] **Tutti i reader del totale**: sostituiti con `order.items.reduce((s, i) => s + i.quantity * i.price, 0)` in:
-    - `app/dashboard/orders/page.tsx`
-    - `app/dashboard/admin/orders/OrdersTable.tsx`
-    - `app/dashboard/admin/orders/EditOrderPanel.tsx`
-    - `app/shop/order-confirmation/[id]/page.tsx`
-  - [x] **Tutti i reader del nome**: usano `item.productName` (snapshot) ovunque, eliminando l'inconsistenza tra vista admin (snapshot) e vista customer (vivo).
-  - [x] **EditOrderPanel — manual edit OrderItem (admin only)**: UI per aggiungere/rimuovere/editare `productId`, `productName`, `quantity` e `price` degli `OrderItem`. `QuantityStepper` con `max = inventory.quantity + originalQty` (la quota già allocata a questo ordine non va sottratta dalla disponibilità).
-  - [x] **Endpoint `PUT /api/admin/orders/[id]`**: accetta `items[]` con `productId/productName/quantity/price`. Calcola delta per prodotto in transazione, applica `decrement: delta` (delta negativo = increment), sostituisce le rows `OrderItem` con `deleteMany + create`. Verifica disponibilità pre-transazione (available + oldQty per prodotto).
-- **File coinvolti**:
-  - `prisma/schema.prisma` (aggiunto `OrderItem.productName`, droppato `Order.total`)
-  - `prisma/migrations/20260525120000_add_orderitem_productname_drop_order_total/` (migration con backfill di `productName` + drop di `total`)
-  - `app/api/orders/route.ts` (scrive `productName`, rimosso `total`)
-  - `app/api/admin/orders/route.ts` (scrive `productName`, rimosso `total`)
-  - `app/api/admin/orders/[id]/route.ts` (PUT con delta inventory + replace items + bump esplicito di `updatedAt`)
-  - `app/dashboard/admin/orders/EditOrderPanel.tsx` (UI edit items)
-  - `app/dashboard/admin/orders/OrdersTable.tsx` (totale calcolato + `selectedOrder` derivato dalla prop `orders`)
-  - `app/dashboard/orders/page.tsx` (totale calcolato + nome snapshot)
-  - `app/shop/order-confirmation/[id]/page.tsx` (totale calcolato + nome snapshot)
-- **Note di implementazione (post-test)**:
-  - **Bug "modale stale dopo Salva articoli"**: `OrdersTable` teneva `selectedOrder` come oggetto in state → dopo `router.refresh()` la prop `orders` si aggiornava ma il riferimento restava vecchio. Fix: store solo `selectedOrderId`, derivare `selectedOrder = orders.find(o => o.id === selectedOrderId)` ad ogni render.
-  - **Bug "updatedAt non bumpato su edit items"**: con `prisma.order.update({ data: { items: { create: [...] } } })` (solo nested writes, niente scalar fields) Prisma può saltare l'UPDATE sul parent → `@updatedAt` non scatta. Fix: aggiunto `updatedAt: new Date()` esplicito nel branch items del PUT.
-- **Priority**: 🟡 MEDIUM (consistenza dati + tool admin utile)
-- **Stato**: ✅ COMPLETATO
-
----
-
 ### **MIGLIORAMENTO #13**: Input prezzo prodotto scomodo su mobile
 - **Descrizione**: In "Admin Prodotti" il form Crea/Modifica usa `<input type="number">` per il prezzo. Su mobile la tastiera numerica non gestisce bene i decimali (varia per OS), il pulsante stepper occupa spazio, e accidentalmente lo scroll della pagina può modificare il valore. Trovare un componente più ergonomico.
 - **Task**:
@@ -413,6 +394,16 @@
   - `app/api/admin/orders/route.ts`
 - **Priority**: 🟢 LOW (UX, evita ordini con metodo non gestito)
 - **Stato**: 🔴 TODO
+
+---
+
+## Backlog non bloccanti — Reservation system
+
+Possibili miglioramenti futuri per il [Product Reservation System](./CHANGELOG.md#4bis-product-reservation-system) già completato:
+
+- [ ] Endpoint admin `POST /api/admin/inventory/reconcile` per ricalcolare `Inventory.reserved` dalla somma delle `CartReservationItem` non scadute (utile in caso di drift dovuto a manipolazione manuale del DB)
+- [ ] Cron job per cleanup di `CartReservation` scadute (al momento il cleanup è lazy: avviene su prossima GET/POST reserve dell'utente stesso)
+- [ ] Advisory lock / `SELECT FOR UPDATE` su Inventory per concorrenza estrema cross-user (ora basta unique constraint per-user)
 
 ---
 
