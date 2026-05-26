@@ -13,11 +13,13 @@ const protectedRoutes = [
   "/shop/products",
   "/shop/cart",
   "/shop/checkout",
+  "/user",
   // api
   "/api/admin",
   "/api/cart",
   "/api/inventory",
   "/api/products",
+  "/api/user",
 ];
 
 export async function middleware(request: NextRequest) {
@@ -72,10 +74,12 @@ export const config = {
     // pages
     "/shop/:path*",
     "/dashboard/:path*",
+    "/user/:path*",
     // api
     "/api/admin/:path*",
     "/api/cart/:path*",
     "/api/inventory/:path*",
     "/api/products/:path*",
+    "/api/user/:path*",
   ],
 };

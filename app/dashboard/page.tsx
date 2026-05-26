@@ -1,14 +1,18 @@
 import Header from "@/components/Header";
 import { UserRole, validateAuthFromServerSession } from "@/lib/auth-helpers";
 import AccessDenied from "@/components/AccessDenied";
+import PendingApproval from "@/components/PendingApproval";
 
 export default async function DashboardPage() {
 
-  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER]);
+  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER, UserRole.NUOVO]);
   if (!auth?.ok) {
     return (
       <AccessDenied errorMessage={auth?.errorResponse ?? "Unauthorized"} />
     );
+  }
+  if (auth.session.user.role === UserRole.NUOVO) {
+    return <PendingApproval />;
   }
 
   return (

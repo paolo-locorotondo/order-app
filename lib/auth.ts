@@ -99,7 +99,7 @@ export const authOptions: NextAuthOptions = {
               name: user?.name || "",
               email: user?.email || "",
               image: user?.image || undefined,
-              role: UserRole.CUSTOMER,
+              role: UserRole.NUOVO,
             },
           });
         } catch (error) {

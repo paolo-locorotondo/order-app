@@ -25,8 +25,8 @@
 - Dashboard Admin:
   - Admin Utenti: CRUD
   - Admin Prodotti: CRUD
-  - Admin Inventario: per ora solo visualizza dati inventario (TODO CRUD?)
-  - Admin Ordini: CRUD, in particolare creazione di un ordine per conto di altro utente
+  - Admin Inventario: RU
+  - Admin Ordini: CRUD, in particolare creazione di un ordine per conto di altro utente + export tabella
 
 ---
 
@@ -34,7 +34,7 @@
 
 Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1 = primo da fare).
 
-> #1, #2 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
+> #1, #2, #5, #6 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
 
 ### #3 — Data consegna come campo dedicato — DECISO: `Product.deliveryDate`
 **Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
@@ -75,72 +75,6 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 **File coinvolti**:
 - `app/dashboard/admin/orders/OrdersTable.tsx`
 - `app/dashboard/orders/CustomerOrdersTable.tsx`
-
----
-
-### #5 — Stato utente "non convalidato": Role NUOVO
-**Stato**: 🔴 TODO  
-**Priority**: 🟡 MEDIUM (sicurezza/onboarding)
-
-**Descrizione**: introdurre un terzo ruolo `NUOVO` per utenti appena registrati (sia Google OAuth sia credenziali). L'admin promuove a `CUSTOMER` con un click. Un `NUOVO` può solo: fare login, vedere shop, cambiare password (se credenziali, vedi #6).
-
-**Task**:
-- [ ] Aggiungere `NUOVO` a `enum UserRole` in `prisma/schema.prisma`
-- [ ] Cambiare `@default(CUSTOMER)` su `User.role` → `@default(NUOVO)`
-- [ ] Migration con backfill: utenti già esistenti restano `CUSTOMER`/`ADMIN` (nessun cambio)
-- [ ] Callback NextAuth (`lib/auth.ts`): nuovi utenti Google → `role: NUOVO`
-- [ ] Endpoint `POST /api/auth/register` (credenziali): nuovi utenti → `role: NUOVO`
-- [ ] `validateAuthFromServerSession` e `validateAuth`: estendere il check per accettare l'array `[NUOVO, CUSTOMER, ADMIN]` quando serve, o solo `CUSTOMER+ADMIN` quando si vuole bloccare i NUOVO
-- [ ] Bloccare flusso checkout/cart per role `NUOVO` con messaggio "Account in attesa di approvazione admin"
-- [ ] In `UsersTable` admin: mostrare badge `NUOVO` (colore es. amber/orange come "warning") + bottone "Approva" che fa PUT user con `role: CUSTOMER`
-- [ ] Filtro `roleFilter` accetta i 3 valori
-- [ ] Eventuale notifica admin via email (vedi Next Step #5 SendGrid) di nuovo utente da approvare — futuro
-
-**File coinvolti**:
-- `prisma/schema.prisma`
-- `lib/auth.ts` (callback Google)
-- `app/api/auth/register/route.ts`
-- `lib/auth-helpers.ts` (validateAuth helpers)
-- `middleware.ts` (controllo route)
-- `app/dashboard/admin/users/UsersTable.tsx` + `CreateUserForm.tsx`
-- `app/shop/cart/page.tsx`, `app/shop/checkout/page.tsx` — gate sul ruolo
-
----
-
-### #6 — Pagina cambio password (utenti credenziali)
-**Stato**: 🔴 TODO  
-**Priority**: 🟡 MEDIUM
-
-**Descrizione**: pagina dedicata per il cambio password, accessibile solo a utenti autenticati con qualsiasi ruolo (NUOVO, CUSTOMER, ADMIN). Per utenti Google OAuth la pagina mostra un messaggio "Gestisci la password dal tuo account Google" senza form.
-
-**Decisioni di design**:
-- Path: `/user/changepassword` (va bene quello che hai proposto)
-- Protezione doppia:
-  - **Server-side via `validateAuthFromServerSession([NUOVO, CUSTOMER, ADMIN])`** in `app/user/changepassword/page.tsx`
-  - **Endpoint POST con `validateAuth`** in `app/api/user/changepassword/route.ts`
-  - **Middleware**: aggiungere `/user/*` ai matcher protetti
-- UX: 3 campi (current password, new password, confirm new password). New password validata con stessa policy di registrazione (8+ char, uppercase, lowercase, digit, special).
-
-**Task**:
-- [ ] Pagina `app/user/changepassword/page.tsx` (server component) con `validateAuthFromServerSession([NUOVO, CUSTOMER, ADMIN])` + AccessDenied
-- [ ] Form client component `app/user/changepassword/ChangePasswordForm.tsx`
-- [ ] Endpoint `app/api/user/changepassword/route.ts` (POST):
-  - validateAuth
-  - check `User.password !== null` (altrimenti 403, è OAuth-only)
-  - bcrypt compare current
-  - bcrypt hash new
-  - update User.password
-- [ ] Validator: riusare regex password da `userRegistrationSchema` in `lib/validators.ts`
-- [ ] Aggiornare `middleware.ts` matcher per proteggere `/user/*`
-- [ ] Link alla pagina dal menu utente nell'Header (solo se `User.password !== null`)
-
-**File coinvolti**:
-- `app/user/changepassword/page.tsx` (NEW)
-- `app/user/changepassword/ChangePasswordForm.tsx` (NEW)
-- `app/api/user/changepassword/route.ts` (NEW)
-- `lib/validators.ts` (estensione)
-- `middleware.ts`
-- `components/Header.tsx`
 
 ---
 

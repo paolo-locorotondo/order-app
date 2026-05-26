@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { UserRole } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
+import PasswordInput from "@/components/PasswordInput";
 
 interface User {
   id: string;
@@ -162,14 +163,14 @@ export default function CreateUserForm({ user, onCancel, onSuccess }: CreateUser
           <label htmlFor="password" className="block text-sm font-medium text-slate-700">
             {isEdit ? "Nuova password (opzionale)" : "Password"}
           </label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
+            variant="light"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={isEdit ? "Lascia vuoto per non cambiarla" : "••••••••"}
             required={!isEdit}
-            className={inputClass}
+            autoComplete="new-password"
           />
         </div>
 
@@ -177,14 +178,14 @@ export default function CreateUserForm({ user, onCancel, onSuccess }: CreateUser
           <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700">
             Conferma password
           </label>
-          <input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
+            variant="light"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="••••••••"
             required={!isEdit}
-            className={inputClass}
+            autoComplete="new-password"
           />
         </div>
 
@@ -196,6 +197,7 @@ export default function CreateUserForm({ user, onCancel, onSuccess }: CreateUser
             onChange={(e) => setRole(e.target.value as UserRole)}
             className={inputClass}
           >
+            <option value={UserRole.NUOVO}>Nuovo (in attesa di approvazione)</option>
             <option value={UserRole.CUSTOMER}>Customer</option>
             <option value={UserRole.ADMIN}>Admin</option>
           </select>

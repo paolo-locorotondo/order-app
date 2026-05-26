@@ -22,7 +22,7 @@ model User {
   password       String?  // Password only for credential-based auth, null for OAuth users
   emailVerified  DateTime?
   image          String?
-  role           UserRole @default(CUSTOMER)
+  role           UserRole @default(NUOVO)
   googleId       String?  @unique
   orders         Order[]
   cartItems      CartItem[]
@@ -32,6 +32,7 @@ model User {
 }
 
 enum UserRole {
+  NUOVO
   CUSTOMER
   ADMIN
 }

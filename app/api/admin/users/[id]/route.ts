@@ -49,6 +49,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       updateData.password = await bcryptjs.hash(password, 10);
     }
     if (role !== undefined) {
+      // Mirror del check su DELETE: un admin non può degradarsi a NUOVO da solo,
+      // altrimenti perderebbe accesso e l'unico modo per riassegnarlo sarebbe da DB.
+      if (auth.token.id === userId && role === UserRole.NUOVO) {
+        return NextResponse.json(
+          { error: "Non puoi assegnare il ruolo NUOVO al tuo account." },
+          { status: 400 }
+        );
+      }
       updateData.role = role;
     }
 

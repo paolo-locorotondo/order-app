@@ -93,18 +93,31 @@ export default function Header() {
         <span className="hidden text-sm md:inline">Carrello</span>
       </Link>
       {session?.user ? (
-        <Link
-          href="/dashboard"
-          id="tour-dashboard"
-          prefetch={false}
-          onClick={closeMenu}
-          className="flex items-center gap-1 rounded p-2 text-slate-700 hover:bg-slate-100"
-          aria-label="Dashboard"
-          title="Dashboard"
-        >
-          <span className="text-xl leading-none">📋</span>
-          <span className="hidden text-sm md:inline">Dashboard</span>
-        </Link>
+        <>
+          <Link
+            href="/dashboard"
+            id="tour-dashboard"
+            prefetch={false}
+            onClick={closeMenu}
+            className="flex items-center gap-1 rounded p-2 text-slate-700 hover:bg-slate-100"
+            aria-label="Dashboard"
+            title="Dashboard"
+          >
+            <span className="text-xl leading-none">📋</span>
+            <span className="hidden text-sm md:inline">Dashboard</span>
+          </Link>
+          <Link
+            href="/user/changepassword"
+            prefetch={false}
+            onClick={closeMenu}
+            className="flex items-center gap-1 rounded p-2 text-slate-700 hover:bg-slate-100"
+            aria-label="Cambia password"
+            title="Cambia password"
+          >
+            <span className="text-xl leading-none">🔑</span>
+            <span className="hidden text-sm md:inline">Cambia password</span>
+          </Link>
+        </>
       ) : null}
     </>
   );
@@ -198,10 +211,16 @@ export default function Header() {
                   <span>Carrello</span>
                 </Link>
                 {session?.user ? (
-                  <Link href="/dashboard" prefetch={false} onClick={closeMenu}>
-                    <span className="text-lg leading-none">📋</span>
-                    <span>Dashboard</span>
-                  </Link>
+                  <>
+                    <Link href="/dashboard" prefetch={false} onClick={closeMenu}>
+                      <span className="text-lg leading-none">📋</span>
+                      <span>Dashboard</span>
+                    </Link>
+                    <Link href="/user/changepassword" prefetch={false} onClick={closeMenu}>
+                      <span className="text-lg leading-none">🔑</span>
+                      <span>Cambia password</span>
+                    </Link>
+                  </>
                 ) : null}
               </nav>
               <div className="flex flex-col items-start gap-2 border-t border-slate-100 p-3">

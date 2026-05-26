@@ -4,17 +4,21 @@ import AddToCartForm from "./AddToCartForm";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import AccessDenied from "@/components/AccessDenied";
+import PendingApproval from "@/components/PendingApproval";
 import { getProductImage } from "@/lib/product-image";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function ProductPage({ params }: Props) {
 
-  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER]);
+  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER, UserRole.NUOVO]);
   if (!auth?.ok) {
     return (
       <AccessDenied errorMessage={auth?.errorResponse ?? "Unauthorized"} />
     );
+  }
+  if (auth.session.user.role === UserRole.NUOVO) {
+    return <PendingApproval />;
   }
 
   const { id } = await params;

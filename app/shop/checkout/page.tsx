@@ -4,15 +4,20 @@ import { validateAuthFromServerSession, UserRole } from "@/lib/auth-helpers";
 import CheckoutClient from "./CheckoutClient";
 import Link from "next/link";
 import AccessDenied from "@/components/AccessDenied";
+import PendingApproval from "@/components/PendingApproval";
 
 export default async function CheckoutPage() {
 
-  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER]);
-  if (!auth?.ok) {
+  const authAny = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER, UserRole.NUOVO]);
+  if (!authAny?.ok) {
     return (
-      <AccessDenied errorMessage={auth?.errorResponse ?? "Unauthorized"} />
+      <AccessDenied errorMessage={authAny?.errorResponse ?? "Unauthorized"} />
     );
   }
+  if (authAny.session.user.role === UserRole.NUOVO) {
+    return <PendingApproval />;
+  }
+  const auth = authAny;
 
   // Carrello vuoto → redirect immediato senza mostrare la pagina
   const items = await prisma.cartItem.findMany({

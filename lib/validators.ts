@@ -67,7 +67,18 @@ export const userUpdateSchema = z.object({
     .regex(/\d/, "Password deve contenere almeno un numero")
     .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Password deve contenere almeno un carattere speciale")
     .optional(),
-  role: z.enum([UserRole.CUSTOMER, UserRole.ADMIN]).optional(),
+  role: z.enum([UserRole.NUOVO, UserRole.CUSTOMER, UserRole.ADMIN]).optional(),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Password attuale richiesta"),
+  newPassword: z.string()
+    .min(8, "Password deve essere di almeno 8 caratteri")
+    .max(128, "Password troppo lunga")
+    .regex(/[A-Z]/, "Password deve contenere almeno una lettera maiuscola")
+    .regex(/[a-z]/, "Password deve contenere almeno una lettera minuscola")
+    .regex(/\d/, "Password deve contenere almeno un numero")
+    .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Password deve contenere almeno un carattere speciale"),
 });
 
 // Input sanitization utilities

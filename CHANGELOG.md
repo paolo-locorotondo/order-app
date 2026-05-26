@@ -378,3 +378,93 @@ ANNULLATO              (era CANCELLED)
 - `app/dashboard/admin/inventory/InventoryTable.tsx` (colonna "Disponibile")
 
 **Priority**: 🔴 HIGH (data integrity)
+
+---
+
+### #5 — Stato utente "non convalidato": Role NUOVO
+
+Introdotto un terzo ruolo `NUOVO` assegnato di default a tutti i nuovi account (sia Google OAuth sia credenziali). L'admin promuove a `CUSTOMER` con un click. Un `NUOVO` può solo: fare login, vedere shop/prodotti, cambiare password (vedi #6).
+
+**Decisioni di design**:
+- Migration custom rename-and-recreate (Postgres rifiuta `ADD VALUE` + uso nella stessa transazione, errore 55P04). Pattern allineato a quello già usato per `OrderStatus` in #1.
+- `User.role @default(NUOVO)` — i record esistenti (CUSTOMER/ADMIN) restano invariati grazie al cast `text::"UserRole_new"`.
+- `validateAuth` / `validateAuthFromServerSession` accettavano già array di ruoli — nessun cambio in `lib/auth-helpers.ts`.
+- Pagine gated con `PendingApproval` (banner ambra "Account in attesa di approvazione admin") invece dell'`AccessDenied` rosso generico: `/shop/cart`, `/shop/checkout`, `/shop/products/[id]`, `/dashboard`.
+- Endpoint API ritornano `403` per NUOVO (cart, orders, products, admin/*) — la guard è in `validateAuth(request, [...])` di ognuno.
+- `AddToCartForm`: bottone "Aggiungi al carrello" disabilitato client-side per NUOVO con tooltip dedicato; doppia difesa con la guard server-side.
+- **Self-NUOVO guard**: un admin non può degradarsi a NUOVO da solo. Mirror del check su DELETE in `app/api/admin/users/[id]/route.ts` (PUT con `auth.token.id === userId && role === NUOVO` → 400).
+
+**Task completati**:
+- [x] `enum UserRole` in `prisma/schema.prisma`: aggiunto `NUOVO`, default cambiato
+- [x] Migration `20260526130000_add_userrole_nuovo` con `CREATE TYPE "UserRole_new"` + `ALTER COLUMN ... USING` + `DROP TYPE` + `RENAME`
+- [x] `lib/auth.ts`: callback Google upsert → `role: NUOVO` per nuovi utenti
+- [x] `app/api/auth/register/route.ts`: nuovi utenti credenziali → `role: NUOVO`
+- [x] `lib/validators.ts`: `userUpdateSchema.role` accetta NUOVO
+- [x] `types/next-auth.d.ts`: Session/JWT `role` allargato a `UserRole` (era union `ADMIN|CUSTOMER`)
+- [x] `UsersTable`: badge ambra `NUOVO` + bottone "Approva" (PUT `role: CUSTOMER`)
+- [x] `CreateUserForm`: opzione "Nuovo (in attesa di approvazione)" nella select
+- [x] `components/PendingApproval.tsx` (NEW) — banner ambra con CTA "Torna allo shop"
+- [x] Gate su `/shop/cart`, `/shop/checkout`, `/shop/products/[id]`, `/dashboard` con early-return su `role === NUOVO`
+- [x] `AddToCartForm`: `isPending` check + bottone disabled + tooltip
+- [x] `middleware.ts`: aggiunte `/user/*` e `/api/user/*` ai protectedRoutes + matcher
+- [x] `PUT /api/admin/users/[id]`: rifiuta self-demotion a NUOVO con 400
+
+**File coinvolti**:
+- `prisma/schema.prisma`, `prisma/migrations/20260526130000_add_userrole_nuovo/migration.sql`
+- `lib/auth.ts`, `lib/validators.ts`, `types/next-auth.d.ts`
+- `app/api/auth/register/route.ts`, `app/api/admin/users/[id]/route.ts`
+- `app/dashboard/admin/users/{UsersTable,CreateUserForm}.tsx`
+- `app/shop/{cart,checkout}/page.tsx`, `app/shop/products/[id]/{page,AddToCartForm}.tsx`
+- `app/dashboard/page.tsx`
+- `components/PendingApproval.tsx` (NEW)
+- `middleware.ts`
+
+**Smoke test manuale**: registrato utente nuovo → ruolo NUOVO assegnato → bloccato su cart/checkout/dashboard → admin Approva → diventa CUSTOMER → tutto sbloccato. POST `/api/cart` da Console con utente NUOVO → 403 confermato.
+
+**Priority**: 🟡 MEDIUM (sicurezza/onboarding)
+
+---
+
+### #6 — Pagina cambio password (utenti credenziali)
+
+Pagina dedicata `/user/changepassword` per il cambio password, accessibile a qualsiasi ruolo autenticato (NUOVO, CUSTOMER, ADMIN). Per utenti Google OAuth (`User.password === null`) la pagina mostra un banner blu "gestisci da Google" + CTA verso myaccount.google.com, senza form.
+
+**Decisioni di design**:
+- Stile pagina/form **uguale a login/register** (gradient slate-900 → slate-800, card centrata). Niente Header.
+- Doppia difesa: `validateAuthFromServerSession([NUOVO, CUSTOMER, ADMIN])` nella page + `validateAuth(...)` nell'endpoint + `/user/*` nel matcher del middleware.
+- Validazione password riusa la stessa policy della registrazione (8+, upper/lower/digit/special).
+- Header link "Cambia password" 🔑: icon-only su mobile + icon+text su desktop nella nav row; voce con label completa nel menu hamburger.
+
+**Task completati**:
+- [x] `app/user/changepassword/page.tsx` (server) — gate auth, fetch `User.password` per branch OAuth/credenziali
+- [x] `app/user/changepassword/ChangePasswordForm.tsx` (client) — 3 campi (current/new/confirm) con stile dark
+- [x] `app/api/user/changepassword/route.ts` (POST) — validateAuth, reject OAuth (400), bcrypt compare current, bcrypt hash new, reject "stessa password"
+- [x] `lib/validators.ts`: nuovo `changePasswordSchema` (current + new con regex completa)
+- [x] `middleware.ts`: aggiunto `/user/*` e `/api/user/*`
+- [x] `components/Header.tsx`: link 🔑 condizionale (solo se autenticato), variante desktop/mobile/hamburger
+
+**File coinvolti**:
+- `app/user/changepassword/{page,ChangePasswordForm}.tsx` (NEW)
+- `app/api/user/changepassword/route.ts` (NEW)
+- `lib/validators.ts`
+- `middleware.ts`
+- `components/Header.tsx`
+
+**Priority**: 🟡 MEDIUM
+
+---
+
+### Polish — PasswordInput riusabile + Authorization Matrix
+
+**PasswordInput** (`components/PasswordInput.tsx`): toggle show/hide persistente con SVG eye/eye-off, in due varianti (`dark` per auth pages, `light` per admin forms). Risolve il problema dell'icona `::-ms-reveal` nativa di Edge che spariva al blur. CSS in `app/globals.css` sopprime `::-ms-reveal` e `::-ms-clear` per evitare doppie icone. Usato in 8 campi password (login + register × 2 + changepassword × 3 + admin CreateUserForm × 2).
+
+**Authorization Matrix** (`docs/AUTHORIZATION_MATRIX.md`): documentata la matrice `(ruolo × pagina/API → risultato)` per GUEST/NUOVO/CUSTOMER/ADMIN. Con header che indica data dello snapshot e sorgenti di verità. `AGENTS.md` aggiornato con la regola "aggiorna la matrice nello stesso commit di un cambio a `validateAuth` / `validateAuthFromServerSession` / matcher / nuove rotte".
+
+**File coinvolti**:
+- `components/PasswordInput.tsx` (NEW)
+- `app/globals.css`
+- `app/auth/login/login-form.tsx`, `app/auth/register/page.tsx`
+- `app/user/changepassword/ChangePasswordForm.tsx`
+- `app/dashboard/admin/users/CreateUserForm.tsx`
+- `docs/AUTHORIZATION_MATRIX.md` (NEW)
+- `AGENTS.md`

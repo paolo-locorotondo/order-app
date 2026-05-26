@@ -21,6 +21,7 @@ interface User {
 const ROLE_COLORS: Record<UserRole, string> = {
   [UserRole.ADMIN]: "bg-purple-100 text-purple-900",
   [UserRole.CUSTOMER]: "bg-slate-100 text-slate-900",
+  [UserRole.NUOVO]: "bg-amber-100 text-amber-900",
 };
 
 export default function UsersTable({ users }: { users: User[] }) {
@@ -28,6 +29,7 @@ export default function UsersTable({ users }: { users: User[] }) {
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [approveLoading, setApproveLoading] = useState<string | null>(null);
 
   const [searchFilter, setSearchFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "ALL">("ALL");
@@ -56,6 +58,27 @@ export default function UsersTable({ users }: { users: User[] }) {
   const closeModal = () => {
     setSelectedUser(undefined);
     setModalOpen(false);
+  };
+
+  const handleApprove = async (id: string) => {
+    setApproveLoading(id);
+    try {
+      const response = await fetch(`/api/admin/users/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: UserRole.CUSTOMER }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data?.error || "Errore durante l'approvazione.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      alert("Errore di rete. Riprova più tardi.");
+    } finally {
+      setApproveLoading(null);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -257,6 +280,16 @@ export default function UsersTable({ users }: { users: User[] }) {
           emptyMessage="Nessun utente trovato."
           renderActions={(user) => (
             <>
+              {user.role === UserRole.NUOVO && (
+                <button
+                  onClick={() => handleApprove(user.id)}
+                  disabled={approveLoading === user.id}
+                  className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                  title="Promuove a CUSTOMER"
+                >
+                  {approveLoading === user.id ? "..." : "Approva"}
+                </button>
+              )}
               <button
                 onClick={() => openModal(user)}
                 className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"

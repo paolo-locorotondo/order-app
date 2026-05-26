@@ -3,16 +3,21 @@ import Header from "@/components/Header";
 import { prisma } from "@/lib/db";
 import CartClient from "./CartClient";
 import AccessDenied from "@/components/AccessDenied";
+import PendingApproval from "@/components/PendingApproval";
 
 interface CartPageProps {
   searchParams?: Promise<{ expired?: string }>;
 }
 
 export default async function CartPage({ searchParams }: CartPageProps) {
-  const auth = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER]);
-  if (!auth?.ok) {
-    return <AccessDenied errorMessage={auth?.errorResponse ?? "Unauthorized"} />;
+  const authAny = await validateAuthFromServerSession([UserRole.ADMIN, UserRole.CUSTOMER, UserRole.NUOVO]);
+  if (!authAny?.ok) {
+    return <AccessDenied errorMessage={authAny?.errorResponse ?? "Unauthorized"} />;
   }
+  if (authAny.session.user.role === UserRole.NUOVO) {
+    return <PendingApproval />;
+  }
+  const auth = authAny;
 
   const items = await prisma.cartItem.findMany({
     where: { userId: auth?.session?.user?.id },
