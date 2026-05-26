@@ -34,63 +34,7 @@
 
 Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1 = primo da fare).
 
-### #1 — Stati ordine in italiano + nuovi stati di pagamento/consegna
-**Stato**: 🔴 TODO  
-**Priority**: 🔴 HIGH (cambia il modello dati e propaga su molti punti UI)
-
-**Descrizione**: Sostituire l'enum `OrderStatus` attuale con la lista italiana, introducendo nuovi stati che separano la dimensione "pagamento" da "consegna":
-
-```
-IN_ATTESA              (era PENDING)
-CONFERMATO             (NUOVO — admin ha accettato l'ordine)
-SPEDITO                (era SHIPPED)
-PAGATO_DA_CONSEGNARE   (NUOVO — pagato in anticipo, da consegnare)
-CONSEGNATO_DA_PAGARE   (NUOVO — consegnato, pagamento alla consegna in attesa)
-CONSEGNATO_E_PAGATO    (era DELIVERED — stato finale "tutto fatto")
-ANNULLATO              (era CANCELLED)
-```
-
-**Mapping migration suggerito**:
-- `PENDING` → `IN_ATTESA`
-- `PAID` → `PAGATO_DA_CONSEGNARE` (default conservativo: sa che è pagato, non sa se ha consegnato)
-- `SHIPPED` → `SPEDITO`
-- `DELIVERED` → `CONSEGNATO_E_PAGATO` (assunzione: tutti i delivered erano completi)
-- `CANCELLED` → `ANNULLATO`
-- `CONFERMATO` non ha equivalente storico → nessun ordine retroattivo
-
-**Task**:
-- [ ] Aggiornare enum `OrderStatus` in `prisma/schema.prisma` con i 7 valori
-- [ ] Migration con `UPDATE` di mapping per gli ordini esistenti (vedi mapping sopra)
-- [ ] Decidere la lifecycle valida (es. da IN_ATTESA si può andare solo a CONFERMATO o ANNULLATO?). Per ora **nessuna validazione di transizione**: l'admin può cambiare a qualunque stato. Da rivalutare quando i flussi saranno più stabili.
-- [ ] `STATUS_COLORS` map in tutti i componenti che mostrano badge (`OrdersTable`, `EditOrderPanel`, `OrderDetailsPanel`, `CustomerOrdersTable`, `order-confirmation`): aggiungere colori per i nuovi stati
-- [ ] Etichette UI italiane: probabilmente uno helper `lib/order-status.ts` con `STATUS_LABELS: Record<OrderStatus, string>` ("In attesa", "Confermato", "Spedito", "Pagato da consegnare", ecc.) per evitare di duplicare gli underscore nelle UI
-- [ ] Aggiornare i pulsanti dei filtri status in `OrdersTable` e `CustomerOrdersTable` (sono auto-generati da `Object.values(OrderStatus)`, ma il count + label vanno verificati)
-- [ ] Aggiornare CSV export ([ExportOrdersButton](app/dashboard/admin/orders/ExportOrdersButton.tsx)) — al momento esce il valore enum raw
-- [ ] Verificare che [api/orders/route.ts](app/api/orders/route.ts) crei l'ordine con `IN_ATTESA` (era `PENDING`)
-- [ ] Verificare [api/admin/orders/route.ts](app/api/admin/orders/route.ts) idem
-
-**File coinvolti**:
-- `prisma/schema.prisma` (enum)
-- `prisma/migrations/<timestamp>_rename_order_status/`
-- `lib/order-status.ts` (NEW) — labels + colors
-- Tutti i componenti che hanno `STATUS_COLORS` o `STATUS_LABELS`
-- Tutti gli endpoint che scrivono `status`
-
----
-
-### #2 — ANNULLATO ripristina inventory? — DECISO: SÌ
-**Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
-**Priority**: 🔴 HIGH (data integrity)
-
-**Decisione**: il transition `status → ANNULLATO` (via `PUT /api/admin/orders/[id]`) deve **ripristinare l'inventory** (increment di `quantity` per ogni `OrderItem`), simmetrico al `DELETE` ordine. L'audit trail si preserva tenendo la riga ordine con `status = ANNULLATO`, non lasciando stock fantasma.
-
-**Task**:
-- [ ] [api/admin/orders/[id]/route.ts](app/api/admin/orders/%5Bid%5D/route.ts) PUT: se la transizione è verso `ANNULLATO` e lo status precedente NON era già `ANNULLATO`, ripristinare l'inventory in transazione (increment per ogni `OrderItem`)
-- [ ] Edge case: se da `ANNULLATO` si torna indietro (es. errore admin), ridecrementare l'inventory (verificando disponibilità prima)
-- [ ] Test E2E manuale: crea ordine, controlla qty, annulla, verifica qty ripristinata
-- [ ] Decidere se servirà mai un bottone "Annulla senza ripristino stock" (per casi di prodotto distrutto/perso). **Per ora NO**: al limite l'admin annulla l'ordine e poi corregge a mano l'inventory dal modulo Inventory.
-
----
+> #1, #2 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
 
 ### #3 — Data consegna come campo dedicato — DECISO: `Product.deliveryDate`
 **Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
@@ -119,12 +63,13 @@ ANNULLATO              (era CANCELLED)
 
 **Descrizione**: allineare le due tabelle dove differiscono. Oggi:
 - **Storico (customer)**: ha filtro per prodotto (select dei prodotti acquistati). Admin no.
-- **Admin**: ha pill colorate per articoli (snapshot `productName` × qty). Customer no — mostra solo il count.
+- **Admin**: ha pill colorate per articoli (snapshot `productName` × qty) e tasto Aggiorna. Customer no — mostra solo il count e non ha tasto refresh.
 
 **Task**:
 - [ ] Aggiungere filtro prodotto a `OrdersTable` admin (select coi prodotti effettivamente presenti negli ordini → derivata da `orders[].items[].productId`, simile a [CustomerOrdersTable](app/dashboard/orders/CustomerOrdersTable.tsx))
 - [ ] Estendere il filtro per prodotto al reset filtri (`filtersActive` + `resetFilters`)
 - [ ] Sostituire la cella "Articoli" di `CustomerOrdersTable` con le pill blu (stesso markup di `OrdersTable`: badge `qty× nome` con flex-wrap)
+- [ ] Aggiungere tasto Aggiorna su `CustomerOrdersTable`
 - [ ] Verificare che CSV export non sia impattato (l'export è solo admin, già OK)
 
 **File coinvolti**:
@@ -226,46 +171,6 @@ ANNULLATO              (era CANCELLED)
 - Refactor progressivo in tutti i client component che fanno fetch
 
 ---
-
-### #8 — Bypass admin sulla disponibilità reale + workflow "block as draft order"
-**Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
-**Priority**: 🔴 HIGH (data integrity)
-
-**Use case che ha rivelato il bug**:
-1. Admin crea Prodotto X con `quantity=0`
-2. Admin va in Admin Inventory, mette `quantity=1`, `reserved=1`
-3. Customer vede shop con disponibilità 1, prova checkout → giustamente errore "Prodotto non disponibile" (perché `quantity - reserved = 0`)
-4. Admin va in Admin Ordini → crea ordine per altro utente, prodotto X qty 1 → **passa** (BUG)
-
-**Causa**: [api/admin/orders/route.ts:80](app/api/admin/orders/route.ts#L80) e [api/admin/orders/[id]/route.ts:114](app/api/admin/orders/%5Bid%5D/route.ts#L114) controllano solo `inventory.quantity`, non `quantity - reserved`. Il customer flow (via `CartReservation`) rispetta `reserved`, l'admin flow no.
-
-**Decisione finale**: opzione **B** = "block as draft order"
-- Si **fixa** il bypass: admin endpoint valida contro `quantity - reserved` (= disponibilità reale, stessa che vede il customer)
-- Per il caso d'uso "admin blocca N pezzi per uso futuro": l'admin **crea direttamente l'ordine in `IN_ATTESA`** (anche per se stesso o un placeholder). L'ordine in IN_ATTESA decrementa `quantity` → il customer non lo vede più nello shop. Quando l'admin sa il destinatario reale, **cambia `Order.userId`** sull'ordine IN_ATTESA. Se cambia idea: annulla l'ordine → per #2 l'inventory si ripristina automaticamente.
-- L'admin flow NON deve usare `CartReservation` (è un meccanismo per coprire il gap temporale del checkout customer multi-step; l'admin fa Submit in un solo step e una transazione atomica basta).
-
-**Task**:
-- [ ] **Fix bypass disponibilità**:
-  - [ ] `POST /api/admin/orders`: cambiare `availableQty = product.inventory?.quantity ?? 0` in `availableQty = (inv.quantity ?? 0) - (inv.reserved ?? 0)` con messaggio errore esplicito che cita entrambi i numeri
-  - [ ] `PUT /api/admin/orders/[id]` (branch items): stessa correzione su `available + oldQty per prodotto` (il calcolo del delta deve sottrarre anche le reservation altrui)
-- [ ] **Cambio userId su ordine esistente** (per il workflow "block now, assign later"):
-  - [ ] `PUT /api/admin/orders/[id]`: accettare `userId` nello schema; se cambia, validare che il nuovo userId esista
-  - [ ] `EditOrderPanel`: aggiungere select "Cliente" editabile (riusare i `users` già passati a `OrdersTable`); mostrare warning "Il cliente attuale è {nome}, vuoi cambiarlo?" prima di salvare
-  - [ ] Considerare se limitare il cambio userId solo agli ordini in stato `IN_ATTESA` (un ordine già `SPEDITO` o `CONSEGNATO_E_PAGATO` non dovrebbe cambiare cliente — sarebbe falsificare un audit trail)
-- [ ] **Visibilità "disponibile reale"**:
-  - [ ] In `Admin Inventory` aggiungere colonna calcolata "Disponibile" = `quantity - reserved`, per dare all'admin la stessa metrica che vede il customer
-  - [ ] In `CreateOrderForm` admin: nello dropdown prodotti mostrare `(disp: quantity - reserved)` invece di `(disp: quantity)`
-- [ ] **Smoke test**:
-  - [ ] Riprodurre lo scenario originale: dopo la fix, POST admin con `reserved >= quantity` deve fallire con messaggio chiaro
-  - [ ] Workflow "block as order": admin crea ordine IN_ATTESA per se stesso, customer in shop non vede stock, admin cambia userId all'ordine, promuove a CONFERMATO → tutto coerente
-- [ ] **(Opzionale, futuro)**: endpoint admin `POST /api/admin/inventory/reset-reservations` per liberare reservation scadute o stale (drift dovuto a cleanup mancante). Già tracciato nel "Backlog non bloccanti — Reservation system".
-
-**File coinvolti**:
-- `app/api/admin/orders/route.ts` (fix validazione)
-- `app/api/admin/orders/[id]/route.ts` (fix validazione + accept userId)
-- `app/dashboard/admin/orders/CreateOrderForm.tsx` (label "disp")
-- `app/dashboard/admin/orders/EditOrderPanel.tsx` (select cliente editabile, gating su status)
-- `app/dashboard/admin/inventory/InventoryTable.tsx` (colonna "Disponibile" calcolata)
 
 ---
 

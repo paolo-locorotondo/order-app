@@ -14,7 +14,7 @@ interface OrderItem {
 
 interface CreateOrderFormProps {
     users: Pick<UserModel, "id" | "name" | "email">[];
-    products: (ProductModel & { inventory: { quantity: number } | null })[];
+    products: (ProductModel & { inventory: { quantity: number; reserved: number } | null })[];
     onCancel?: () => void;
 }
 
@@ -154,7 +154,10 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                     <div className="space-y-2">
                         {items.map((item, index) => {
                             const selectedProduct = products.find((p) => p.id === item.productId);
-                            const available = selectedProduct?.inventory?.quantity ?? 0;
+                            // Disponibilità reale = quantity - reserved (coerente col validatore server)
+                            const available =
+                                (selectedProduct?.inventory?.quantity ?? 0) -
+                                (selectedProduct?.inventory?.reserved ?? 0);
                             return (
                                 <div key={index} className="flex gap-2 items-start">
                                     <select
@@ -164,11 +167,14 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
                                         className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
                                     >
                                         <option value="">Seleziona prodotto...</option>
-                                        {products.map((p) => (
-                                            <option key={p.id} value={p.id} disabled={(p.inventory?.quantity ?? 0) === 0}>
-                                                {p.name} — €{p.price.toFixed(2)} {(p.inventory?.quantity ?? 0) === 0 ? "(esaurito)" : `(disp: ${p.inventory?.quantity})`}
-                                            </option>
-                                        ))}
+                                        {products.map((p) => {
+                                            const disp = (p.inventory?.quantity ?? 0) - (p.inventory?.reserved ?? 0);
+                                            return (
+                                                <option key={p.id} value={p.id} disabled={disp <= 0}>
+                                                    {p.name} — €{p.price.toFixed(2)} {disp <= 0 ? "(esaurito)" : `(disp: ${disp})`}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                     <QuantityStepper
                                         value={item.quantity}

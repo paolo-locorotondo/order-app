@@ -78,11 +78,15 @@ export async function POST(request: NextRequest) {
     if (!product) {
       return NextResponse.json({ error: `Product ${productId} not found` }, { status: 404 });
     }
-    const availableQty = product.inventory?.quantity ?? 0;
+    // Disponibilità reale = quantity - reserved (quote in mano ad altri checkout customer).
+    // L'admin NON può bypassare le reservation altrui.
+    const quantity = product.inventory?.quantity ?? 0;
+    const reserved = product.inventory?.reserved ?? 0;
+    const availableQty = quantity - reserved;
     if (availableQty < totalQty) {
       return NextResponse.json(
         {
-          error: `Superata disponibilità del prodotto ${product.name}. Disponibili: ${availableQty}, richieste: ${totalQty}`,
+          error: `Superata disponibilità del prodotto ${product.name}. Disponibili: ${availableQty} (di ${quantity} totali, ${reserved} riservati), richieste: ${totalQty}`,
         },
         { status: 400 }
       );

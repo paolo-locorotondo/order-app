@@ -28,12 +28,13 @@ const PAYMENT_LABELS: Record<PaymentMethods, string> = {
 
 interface EditOrderPanelProps {
     order: OrderWithDetails;
-    products: (ProductModel & { inventory: { quantity: number } | null })[];
+    products: (ProductModel & { inventory: { quantity: number; reserved: number } | null })[];
+    users: Pick<UserModel, "id" | "name" | "email">[];
     onCancel: () => void;
     onSuccess?: () => void;
 }
 
-export default function EditOrderPanel({ order, products, onCancel, onSuccess }: EditOrderPanelProps) {
+export default function EditOrderPanel({ order, products, users, onCancel, onSuccess }: EditOrderPanelProps) {
     const router = useRouter();
     const [editingStatus, setEditingStatus] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
@@ -45,6 +46,9 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
     const [editingNotes, setEditingNotes] = useState(false);
     const [notesLoading, setNotesLoading] = useState(false);
     const [notesDraft, setNotesDraft] = useState(order.notes ?? "");
+    const [editingUser, setEditingUser] = useState(false);
+    const [userLoading, setUserLoading] = useState(false);
+    const [userDraft, setUserDraft] = useState(order.userId);
     const [items, setItems] = useState<EditableItem[]>(() =>
         order.items.map((it) => ({
             productId: it.productId,
@@ -92,7 +96,9 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
         setItems((prev) => prev.filter((_, i) => i !== index));
 
     const addItem = () => {
-        const firstAvailable = products.find((p) => (p.inventory?.quantity ?? 0) > 0);
+        const firstAvailable = products.find(
+            (p) => ((p.inventory?.quantity ?? 0) - (p.inventory?.reserved ?? 0)) > 0
+        );
         if (!firstAvailable) return;
         setItems((prev) => [
             ...prev,
@@ -127,6 +133,44 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
             }))
         );
         setEditingItems(false);
+        setError(null);
+    };
+
+    const handleSaveUser = async () => {
+        setError(null);
+        if (userDraft === order.userId) {
+            setEditingUser(false);
+            return;
+        }
+        const newUser = users.find((u) => u.id === userDraft);
+        if (!confirm(`Confermi il cambio cliente da "${order.user?.name || order.user?.email}" a "${newUser?.name || newUser?.email}"?`)) {
+            return;
+        }
+        setUserLoading(true);
+        try {
+            const response = await fetch(`/api/admin/orders/${order.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: userDraft }),
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                const errMsg = data.error;
+                throw new Error(typeof errMsg === "object" ? JSON.stringify(errMsg) : errMsg || `Errore ${response.status}`);
+            }
+            setSuccess("Cliente aggiornato.");
+            setEditingUser(false);
+            router.refresh();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Errore sconosciuto");
+        } finally {
+            setUserLoading(false);
+        }
+    };
+
+    const cancelUserEdit = () => {
+        setUserDraft(order.userId);
+        setEditingUser(false);
         setError(null);
     };
 
@@ -221,9 +265,56 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
             <div className="space-y-4">
                 {/* Cliente */}
                 <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</p>
-                    <p className="text-sm font-medium text-slate-800">{order.user?.name || "N/A"}</p>
-                    <p className="text-xs text-slate-500">{order.user?.email}</p>
+                    <div className="mb-1 flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</p>
+                        {!editingUser && order.status === OrderStatus.IN_ATTESA && (
+                            <button
+                                onClick={() => setEditingUser(true)}
+                                className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                            >
+                                Cambia cliente
+                            </button>
+                        )}
+                    </div>
+                    {editingUser ? (
+                        <div className="space-y-2">
+                            <select
+                                value={userDraft}
+                                onChange={(e) => setUserDraft(e.target.value)}
+                                className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                            >
+                                {users.map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.name || u.email} {u.name ? `(${u.email})` : ""}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleSaveUser}
+                                    disabled={userLoading}
+                                    className="flex-1 rounded bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                                >
+                                    {userLoading ? "Salvataggio..." : "Salva cliente"}
+                                </button>
+                                <button
+                                    onClick={cancelUserEdit}
+                                    disabled={userLoading}
+                                    className="flex-1 rounded bg-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-300 disabled:opacity-50"
+                                >
+                                    Annulla
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-500">
+                                ⓘ Il cambio cliente è permesso solo finché l&apos;ordine è {orderStatusLabel(OrderStatus.IN_ATTESA)}.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <p className="text-sm font-medium text-slate-800">{order.user?.name || "N/A"}</p>
+                            <p className="text-xs text-slate-500">{order.user?.email}</p>
+                        </>
+                    )}
                 </div>
 
                 {/* Indirizzo */}
@@ -306,9 +397,11 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
                             {items.map((item, index) => {
                                 const product = products.find((p) => p.id === item.productId);
                                 const original = order.items.find((it) => it.productId === item.productId);
-                                // Available = current free stock + quantity already in this order line.
-                                // (If user reduces qty, it'll be returned; if user adds new line for an existing product, deltas net out server-side.)
-                                const baseAvailable = product?.inventory?.quantity ?? 0;
+                                // Available = current free stock (quantity - reserved) + qty già allocata a questo ordine.
+                                // (Se l'utente riduce qty, torna stock; se aggiunge una riga sullo stesso prodotto, i delta netto-quotano server-side.)
+                                const baseAvailable =
+                                    (product?.inventory?.quantity ?? 0) -
+                                    (product?.inventory?.reserved ?? 0);
                                 const max = baseAvailable + (original?.quantity ?? 0);
                                 return (
                                     <div key={index} className="rounded border border-slate-200 bg-white p-2 space-y-2">
@@ -317,11 +410,14 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
                                             onChange={(e) => onProductChange(index, e.target.value)}
                                             className="w-full rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm"
                                         >
-                                            {products.map((p) => (
-                                                <option key={p.id} value={p.id} disabled={(p.inventory?.quantity ?? 0) === 0 && p.id !== item.productId}>
-                                                    {p.name} — €{p.price.toFixed(2)} (disp: {p.inventory?.quantity ?? 0})
-                                                </option>
-                                            ))}
+                                            {products.map((p) => {
+                                                const disp = (p.inventory?.quantity ?? 0) - (p.inventory?.reserved ?? 0);
+                                                return (
+                                                    <option key={p.id} value={p.id} disabled={disp <= 0 && p.id !== item.productId}>
+                                                        {p.name} — €{p.price.toFixed(2)} (disp: {disp})
+                                                    </option>
+                                                );
+                                            })}
                                         </select>
                                         <input
                                             type="text"

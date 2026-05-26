@@ -14,6 +14,7 @@ const updateOrderSchema = z.object({
     OrderStatus.CONSEGNATO_E_PAGATO,
     OrderStatus.ANNULLATO,
   ]).optional(),
+  userId: z.string().min(1).optional(),
   address: z
     .string()
     .refine((v) => v.length === 0 || v.length >= 10, "Indirizzo deve essere almeno 10 caratteri")
@@ -84,6 +85,43 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
   }
 
   const newItems = parsed.data.items;
+  const newStatus = parsed.data.status;
+  const wasAnnullato = existing.status === OrderStatus.ANNULLATO;
+  const willBeAnnullato = newStatus === OrderStatus.ANNULLATO;
+  const isCancelTransition = !wasAnnullato && willBeAnnullato;
+  const isUncancelTransition = wasAnnullato && newStatus !== undefined && !willBeAnnullato;
+
+  // Cambio cliente (userId): consentito solo se l'ordine è in IN_ATTESA. Per ordini già
+  // promossi a stati successivi (CONFERMATO/SPEDITO/...) cambiare il cliente sarebbe
+  // falsificare l'audit trail.
+  const isUserIdChange = parsed.data.userId !== undefined && parsed.data.userId !== existing.userId;
+  if (isUserIdChange) {
+    if (existing.status !== OrderStatus.IN_ATTESA) {
+      return NextResponse.json(
+        { error: `Il cliente di un ordine può essere cambiato solo se lo stato è "${OrderStatus.IN_ATTESA}". Stato attuale: "${existing.status}".` },
+        { status: 400 }
+      );
+    }
+    const targetUser = await prisma.user.findUnique({ where: { id: parsed.data.userId! } });
+    if (!targetUser) {
+      return NextResponse.json({ error: "Nuovo cliente non trovato" }, { status: 404 });
+    }
+  }
+
+  // Edge case: combinazioni proibite. L'admin deve fare due chiamate separate per
+  // mantenere la logica di inventory pulita e prevedibile.
+  if (newItems && wasAnnullato) {
+    return NextResponse.json(
+      { error: "Impossibile modificare gli articoli di un ordine annullato. Riattivalo prima cambiando lo status." },
+      { status: 400 }
+    );
+  }
+  if (newItems && isCancelTransition) {
+    return NextResponse.json(
+      { error: "Impossibile modificare gli articoli e annullare l'ordine nella stessa operazione. Prima salva gli articoli, poi annulla." },
+      { status: 400 }
+    );
+  }
 
   // Se arrivano items: serve transazione con delta inventory + replace OrderItem rows.
   if (newItems) {
@@ -120,11 +158,15 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       if (!product) {
         return NextResponse.json({ error: `Prodotto ${productId} non trovato` }, { status: 404 });
       }
-      const available = inv?.quantity ?? 0;
+      // Disponibilità reale = quantity - reserved. L'admin NON può consumare lo stock
+      // riservato dai cart checkout di altri customer.
+      const invQuantity = inv?.quantity ?? 0;
+      const invReserved = inv?.reserved ?? 0;
+      const available = invQuantity - invReserved;
       if (available < delta) {
         return NextResponse.json(
           {
-            error: `Superata disponibilità del prodotto ${product.name}. Disponibili: ${available}, richiesti in più: ${delta}`,
+            error: `Superata disponibilità del prodotto ${product.name}. Disponibili: ${available} (di ${invQuantity} totali, ${invReserved} riservati), richiesti in più: ${delta}`,
           },
           { status: 400 }
         );
@@ -153,6 +195,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
           // Forza il bump di updatedAt: con sole nested writes Prisma non emette UPDATE sul parent.
           updatedAt: new Date(),
           ...(parsed.data.status && { status: parsed.data.status }),
+          ...(isUserIdChange && { userId: parsed.data.userId }),
           ...(parsed.data.address && { address: parsed.data.address }),
           ...(parsed.data.notes !== undefined && { notes: parsed.data.notes || null }),
           ...(parsed.data.paymentMethod && { paymentMethod: parsed.data.paymentMethod }),
@@ -172,15 +215,81 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     return NextResponse.json({ data: updated });
   }
 
-  // Solo campi scalari.
+  // Solo campi scalari. Se la transizione coinvolge ANNULLATO, anche l'inventory cambia.
+  const scalarData = {
+    ...(parsed.data.status && { status: parsed.data.status }),
+    ...(isUserIdChange && { userId: parsed.data.userId }),
+    ...(parsed.data.address && { address: parsed.data.address }),
+    ...(parsed.data.notes !== undefined && { notes: parsed.data.notes || null }),
+    ...(parsed.data.paymentMethod && { paymentMethod: parsed.data.paymentMethod }),
+  };
+
+  // Aggrega le quantità dell'ordine esistente per productId (riga ripetuta = somma).
+  const orderQtyByProduct = new Map<string, number>();
+  for (const it of existing.items) {
+    orderQtyByProduct.set(it.productId, (orderQtyByProduct.get(it.productId) ?? 0) + it.quantity);
+  }
+
+  if (isCancelTransition) {
+    // Annullamento: ripristina inventory (increment quantity) + applica scalar in transazione.
+    const updated = await prisma.$transaction(async (tx) => {
+      for (const [productId, totalQty] of orderQtyByProduct) {
+        await tx.inventory.update({
+          where: { productId },
+          data: { quantity: { increment: totalQty } },
+        });
+      }
+      return tx.order.update({
+        where: { id: params.id },
+        data: scalarData,
+        include: { items: { include: { product: true } }, user: true },
+      });
+    });
+    return NextResponse.json({ data: updated });
+  }
+
+  if (isUncancelTransition) {
+    // Riattivazione: ridecrementa inventory dopo aver verificato la disponibilità.
+    const productIds = Array.from(orderQtyByProduct.keys());
+    const inventories = await prisma.inventory.findMany({ where: { productId: { in: productIds } } });
+    const products = await prisma.product.findMany({ where: { id: { in: productIds } } });
+
+    for (const [productId, totalQty] of orderQtyByProduct) {
+      const inv = inventories.find((i) => i.productId === productId);
+      const product = products.find((p) => p.id === productId);
+      const invQuantity = inv?.quantity ?? 0;
+      const invReserved = inv?.reserved ?? 0;
+      const available = invQuantity - invReserved;
+      if (available < totalQty) {
+        return NextResponse.json(
+          {
+            error: `Impossibile riattivare l'ordine: disponibilità insufficiente per ${product?.name ?? productId}. Disponibili: ${available} (di ${invQuantity} totali, ${invReserved} riservati), richiesti: ${totalQty}`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      for (const [productId, totalQty] of orderQtyByProduct) {
+        await tx.inventory.update({
+          where: { productId },
+          data: { quantity: { decrement: totalQty } },
+        });
+      }
+      return tx.order.update({
+        where: { id: params.id },
+        data: scalarData,
+        include: { items: { include: { product: true } }, user: true },
+      });
+    });
+    return NextResponse.json({ data: updated });
+  }
+
+  // Nessuna transizione che tocchi l'inventory: update scalare semplice.
   const updated = await prisma.order.update({
     where: { id: params.id },
-    data: {
-      ...(parsed.data.status && { status: parsed.data.status }),
-      ...(parsed.data.address && { address: parsed.data.address }),
-      ...(parsed.data.notes !== undefined && { notes: parsed.data.notes || null }),
-      ...(parsed.data.paymentMethod && { paymentMethod: parsed.data.paymentMethod }),
-    },
+    data: scalarData,
     include: { items: { include: { product: true } }, user: true },
   });
 

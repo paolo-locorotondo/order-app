@@ -27,7 +27,7 @@ type SortDir = "asc" | "desc";
 interface OrdersTableProps {
     orders: OrderWithDetails[];
     users: Pick<UserModel, "id" | "name" | "email">[];
-    products: (ProductModel & { inventory: { quantity: number } | null })[];
+    products: (ProductModel & { inventory: { quantity: number; reserved: number } | null })[];
 }
 
 export default function OrdersTable({ orders, users, products }: OrdersTableProps) {
@@ -441,7 +441,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 title={selectedOrder ? `Gestisci ordine #${selectedOrder.id}` : "Gestisci nuovo ordine"}
             >
                 {selectedOrder ? (
-                    <EditOrderPanel order={selectedOrder} products={products} onCancel={closeModal} onSuccess={undefined} />
+                    <EditOrderPanel order={selectedOrder} products={products} users={users} onCancel={closeModal} onSuccess={undefined} />
                 ) : (
                     <CreateOrderForm users={users} products={products} />
                 )}

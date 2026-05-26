@@ -52,6 +52,22 @@ export default function InventoryTable({ inventory }: { inventory: InventoryWith
             cell: (i) => i.reserved,
         },
         {
+            key: "available",
+            header: "Disponibile",
+            cell: (i) => {
+                const available = i.quantity - i.reserved;
+                return (
+                    <span
+                        className={`rounded px-2 py-1 text-xs font-medium ${
+                            available > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                        }`}
+                    >
+                        {available}
+                    </span>
+                );
+            },
+        },
+        {
             key: "reorderPoint",
             header: "Reorder Point",
             cell: (i) => i.reorderPoint,
