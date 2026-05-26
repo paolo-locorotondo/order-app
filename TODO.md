@@ -34,28 +34,7 @@
 
 Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1 = primo da fare).
 
-> #1, #2, #4, #5, #6, #7 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
-
-### #3 — Data consegna come campo dedicato — DECISO: `Product.deliveryDate`
-**Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
-**Priority**: 🟡 MEDIUM
-
-**Decisione**: aggiungere `deliveryDate DateTime?` (opzionale) sulla tabella `Product`, NON su `Order`. Motivazione:
-- Il prezzo di un articolo cambia per data di consegna → la data è un attributo intrinseco del Product (variant), non dell'Order che lo ordina.
-- Con il modello attuale "un Product per (articolo, data)" la data esplicita rimpiazza la convenzione del nome (`"Prodotto X 28-05-2026"`) e abilita filtri/ordinamento tipizzati.
-- Quando il catalogo crescerà valuteremo un refactor a Product master + ProductVariant (rimandato come backlog).
-
-**Task**:
-- [ ] Migration Prisma: `Product.deliveryDate DateTime?`
-- [ ] Aggiornare `ProductForm` in `app/dashboard/admin/products/ProductForm.tsx`: `<input type="date">` con label "Data di consegna (opzionale)"
-- [ ] Endpoint `POST /api/products` e `PUT /api/products/[id]`: accettare e persistere `deliveryDate`
-- [ ] Validator `lib/validators.ts`: aggiungere campo a `productSchema`
-- [ ] Aggiungere colonna "Data consegna" in `ProductsTable` (admin), formattata `DD/MM/YYYY`, sortable
-- [ ] Aggiungere filtro range data in `ProductsTable` (riusare `FiltersAccordion` + pattern già usato in OrdersTable)
-- [ ] Decidere se mostrarla anche nello shop (probabile sì, sotto il nome). Da confermare prima di implementare lato customer.
-- [ ] Backfill manuale dei prodotti esistenti se hanno la data nel nome (es. `"Prodotto X 28-05-2026"` → estrarre data, ripulire nome). Opzionale, da decidere caso per caso.
-
----
+> #1, #2, #3, #4, #5, #6, #7 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
 
 ### #9 — In Admin Utenti Tasto Disabilita tutti gli utenti
 **Stato**: 🔴 TODO  

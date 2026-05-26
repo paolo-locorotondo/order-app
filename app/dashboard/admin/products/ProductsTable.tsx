@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ProductForm, { ProductFormData } from "./ProductForm";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
+import FiltersAccordion from "@/components/FiltersAccordion";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 import { getProductImage } from "@/lib/product-image";
 import { apiFetch } from "@/lib/fetch";
@@ -13,6 +14,9 @@ import { apiFetch } from "@/lib/fetch";
 interface ProductWithInventory extends ProductModel {
   inventory: InventoryModel | null;
 }
+
+type SortField = "name" | "price" | "deliveryDate";
+type SortDir = "asc" | "desc";
 
 export default function ProductsTable({ products }: { products: ProductWithInventory[] }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -26,6 +30,65 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   // ne forza il remount con stato vuoto (reset dei campi).
   const [createResetCount, setCreateResetCount] = useState(0);
   const router = useRouter();
+
+  const [deliveryFrom, setDeliveryFrom] = useState<string>("");
+  const [deliveryTo, setDeliveryTo] = useState<string>("");
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const filtersActive = deliveryFrom !== "" || deliveryTo !== "";
+  const resetFilters = () => {
+    setDeliveryFrom("");
+    setDeliveryTo("");
+  };
+
+  const handleSort = (key: string) => {
+    const field = key as SortField;
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  };
+
+  const processedProducts = useMemo(() => {
+    let result = [...products];
+
+    if (deliveryFrom || deliveryTo) {
+      const fromTs = deliveryFrom ? new Date(deliveryFrom + "T00:00:00").getTime() : -Infinity;
+      const toTs = deliveryTo ? new Date(deliveryTo + "T23:59:59.999").getTime() : Infinity;
+      result = result.filter((p) => {
+        if (!p.deliveryDate) return false; // i prodotti senza data sono fuori dal range
+        const t = new Date(p.deliveryDate).getTime();
+        return t >= fromTs && t <= toTs;
+      });
+    }
+
+    if (sortField) {
+      result.sort((a, b) => {
+        let valA: number | string;
+        let valB: number | string;
+        if (sortField === "deliveryDate") {
+          // I prodotti senza data finiscono in fondo a prescindere dalla direzione,
+          // così il sort non li mescola con valori reali.
+          valA = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+          valB = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+        } else if (sortField === "price") {
+          valA = a.price;
+          valB = b.price;
+        } else {
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+        }
+        if (valA < valB) return sortDir === "asc" ? -1 : 1;
+        if (valA > valB) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [products, deliveryFrom, deliveryTo, sortField, sortDir]);
 
   const openModal = (product?: ProductWithInventory) => {
     setSelectedProduct(product);
@@ -60,6 +123,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
             price: formData.price,
             sku: formData.sku,
             image: formData.image,
+            deliveryDate: formData.deliveryDate,
             ...(method === "POST" && { quantity: formData.quantity }),
           }),
         });
@@ -138,6 +202,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
     {
       key: "name",
       header: "Nome",
+      sortable: true,
       cell: (p) => <span className="font-medium">{p.name}</span>,
     },
     {
@@ -149,7 +214,21 @@ export default function ProductsTable({ products }: { products: ProductWithInven
     {
       key: "price",
       header: "Prezzo",
+      sortable: true,
       cell: (p) => `€${p.price.toFixed(2)}`,
+    },
+    {
+      key: "deliveryDate",
+      header: "Data consegna",
+      sortable: true,
+      cell: (p) =>
+        p.deliveryDate ? (
+          <span className="text-sm text-slate-700">
+            {new Date(p.deliveryDate).toLocaleDateString("it-IT")}
+          </span>
+        ) : (
+          <span className="text-xs italic text-slate-400">—</span>
+        ),
     },
     {
       key: "stock",
@@ -181,12 +260,45 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         <RefreshButton />
       </div>
 
+      {/* Filtri — accordion */}
+      <div className="mb-4">
+        <FiltersAccordion
+          summary={
+            processedProducts.length !== products.length
+              ? `(${processedProducts.length} di ${products.length} prodotti)`
+              : undefined
+          }
+          onReset={resetFilters}
+          canReset={filtersActive}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-slate-500">Data consegna — Da</label>
+            <input
+              type="date"
+              value={deliveryFrom}
+              onChange={(e) => setDeliveryFrom(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+            />
+            <label className="text-xs text-slate-500">A</label>
+            <input
+              type="date"
+              value={deliveryTo}
+              onChange={(e) => setDeliveryTo(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+            />
+          </div>
+        </FiltersAccordion>
+      </div>
+
       <AdminTable
-        rows={products}
+        rows={processedProducts}
         columns={columns}
         rowKey={(p) => p.id}
         onRowClick={(p) => openModal(p)}
         emptyMessage="Nessun prodotto. Creane uno con il pulsante qui sopra."
+        sortField={sortField ?? undefined}
+        sortDir={sortDir}
+        onSort={handleSort}
         renderActions={(product) => (
           <>
             <button

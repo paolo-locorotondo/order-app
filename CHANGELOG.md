@@ -575,3 +575,39 @@ Wrapper `apiFetch` + overlay globale per dare feedback visivo e prevenire double
 - 8 client component refactored (vedi sopra)
 
 **Priority**: 🟢 LOW (UX polish)
+
+---
+
+### #3 — Data consegna come campo dedicato (`Product.deliveryDate`)
+
+Aggiunto il campo opzionale `deliveryDate DateTime?` a `Product`, esposto sia in admin (CRUD prodotti) sia in shop (lista, dettaglio, carrello, checkout). Sostituisce gradualmente la convenzione di mettere la data nel nome del prodotto (es. *"Prodotto X 28-05-2026"*) — la nuova colonna abilita filtri/ordinamento tipizzati.
+
+**Decisioni**:
+- Campo su `Product`, non su `Order`. Il prezzo dipende dalla data di consegna → la data è un attributo della *variant* (Product), non dell'Order.
+- Migration **non distruttiva**: niente backfill dei prodotti seedati con la data nel nome. L'admin la popolerà a mano o (in futuro) con uno script ad-hoc.
+- Lato shop la data appare sotto al nome del prodotto in: lista (`/shop`), dettaglio (`/shop/products/[id]`), carrello e checkout (via `CartItemsList`), e order-confirmation. Su order-confirmation il dato proviene da un join con `Product` (`OrderItem` non ha lo snapshot): l'utente vede la data **corrente** del prodotto. Se l'admin la cambia retroattivamente l'order-confirmation rifletterà il nuovo valore — accettato per MVP. Lo snapshot dedicato (`OrderItem.deliveryDate`) è rimandato come task futuro se servirà preservare il valore al momento dell'ordine.
+- Sortable + filtro range nella tabella admin. Pattern coerente con `OrdersTable`: i prodotti senza data sono fuori dal range del filtro e finiscono in fondo all'ordinamento per data.
+
+**Task completati**:
+- [x] Migration `20260526200000_add_product_delivery_date` — `ALTER TABLE "Product" ADD COLUMN "deliveryDate" TIMESTAMP(3)`
+- [x] `prisma/schema.prisma` — campo `deliveryDate DateTime?` su Product
+- [x] `lib/validators.ts` — `productSchema.deliveryDate` accetta `string | null`, transforma in `Date | null` (empty/invalid → null)
+- [x] `POST /api/products` e `PUT /api/products/[id]` — persistono `deliveryDate`
+- [x] `ProductForm` — `<input type="date">` "Data di consegna (opzionale)" + helper `toDateInputValue` per inizializzare da `Date | string | null`
+- [x] `ProductsTable` admin — colonna "Data consegna" sortable (DD/MM/YYYY o "—" se null), `FiltersAccordion` con range Da/A, sort funzionante anche per nome e prezzo (gratis dal refactor)
+- [x] Shop list/detail (`/shop`, `/shop/products/[id]`) — "Consegna: DD/MM/YYYY" sotto al nome del prodotto se presente
+- [x] `CartItemsList` — stessa riga "Consegna: …" sotto al nome (visibile in `/shop/cart` e `/shop/checkout` via componente condiviso)
+- [x] `/shop/order-confirmation/[id]` — "Consegna: …" sotto al `productName`, joinando con `Product.deliveryDate` (vedi nota sullo snapshot)
+
+**File coinvolti**:
+- `prisma/schema.prisma`, `prisma/migrations/20260526200000_add_product_delivery_date/migration.sql`
+- `lib/validators.ts`
+- `app/api/products/route.ts`, `app/api/products/[id]/route.ts`
+- `app/dashboard/admin/products/{ProductForm,ProductsTable}.tsx`
+- `app/shop/page.tsx`, `app/shop/products/[id]/page.tsx`
+- `app/shop/_components/CartItemsList.tsx`
+- `app/shop/cart/CartClient.tsx`, `app/shop/checkout/CheckoutClient.tsx` (estesi i tipi locali per propagare il nuovo campo)
+- `app/shop/order-confirmation/[id]/page.tsx` (join `Product.deliveryDate`)
+
+**Priority**: 🟡 MEDIUM
+

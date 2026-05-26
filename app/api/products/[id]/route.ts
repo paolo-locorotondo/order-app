@@ -53,6 +53,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       price: parsed.data.price,
       sku,
       image: parsed.data.image,
+      deliveryDate: parsed.data.deliveryDate,
     },
     include: { inventory: true },
   });

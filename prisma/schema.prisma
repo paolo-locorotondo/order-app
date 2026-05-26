@@ -45,6 +45,7 @@ model Product {
   price       Float
   sku         String
   image       String?
+  deliveryDate DateTime? // Data di consegna prevista; il prezzo è funzione di questa data.
   inventory   Inventory?
   orderItems  OrderItem[]
   cartItems   CartItem[]

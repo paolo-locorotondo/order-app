@@ -54,6 +54,11 @@ export default async function ProductPage({ params }: Props) {
           </div>
           <div className="flex-1 rounded border bg-white p-6 shadow-sm">
             <h1 className="text-2xl font-bold">{product.name}</h1>
+            {product.deliveryDate && (
+              <p className="mt-1 text-sm text-slate-500">
+                Consegna: {new Date(product.deliveryDate).toLocaleDateString("it-IT")}
+              </p>
+            )}
             <p className="text-slate-600">{product.description ?? "Nessuna descrizione"}</p>
             <p className="mt-2 text-lg font-semibold">€{product.price.toFixed(2)}</p>
             <p className="text-sm text-slate-600">

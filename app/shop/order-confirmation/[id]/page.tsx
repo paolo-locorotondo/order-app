@@ -17,10 +17,13 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
     );
   }
 
-  // Fetch ordine con Prisma — verifica che appartenga all'utente (o che sia admin)
+  // Fetch ordine con Prisma — verifica che appartenga all'utente (o che sia admin).
+  // Includiamo `product` solo per leggere `deliveryDate` (non snapshottata su OrderItem):
+  // mostra la data *corrente* del prodotto. Se l'admin l'ha cambiata dopo l'ordine,
+  // l'utente vedrà il nuovo valore — accettato per MVP, valutare snapshot quando servirà.
   const order = await prisma.order.findUnique({
     where: { id },
-    include: { items: true },
+    include: { items: { include: { product: { select: { deliveryDate: true } } } } },
   });
 
   // Ordine non trovato
@@ -89,6 +92,11 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
                   <div key={item.id} className="flex items-center justify-between border-b pb-4 last:border-b-0">
                     <div>
                       <p className="font-medium">{item.productName}</p>
+                      {item.product?.deliveryDate && (
+                        <p className="text-xs text-slate-500">
+                          Consegna: {new Date(item.product.deliveryDate).toLocaleDateString("it-IT")}
+                        </p>
+                      )}
                       <p className="text-sm text-slate-600">Quantità: {item.quantity}</p>
                     </div>
                     <div className="text-right">

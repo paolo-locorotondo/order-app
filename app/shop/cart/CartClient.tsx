@@ -14,6 +14,7 @@ interface CartItem {
     name: string;
     price: number;
     image: string | null;
+    deliveryDate: Date | string | null;
   };
   quantity: number;
 }

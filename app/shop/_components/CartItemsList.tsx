@@ -11,6 +11,7 @@ interface CartItem {
     name: string;
     price: number;
     image?: string | null;
+    deliveryDate?: Date | string | null;
   };
   quantity: number;
 }
@@ -65,6 +66,11 @@ export default function CartItemsList({ items, onRemove, onUpdateQty, readOnly =
               />
               <div className="min-w-0 flex-1">
                 <h3 className="truncate font-semibold">{item.product.name}</h3>
+                {item.product.deliveryDate && (
+                  <p className="text-xs text-slate-500">
+                    Consegna: {new Date(item.product.deliveryDate).toLocaleDateString("it-IT")}
+                  </p>
+                )}
                 <p className="text-sm text-slate-600">€{item.product.price.toFixed(2)}</p>
               </div>
             </div>

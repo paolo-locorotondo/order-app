@@ -19,6 +19,16 @@ export const productSchema = z.object({
   price: priceSchema,
   sku: z.string().optional(),
   image: z.string().optional(),
+  // Data di consegna prevista. Il client invia stringhe ISO (es. "2026-05-28")
+  // o l'empty string per "non specificata"; null e undefined entrambi → DB NULL.
+  deliveryDate: z
+    .union([z.string(), z.null()])
+    .optional()
+    .transform((v) => {
+      if (v == null || v === "") return null;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }),
 });
 
 export const cartItemSchema = z.object({

@@ -55,6 +55,11 @@ export default async function ShopPage() {
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <h2 className="text-xl font-semibold">{product.name}</h2>
+                {product.deliveryDate && (
+                  <p className="text-xs text-slate-500">
+                    Consegna: {new Date(product.deliveryDate).toLocaleDateString("it-IT")}
+                  </p>
+                )}
                 <p className="text-slate-600">{product.description ?? "Nessuna descrizione"}</p>
                 <p className="mt-2 font-bold">€{product.price.toFixed(2)}</p>
                 <p className="text-sm text-slate-500">Disponibilità: {product.inventory?.quantity ?? 0}</p>

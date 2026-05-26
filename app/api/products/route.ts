@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         price: parsed.data.price,
         sku,
         image: parsed.data.image,
+        deliveryDate: parsed.data.deliveryDate,
         inventory: {
           create: {
             quantity,

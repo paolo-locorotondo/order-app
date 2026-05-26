@@ -21,7 +21,20 @@ export interface ProductFormData {
   sku: string;
   image: string;
   quantity: number;
+  deliveryDate: string; // formato "yyyy-mm-dd" (compatibile con <input type="date">), "" = non specificata
 }
+
+// Converte un valore Date (da Prisma) o stringa ISO in "yyyy-mm-dd" locale.
+// Ritorna "" se assente o non valido.
+const toDateInputValue = (v: Date | string | null | undefined): string => {
+  if (!v) return "";
+  const d = typeof v === "string" ? new Date(v) : v;
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
 export default function ProductForm({ product, onSubmit, loading = false, error, success }: ProductFormProps) {
   const [formData, setFormData] = useState<ProductFormData>({
@@ -32,6 +45,7 @@ export default function ProductForm({ product, onSubmit, loading = false, error,
     sku: product?.sku || "",
     image: product?.image || "",
     quantity: product?.inventory?.quantity || 0,
+    deliveryDate: toDateInputValue(product?.deliveryDate),
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -197,6 +211,22 @@ export default function ProductForm({ product, onSubmit, loading = false, error,
             disabled={loading}
           />
         </div>
+      </div>
+
+      {/* Data di consegna */}
+      <div>
+        <label htmlFor="deliveryDate" className="block text-sm font-medium text-slate-700">
+          Data di consegna (opzionale)
+        </label>
+        <input
+          type="date"
+          id="deliveryDate"
+          name="deliveryDate"
+          value={formData.deliveryDate}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={loading}
+        />
       </div>
 
       {/* Immagine URL o path relativo */}
