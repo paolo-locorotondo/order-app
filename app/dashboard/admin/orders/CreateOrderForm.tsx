@@ -15,10 +15,9 @@ interface OrderItem {
 interface CreateOrderFormProps {
     users: Pick<UserModel, "id" | "name" | "email">[];
     products: (ProductModel & { inventory: { quantity: number; reserved: number } | null })[];
-    onCancel?: () => void;
 }
 
-export default function CreateOrderForm({ users, products, onCancel }: CreateOrderFormProps) {
+export default function CreateOrderForm({ users, products }: CreateOrderFormProps) {
     const router = useRouter();
     const [userId, setUserId] = useState("");
     const [address, setAddress] = useState("");
@@ -90,14 +89,7 @@ export default function CreateOrderForm({ users, products, onCancel }: CreateOrd
 
     return (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-base font-bold text-slate-800">Nuovo Ordine</h2>
-                {onCancel && (
-                    <button onClick={onCancel} className="text-sm text-slate-400 hover:text-slate-600">
-                        ✕ Annulla
-                    </button>
-                )}
-            </div>
+            <h2 className="mb-4 text-base font-bold text-slate-800">Nuovo Ordine</h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Utente */}

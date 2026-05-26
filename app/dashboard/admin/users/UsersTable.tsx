@@ -334,7 +334,6 @@ export default function UsersTable({ users }: { users: User[] }) {
         <CreateUserForm
           key={selectedUser?.id ?? "new"}
           user={selectedUser}
-          onCancel={closeModal}
           onSuccess={undefined}
         />
       </AdminModal>

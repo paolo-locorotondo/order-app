@@ -1,11 +1,22 @@
 import { PaymentMethods, UserRole } from "@/app/generated/prisma/enums";
 import { z } from "zod";
 
+// Single source of truth per i prezzi (Product, OrderItem, ecc.).
+// DB è Float (no constraint), quindi imponiamo qui: ≥ 0 e max 2 decimali.
+// Il refine confronta `n*100` con il suo arrotondato a meno di 1e-6
+// per tollerare i drift IEEE 754 (es. 19.99*100 = 1998.99999...).
+export const priceSchema = z
+  .number()
+  .nonnegative("Prezzo non può essere negativo")
+  .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6, {
+    message: "Massimo 2 decimali",
+  });
+
 export const productSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().optional(),
-  price: z.number().positive(),
+  price: priceSchema,
   sku: z.string().optional(),
   image: z.string().optional(),
 });

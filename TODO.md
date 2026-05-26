@@ -106,11 +106,17 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 
 ---
 
+### #9 — In Admin Utenti Tasto Disabilita tutti gli utenti
+**Stato**: 🔴 TODO  
+**Priority**: 🟢 LOW (UX, non bloccante)
+
+**Descrizione**: Nella pagina Gestione Utenti sarebbe comodo poter selezionare tutti o alcuni utenti e cambiare per tutti il ruolo a NUOVO o altro.
+
 ---
 
 ## 🚀 Next Steps
 
-### 5. Email Notifications (SendGrid)
+### Step 5. Email Notifications (SendGrid)
 **Stato**: 🔴 TODO  
 **Descrizione**: Implementare invio email automatiche (conferme ordini, notifiche, etc.)
 
@@ -131,7 +137,7 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 
 ---
 
-### 6. Payment Integration (Stripe)
+### Step 6. Payment Integration (Stripe)
 **Stato**: 🔴 TODO  
 **Descrizione**: Implementare pagamenti tramite Stripe
 
@@ -145,7 +151,7 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 
 ---
 
-### 7. Reports & Analytics (Dashboard Admin)
+### Step 7. Reports & Analytics (Dashboard Admin)
 **Stato**: 🔴 TODO  
 **Descrizione**: Aggiungere report e analytics per admin
 
@@ -157,7 +163,7 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 
 ---
 
-### 8. Upload immagini prodotti via Supabase Storage
+### Step 8. Upload immagini prodotti via Supabase Storage
 **Stato**: 🔴 TODO
 **Descrizione**: Sostituire l'attuale input testuale `image: string` (URL) nel form prodotto con un vero upload di file gestito da Supabase Storage. Oggi l'admin deve incollare un URL pubblico esterno; vogliamo che possa caricare un'immagine dal proprio device, salvarla su Supabase, e popolare automaticamente il campo `Product.image` con la URL pubblica restituita dallo storage.
 
@@ -201,22 +207,6 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 ---
 
 ## Bug Fix & Improvements
-
-### **MIGLIORAMENTO #13**: Input prezzo prodotto scomodo su mobile
-- **Descrizione**: In "Admin Prodotti" il form Crea/Modifica usa `<input type="number">` per il prezzo. Su mobile la tastiera numerica non gestisce bene i decimali (varia per OS), il pulsante stepper occupa spazio, e accidentalmente lo scroll della pagina può modificare il valore. Trovare un componente più ergonomico.
-- **Task**:
-  - [ ] Valutare alternativa: `<input type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]+">` con parsing manuale + locale italiano (virgola come separatore)
-  - [ ] In alternativa: libreria tipo `react-number-format` o componente custom con maschera (€ prefix, 2 decimali fissi)
-  - [ ] Verificare comportamento su iOS Safari + Android Chrome
-  - [ ] Disabilitare scroll-to-change valore (`onWheel={(e) => e.currentTarget.blur()}`)
-  - [ ] Validazione: numero positivo, max 2 decimali
-- **File coinvolti**:
-  - `app/dashboard/admin/products/ProductForm.tsx`
-  - eventuale nuovo `components/PriceInput.tsx` se l'estrazione ha senso
-- **Priority**: 🟢 LOW (UX polish, non bloccante)
-- **Stato**: 🔴 TODO
-
----
 
 ### **MIGLIORAMENTO #14**: Stripe come opzione disabilitata nei metodi di pagamento
 - **Descrizione**: La select del metodo di pagamento (sia checkout customer sia create-order admin) mostra `CASH | PAYPAL | STRIPE` tutti selezionabili, ma Stripe non è ancora integrato (vedi Next Step #6). Vogliamo che Stripe appaia nella lista (per "telegrafare" la prossima feature) ma sia **disabilitato** finché l'integrazione non è pronta.

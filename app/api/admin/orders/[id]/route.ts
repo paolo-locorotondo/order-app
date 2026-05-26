@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
+import { priceSchema } from "@/lib/validators";
 import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 
 const updateOrderSchema = z.object({
@@ -27,7 +28,7 @@ const updateOrderSchema = z.object({
         productId: z.string().min(1),
         productName: z.string().min(1, "Nome prodotto obbligatorio"),
         quantity: z.number().int().min(1, "Quantità deve essere almeno 1"),
-        price: z.number().min(0, "Prezzo non può essere negativo"),
+        price: priceSchema,
       })
     )
     .min(1, "Almeno un articolo è richiesto")

@@ -441,7 +441,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 title={selectedOrder ? `Gestisci ordine #${selectedOrder.id}` : "Gestisci nuovo ordine"}
             >
                 {selectedOrder ? (
-                    <EditOrderPanel order={selectedOrder} products={products} users={users} onCancel={closeModal} onSuccess={undefined} />
+                    <EditOrderPanel order={selectedOrder} products={products} users={users} onSuccess={undefined} />
                 ) : (
                     <CreateOrderForm users={users} products={products} />
                 )}

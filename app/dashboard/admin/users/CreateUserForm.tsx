@@ -15,11 +15,10 @@ interface User {
 
 interface CreateUserFormProps {
   user?: User;         // se presente → modalità modifica
-  onCancel?: () => void;
   onSuccess?: () => void;
 }
 
-export default function CreateUserForm({ user, onCancel, onSuccess }: CreateUserFormProps) {
+export default function CreateUserForm({ user, onSuccess }: CreateUserFormProps) {
   const isEdit = !!user;
   const router = useRouter();
 
@@ -112,26 +111,14 @@ export default function CreateUserForm({ user, onCancel, onSuccess }: CreateUser
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">
-            {isEdit ? `Modifica: ${user!.name || user!.email}` : "Crea nuovo utente"}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {isEdit
-              ? "Modifica i dati dell'account. Lascia la password vuota per non cambiarla."
-              : "Aggiungi un nuovo account con email e password."}
-          </p>
-        </div>
-        {isEdit && onCancel && (
-          <button
-            onClick={onCancel}
-            className="ml-4 text-sm text-slate-400 hover:text-slate-600"
-          >
-            ✕ Annulla
-          </button>
-        )}
-      </div>
+      <h2 className="text-xl font-semibold text-slate-900">
+        {isEdit ? `Modifica: ${user!.name || user!.email}` : "Crea nuovo utente"}
+      </h2>
+      <p className="mt-1 text-sm text-slate-600">
+        {isEdit
+          ? "Modifica i dati dell'account. Lascia la password vuota per non cambiarla."
+          : "Aggiungi un nuovo account con email e password."}
+      </p>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div>

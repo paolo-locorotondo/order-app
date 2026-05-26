@@ -16,36 +16,30 @@ const PAYMENT_LABELS: Record<PaymentMethods, string> = {
 
 interface OrderDetailsPanelProps {
     order: OrderWithItems;
-    onClose: () => void;
 }
 
-export default function OrderDetailsPanel({ order, onClose }: OrderDetailsPanelProps) {
+export default function OrderDetailsPanel({ order }: OrderDetailsPanelProps) {
     const orderTotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             {/* Header */}
-            <div className="mb-4 flex items-start justify-between">
-                <div>
-                    <h2 className="text-base font-bold text-slate-800">
-                        Ordine #{order.id.slice(0, 8)}
-                    </h2>
-                    <p className="mt-1 text-xs text-slate-500">
-                        <span className="font-semibold">Data creazione:</span>{" "}
-                        {new Date(order.createdAt).toLocaleDateString("it-IT", {
-                            weekday: "long", year: "numeric", month: "long", day: "numeric",
-                        })} - {new Date(order.createdAt).toLocaleTimeString("it-IT")}
-                    </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                        <span className="font-semibold">Data modifica:</span>{" "}
-                        {new Date(order.updatedAt).toLocaleDateString("it-IT", {
-                            weekday: "long", year: "numeric", month: "long", day: "numeric",
-                        })} - {new Date(order.updatedAt).toLocaleTimeString("it-IT")}
-                    </p>
-                </div>
-                <button onClick={onClose} className="text-sm text-slate-400 hover:text-slate-600">
-                    ✕ Chiudi
-                </button>
+            <div className="mb-4">
+                <h2 className="text-base font-bold text-slate-800">
+                    Ordine #{order.id.slice(0, 8)}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                    <span className="font-semibold">Data creazione:</span>{" "}
+                    {new Date(order.createdAt).toLocaleDateString("it-IT", {
+                        weekday: "long", year: "numeric", month: "long", day: "numeric",
+                    })} - {new Date(order.createdAt).toLocaleTimeString("it-IT")}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                    <span className="font-semibold">Data modifica:</span>{" "}
+                    {new Date(order.updatedAt).toLocaleDateString("it-IT", {
+                        weekday: "long", year: "numeric", month: "long", day: "numeric",
+                    })} - {new Date(order.updatedAt).toLocaleTimeString("it-IT")}
+                </p>
             </div>
 
             <div className="space-y-4">

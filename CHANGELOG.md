@@ -468,3 +468,57 @@ Pagina dedicata `/user/changepassword` per il cambio password, accessibile a qua
 - `app/dashboard/admin/users/CreateUserForm.tsx`
 - `docs/AUTHORIZATION_MATRIX.md` (NEW)
 - `AGENTS.md`
+
+---
+
+### MIGLIORAMENTO #13 — PriceInput mobile-friendly + validazione prezzo + cleanup modali
+
+**PriceInput riusabile** (`components/PriceInput.tsx`): risolve l'esperienza pessima di `<input type="number" step="0.01">` su mobile (tastiera che varia per OS, scroll che modifica il valore, "stepper" che ruba spazio). Caratteristiche:
+- `inputMode="decimal"` per la tastiera giusta su mobile
+- accetta sia `,` che `.` come separatore decimale (locale italiano)
+- regex client-side: max 2 decimali rifiutati al keystroke (`^\d*([.,]\d{0,2})?$`)
+- snap a forma canonica al `blur` (es. `1,` → `1`, `1.50` → `1.5`)
+- prefisso `€` come overlay non-cliccabile
+- `onWheel → blur` per evitare scroll-to-change (residuo difensivo, type=text non lo fa)
+- display string interno scollegato dalla `value` mentre l'input è in focus, così "1." resta digitabile senza essere sovrascritto dal re-render del parent
+
+Usato in [ProductForm](app/dashboard/admin/products/ProductForm.tsx) (creazione/modifica prodotto) e in [EditOrderPanel](app/dashboard/admin/orders/EditOrderPanel.tsx) (prezzo per riga ordine, variante compatta con `pl-6` per il `€`). In `CreateOrderForm` admin il prezzo non è editabile (viene dal Product), quindi non serve.
+
+**Validazione prezzo (single source of truth)**: il DB è `Float` IEEE 754 — non vincola a 2 decimali, accetta tutto. Per allinearlo al concetto di "prezzo in euro" abbiamo aggiunto un constraint applicativo:
+
+```ts
+// lib/validators.ts
+export const priceSchema = z.number()
+  .nonnegative("Prezzo non può essere negativo")
+  .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6, "Massimo 2 decimali");
+```
+
+Il refine confronta `n*100` con il suo arrotondato a meno di `1e-6` per tollerare i drift IEEE 754 (es. `19.99 * 100 = 1998.9999999999998`). `productSchema.price` ora usa `priceSchema` (era `z.number().positive()`, ora `≥ 0` come da decisione). `adminOrderUpdateSchema.items.price` riusa `priceSchema` invece dell'inline `z.number().min(0)` duplicato. Stesso check 2-decimali replicato lato client in `ProductForm.validateForm` e `EditOrderPanel.handleSaveItems` per UX immediata.
+
+Decisioni:
+- **Min**: `≥ 0` ovunque (Product e OrderItem). Non distinguiamo: omaggi e righe a 0 sono leciti per entrambi.
+- **Max**: nessun tetto. Float a 2 decimali è preciso fino a ~9 × 10¹³ €, non serve cappare.
+- **Decimali**: max 2 (rifiutato sia al keystroke client sia al submit server).
+
+**Cleanup modali — rimozione tasti "✕ Chiudi"/"✕ Annulla" duplicati**: 4 form rendered dentro `AdminModal` avevano un tasto X interno duplicato (l'AdminModal ha già una X nel proprio header). Rimosso da:
+- [OrderDetailsPanel](app/dashboard/orders/OrderDetailsPanel.tsx) (prop `onClose` rimossa)
+- [EditOrderPanel](app/dashboard/admin/orders/EditOrderPanel.tsx) (prop `onCancel` rimossa)
+- [CreateOrderForm](app/dashboard/admin/orders/CreateOrderForm.tsx) (prop `onCancel?` rimossa)
+- [CreateUserForm](app/dashboard/admin/users/CreateUserForm.tsx) (prop `onCancel?` rimossa)
+
+Caller aggiornati: `CustomerOrdersTable`, `OrdersTable` (admin), `UsersTable`.
+
+**File coinvolti**:
+- `components/PriceInput.tsx` (NEW)
+- `lib/validators.ts` (priceSchema)
+- `app/api/admin/orders/[id]/route.ts` (uso priceSchema)
+- `app/dashboard/admin/products/ProductForm.tsx` (PriceInput + validate)
+- `app/dashboard/admin/orders/EditOrderPanel.tsx` (PriceInput + validate + remove ✕)
+- `app/dashboard/admin/orders/CreateOrderForm.tsx` (remove ✕)
+- `app/dashboard/admin/orders/OrdersTable.tsx` (caller)
+- `app/dashboard/orders/OrderDetailsPanel.tsx` (remove ✕)
+- `app/dashboard/orders/CustomerOrdersTable.tsx` (caller)
+- `app/dashboard/admin/users/CreateUserForm.tsx` (remove ✕)
+- `app/dashboard/admin/users/UsersTable.tsx` (caller)
+
+**Priority**: 🟢 LOW (UX polish + data quality)

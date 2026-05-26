@@ -281,7 +281,7 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
                 onClose={closeModal}
                 title={selectedOrder ? `Dettaglio ordine #${selectedOrder.id.slice(0, 8)}` : "Dettaglio ordine"}
             >
-                {selectedOrder && <OrderDetailsPanel order={selectedOrder} onClose={closeModal} />}
+                {selectedOrder && <OrderDetailsPanel order={selectedOrder} />}
             </AdminModal>
         </>
     );

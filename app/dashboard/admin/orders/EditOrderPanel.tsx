@@ -6,6 +6,7 @@ import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/gener
 import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
 import QuantityStepper from "@/components/QuantityStepper";
+import PriceInput from "@/components/PriceInput";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 
 interface OrderWithDetails extends OrderModel {
@@ -30,11 +31,10 @@ interface EditOrderPanelProps {
     order: OrderWithDetails;
     products: (ProductModel & { inventory: { quantity: number; reserved: number } | null })[];
     users: Pick<UserModel, "id" | "name" | "email">[];
-    onCancel: () => void;
     onSuccess?: () => void;
 }
 
-export default function EditOrderPanel({ order, products, users, onCancel, onSuccess }: EditOrderPanelProps) {
+export default function EditOrderPanel({ order, products, users, onSuccess }: EditOrderPanelProps) {
     const router = useRouter();
     const [editingStatus, setEditingStatus] = useState(false);
     const [statusLoading, setStatusLoading] = useState(false);
@@ -214,6 +214,10 @@ export default function EditOrderPanel({ order, products, users, onCancel, onSuc
             setError("Compila tutti i campi degli articoli (qty ≥ 1, prezzo ≥ 0, nome non vuoto).");
             return;
         }
+        if (items.some((i) => Math.abs(i.price * 100 - Math.round(i.price * 100)) >= 1e-6)) {
+            setError("Il prezzo accetta al massimo 2 decimali.");
+            return;
+        }
         setItemsLoading(true);
         try {
             const response = await fetch(`/api/admin/orders/${order.id}`, {
@@ -239,27 +243,22 @@ export default function EditOrderPanel({ order, products, users, onCancel, onSuc
     return (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             {/* Header */}
-            <div className="mb-4 flex items-start justify-between">
-                <div>
-                    <h2 className="text-base font-bold text-slate-800">
-                        Ordine #{order.id.slice(0, 8)}
-                    </h2>
-                    <p className="mt-1 text-xs text-slate-500">
-                        <span className="font-semibold">Data creazione:</span>{" "}
-                        {new Date(order.createdAt).toLocaleDateString("it-IT", {
-                            weekday: "long", year: "numeric", month: "long", day: "numeric",
-                        })} - {new Date(order.createdAt).toLocaleTimeString("it-IT")}
-                    </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                        <span className="font-semibold">Data modifica:</span>{" "}
-                        {new Date(order.updatedAt).toLocaleDateString("it-IT", {
-                            weekday: "long", year: "numeric", month: "long", day: "numeric",
-                        })} - {new Date(order.updatedAt).toLocaleTimeString("it-IT")}
-                    </p>
-                </div>
-                <button onClick={onCancel} className="text-sm text-slate-400 hover:text-slate-600">
-                    ✕ Chiudi
-                </button>
+            <div className="mb-4">
+                <h2 className="text-base font-bold text-slate-800">
+                    Ordine #{order.id.slice(0, 8)}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                    <span className="font-semibold">Data creazione:</span>{" "}
+                    {new Date(order.createdAt).toLocaleDateString("it-IT", {
+                        weekday: "long", year: "numeric", month: "long", day: "numeric",
+                    })} - {new Date(order.createdAt).toLocaleTimeString("it-IT")}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                    <span className="font-semibold">Data modifica:</span>{" "}
+                    {new Date(order.updatedAt).toLocaleDateString("it-IT", {
+                        weekday: "long", year: "numeric", month: "long", day: "numeric",
+                    })} - {new Date(order.updatedAt).toLocaleTimeString("it-IT")}
+                </p>
             </div>
 
             <div className="space-y-4">
@@ -434,15 +433,12 @@ export default function EditOrderPanel({ order, products, users, onCancel, onSuc
                                                 max={max || undefined}
                                                 size="sm"
                                             />
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
+                                            <PriceInput
                                                 value={item.price}
-                                                onChange={(e) => updateItem(index, "price", parseFloat(e.target.value) || 0)}
-                                                className="w-24 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm text-right"
+                                                onChange={(n) => updateItem(index, "price", n)}
+                                                className="w-28 rounded border border-slate-300 bg-slate-50 pl-6 pr-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
-                                            <span className="text-xs text-slate-500">€/u</span>
+                                            <span className="text-xs text-slate-500">/u</span>
                                             <button
                                                 type="button"
                                                 onClick={() => removeItem(index)}

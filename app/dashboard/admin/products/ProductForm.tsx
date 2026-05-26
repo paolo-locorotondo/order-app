@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 import FormFeedback from "@/components/FormFeedback";
+import PriceInput from "@/components/PriceInput";
 
 interface ProductFormProps {
   product?: ProductModel & { inventory: InventoryModel | null };
@@ -58,7 +59,10 @@ export default function ProductForm({ product, onSubmit, loading = false, error,
 
     if (!formData.name.trim()) newErrors.name = "Nome richiesto";
     if (!formData.slug.trim()) newErrors.slug = "Slug richiesto";
-    if (formData.price <= 0) newErrors.price = "Prezzo deve essere positivo";
+    if (formData.price < 0) newErrors.price = "Prezzo non può essere negativo";
+    if (Math.abs(formData.price * 100 - Math.round(formData.price * 100)) >= 1e-6) {
+      newErrors.price = "Massimo 2 decimali";
+    }
     if (formData.quantity < 0) newErrors.quantity = "Quantità non può essere negativa";
 
     setErrors(newErrors);
@@ -69,7 +73,7 @@ export default function ProductForm({ product, onSubmit, loading = false, error,
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "price" || name === "quantity" ? parseFloat(value) || 0 : value,
+      [name]: name === "quantity" ? parseFloat(value) || 0 : value,
     }));
     // Se l'utente modifica lo slug manualmente, aggiorna il warning
     if (name === "slug" && product) {
@@ -164,18 +168,15 @@ export default function ProductForm({ product, onSubmit, loading = false, error,
           <label htmlFor="price" className="block text-sm font-medium text-slate-700">
             Prezzo (€) *
           </label>
-          <input
-            type="number"
+          <PriceInput
             id="price"
             name="price"
-            step="0.01"
-            min="0"
             value={formData.price}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-md text-sm ${
-              errors.price ? "border-red-500" : "border-slate-300"
-            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            placeholder="29.99"
+            onChange={(n) => {
+              setFormData((prev) => ({ ...prev, price: n }));
+              if (errors.price) setErrors((prev) => ({ ...prev, price: "" }));
+            }}
+            invalid={!!errors.price}
             disabled={loading}
           />
           {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
