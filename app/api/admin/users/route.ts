@@ -43,7 +43,15 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, email, password } = validationResult.data;
-    const role = body.role === UserRole.ADMIN ? UserRole.ADMIN : UserRole.CUSTOMER;
+    // 3 ruoli supportati: NUOVO, CUSTOMER, ADMIN. Se il body porta un valore
+    // sconosciuto (o non lo passa) ricadiamo su CUSTOMER — l'admin sta creando
+    // un account già operativo, non in attesa di approvazione.
+    const role: UserRole =
+      body.role === UserRole.ADMIN
+        ? UserRole.ADMIN
+        : body.role === UserRole.NUOVO
+          ? UserRole.NUOVO
+          : UserRole.CUSTOMER;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });

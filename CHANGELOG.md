@@ -539,3 +539,39 @@ Il pattern del filtro prodotto è identico in entrambe le tabelle (deriva la lis
 - `app/dashboard/admin/orders/OrdersTable.tsx` (filtro prodotto)
 
 **Priority**: 🟡 MEDIUM
+
+---
+
+### #7 — Loader globale durante le fetch
+
+Wrapper `apiFetch` + overlay globale per dare feedback visivo e prevenire double-submit durante le chiamate di scrittura. Implementato come **opzione C** del TODO (counter globale, no dep esterne).
+
+**Architettura** (3 pezzi piccoli):
+- [lib/fetch.ts](lib/fetch.ts) — modulo con counter `pendingCount`, `Set<listener>` per le subscriptions, e `apiFetch(input, init)` che fa `pendingCount++` prima del `fetch`, `pendingCount--` in `finally`. Esporta `fetchStore = { subscribe, getSnapshot }` compatibile con `useSyncExternalStore`. Zero dipendenze (no zustand/jotai).
+- [components/GlobalLoader.tsx](components/GlobalLoader.tsx) — client component che legge il counter via `useSyncExternalStore`, monta overlay `fixed inset-0 z-[100] bg-black/30 backdrop-blur-[1px]` con spinner CSS al centro quando `count > 0`. `serverSnapshot = () => 0` per compat SSR. `aria-busy="true"` + `role="status"` per accessibility.
+- [app/layout.tsx](app/layout.tsx) — `<GlobalLoader />` montato dentro `<Providers>`, accanto a `<Tour />`.
+
+**Convenzione adottata**: `apiFetch` traccia *sempre*, `fetch` nativo per le GET silenti che non vuoi far lampeggiare. Refattorate **15 chiamate** di scrittura su 8 file:
+
+- `app/auth/register/page.tsx` — POST register
+- `app/user/changepassword/ChangePasswordForm.tsx` — POST changepassword
+- `app/shop/products/[id]/AddToCartForm.tsx` — POST cart
+- `app/shop/cart/CartClient.tsx` — DELETE + PATCH cart
+- `app/shop/checkout/CheckoutClient.tsx` — POST reserve + POST release + POST orders (la GET reserve iniziale resta `fetch` nativo)
+- `app/dashboard/admin/users/{UsersTable,CreateUserForm}.tsx` — PUT approve + DELETE + POST/PUT user
+- `app/dashboard/admin/products/ProductsTable.tsx` — POST/PUT product + PUT inventory + DELETE
+- `app/dashboard/admin/inventory/InventoryForm.tsx` — PUT inventory
+- `app/dashboard/admin/orders/{OrdersTable,CreateOrderForm,EditOrderPanel}.tsx` — DELETE + POST + 4× PUT
+
+**Lasciate intenzionalmente come `fetch` nativo**:
+- [components/Header.tsx](components/Header.tsx) — GET cart count (background poll, lampeggerebbe a ogni page-load)
+- [app/shop/checkout/CheckoutClient.tsx](app/shop/checkout/CheckoutClient.tsx) — GET reserve iniziale all'apertura della pagina (la POST reserve subito dopo è invece tracciata)
+- [app/dashboard/admin/users/UserActionsCell.tsx](app/dashboard/admin/users/UserActionsCell.tsx) — file dead code (non importato), non toccato
+
+**File coinvolti**:
+- `lib/fetch.ts` (NEW)
+- `components/GlobalLoader.tsx` (NEW)
+- `app/layout.tsx` (mount)
+- 8 client component refactored (vedi sopra)
+
+**Priority**: 🟢 LOW (UX polish)

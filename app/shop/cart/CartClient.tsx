@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import CartItemsList from "../_components/CartItemsList";
 import { notifyCartChanged } from "@/lib/cart-events";
+import { apiFetch } from "@/lib/fetch";
 
 interface CartItem {
   id: string;
@@ -30,7 +31,7 @@ export default function CartClient({
 
   const handleRemove = async (itemId: string) => {
     try {
-      const res = await fetch(`/api/cart?id=${itemId}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/cart?id=${itemId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Errore nella rimozione");
       setItems((prev) => prev.filter((item) => item.id !== itemId));
       notifyCartChanged();
@@ -41,7 +42,7 @@ export default function CartClient({
 
   const handleUpdateQty = async (itemId: string, qty: number) => {
     try {
-      const res = await fetch("/api/cart", {
+      const res = await apiFetch("/api/cart", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: itemId, quantity: qty }),

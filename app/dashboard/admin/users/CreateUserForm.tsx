@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { UserRole } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
 import PasswordInput from "@/components/PasswordInput";
+import { apiFetch } from "@/lib/fetch";
 
 interface User {
   id: string;
@@ -63,7 +64,7 @@ export default function CreateUserForm({ user, onSuccess }: CreateUserFormProps)
       const url = isEdit ? `/api/admin/users/${user!.id}` : "/api/admin/users";
       const method = isEdit ? "PUT" : "POST";
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

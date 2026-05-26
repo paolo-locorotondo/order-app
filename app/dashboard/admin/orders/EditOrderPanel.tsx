@@ -7,6 +7,7 @@ import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
 import QuantityStepper from "@/components/QuantityStepper";
 import PriceInput from "@/components/PriceInput";
+import { apiFetch } from "@/lib/fetch";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 
 interface OrderWithDetails extends OrderModel {
@@ -65,7 +66,7 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
         setStatusLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/api/admin/orders/${order.id}`, {
+            const response = await apiFetch(`/api/admin/orders/${order.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status: newStatus }),
@@ -148,7 +149,7 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
         }
         setUserLoading(true);
         try {
-            const response = await fetch(`/api/admin/orders/${order.id}`, {
+            const response = await apiFetch(`/api/admin/orders/${order.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId: userDraft }),
@@ -178,7 +179,7 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
         setError(null);
         setNotesLoading(true);
         try {
-            const response = await fetch(`/api/admin/orders/${order.id}`, {
+            const response = await apiFetch(`/api/admin/orders/${order.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ notes: notesDraft }),
@@ -220,7 +221,7 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
         }
         setItemsLoading(true);
         try {
-            const response = await fetch(`/api/admin/orders/${order.id}`, {
+            const response = await apiFetch(`/api/admin/orders/${order.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ items }),

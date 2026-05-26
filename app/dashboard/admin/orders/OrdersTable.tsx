@@ -6,6 +6,7 @@ import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
 import FiltersAccordion from "@/components/FiltersAccordion";
+import { apiFetch } from "@/lib/fetch";
 import ExportOrdersButton from "./ExportOrdersButton";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
@@ -109,7 +110,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const handleDelete = async (id: string) => {
         setDeleteLoading(true);
         try {
-            const response = await fetch(`/api/admin/orders/${id}`, { method: "DELETE" });
+            const response = await apiFetch(`/api/admin/orders/${id}`, { method: "DELETE" });
             if (!response.ok) {
                 const data = await response.json();
                 alert(data?.error || "Errore eliminazione ordine");

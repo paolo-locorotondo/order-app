@@ -8,6 +8,7 @@ import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 import { getProductImage } from "@/lib/product-image";
+import { apiFetch } from "@/lib/fetch";
 
 interface ProductWithInventory extends ProductModel {
   inventory: InventoryModel | null;
@@ -49,7 +50,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         const url = selectedProduct ? `/api/products/${selectedProduct.id}` : "/api/products";
         const method = selectedProduct ? "PUT" : "POST";
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
           method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -71,7 +72,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
         // In modifica, aggiorna l'inventario separatamente
         if (selectedProduct && method === "PUT") {
-          const inventoryResponse = await fetch(
+          const inventoryResponse = await apiFetch(
             `/api/inventory/${selectedProduct.inventory?.id}`,
             {
               method: "PUT",
@@ -104,7 +105,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   const handleDelete = async (id: string) => {
     setDeleteLoading(true);
     try {
-      const response = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const response = await apiFetch(`/api/products/${id}`, { method: "DELETE" });
       if (!response.ok) {
         const data = await response.json();
         alert(data?.error || "Errore eliminazione prodotto");

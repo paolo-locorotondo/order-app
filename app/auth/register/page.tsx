@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PasswordInput from "@/components/PasswordInput";
+import { apiFetch } from "@/lib/fetch";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -27,7 +28,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await apiFetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

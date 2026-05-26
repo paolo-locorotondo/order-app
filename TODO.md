@@ -34,7 +34,7 @@
 
 Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1 = primo da fare).
 
-> #1, #2, #4, #5, #6 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
+> #1, #2, #4, #5, #6, #7 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
 
 ### #3 — Data consegna come campo dedicato — DECISO: `Product.deliveryDate`
 **Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
@@ -54,34 +54,6 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 - [ ] Aggiungere filtro range data in `ProductsTable` (riusare `FiltersAccordion` + pattern già usato in OrdersTable)
 - [ ] Decidere se mostrarla anche nello shop (probabile sì, sotto il nome). Da confermare prima di implementare lato customer.
 - [ ] Backfill manuale dei prodotti esistenti se hanno la data nel nome (es. `"Prodotto X 28-05-2026"` → estrarre data, ripulire nome). Opzionale, da decidere caso per caso.
-
----
-
-### #7 — Loader globale durante le fetch
-**Stato**: 🔴 TODO  
-**Priority**: 🟢 LOW (UX, non bloccante)
-
-**Descrizione**: durante chiamate al backend (POST/PUT/DELETE) bloccare le interazioni della pagina con un overlay loader, per evitare double-submit e click accidentali.
-
-**Approcci possibili**:
-- **A. Locale per form**: ogni form gestisce il proprio `loading` state e disabilita i bottoni (è quello che già abbiamo). Non blocca la pagina intera.
-- **B. Provider globale**: un context `<LoadingProvider>` montato in `app/layout.tsx` con metodo `withLoader(promise)` che mostra un overlay full-screen per la durata della Promise.
-- **C. Wrapper fetch**: un `fetchWithLoader` in `lib/fetch.ts` che incrementa/decrementa un counter globale (zustand store, jotai, o context). Tutte le chiamate passano da lì.
-
-**Decisione provvisoria**: **opzione C**, perché i fetch sono già sparsi in molti file e un wrapper minimizza i cambi. Counter globale (atomico) → overlay quando count > 0.
-
-**Task**:
-- [ ] Creare `lib/fetch.ts` con `apiFetch(url, init)` che incrementa counter prima, decrementa dopo (try/finally)
-- [ ] Store: zustand semplice (già una dep utile in altri punti) oppure context+useSyncExternalStore. Da valutare.
-- [ ] Componente `<GlobalLoader />` montato in layout: overlay `fixed inset-0 bg-black/30 z-[100]` con spinner al centro, visibile quando count > 0, `pointer-events-none` sul resto OFF (cioè overlay cattura i click)
-- [ ] Refactor incrementale: sostituire `fetch(...)` con `apiFetch(...)` nei file più sensibili (admin orders edit, checkout, ecc.). Non serve farlo tutto subito.
-- [ ] Verificare che il loader non mascheri errori di rete (toast/alert di errore devono comparire SOPRA l'overlay)
-
-**File coinvolti**:
-- `lib/fetch.ts` (NEW)
-- `components/GlobalLoader.tsx` (NEW)
-- `app/layout.tsx` (mount)
-- Refactor progressivo in tutti i client component che fanno fetch
 
 ---
 

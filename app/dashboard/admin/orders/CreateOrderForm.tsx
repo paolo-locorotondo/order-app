@@ -6,6 +6,7 @@ import { ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { PaymentMethods } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
 import QuantityStepper from "@/components/QuantityStepper";
+import { apiFetch } from "@/lib/fetch";
 
 interface OrderItem {
     productId: string;
@@ -61,7 +62,7 @@ export default function CreateOrderForm({ users, products }: CreateOrderFormProp
 
         setLoading(true);
         try {
-            const response = await fetch("/api/admin/orders", {
+            const response = await apiFetch("/api/admin/orders", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId, address, notes, paymentMethod, items }),

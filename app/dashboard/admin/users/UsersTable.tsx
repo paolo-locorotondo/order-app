@@ -7,6 +7,7 @@ import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
 import FiltersAccordion from "@/components/FiltersAccordion";
+import { apiFetch } from "@/lib/fetch";
 import { UserRole } from "@/app/generated/prisma/enums";
 
 interface User {
@@ -63,7 +64,7 @@ export default function UsersTable({ users }: { users: User[] }) {
   const handleApprove = async (id: string) => {
     setApproveLoading(id);
     try {
-      const response = await fetch(`/api/admin/users/${id}`, {
+      const response = await apiFetch(`/api/admin/users/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: UserRole.CUSTOMER }),
@@ -84,7 +85,7 @@ export default function UsersTable({ users }: { users: User[] }) {
   const handleDelete = async (id: string) => {
     setDeleteLoading(true);
     try {
-      const response = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+      const response = await apiFetch(`/api/admin/users/${id}`, { method: "DELETE" });
       const data = await response.json();
       if (!response.ok) {
         alert(data?.error || "Errore durante l'eliminazione.");

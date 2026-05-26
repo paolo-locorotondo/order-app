@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { InventoryModel, ProductModel } from "@/app/generated/prisma/models";
 import FormFeedback from "@/components/FormFeedback";
+import { apiFetch } from "@/lib/fetch";
 
 interface InventoryWithProduct extends InventoryModel {
     product: ProductModel | null;
@@ -41,7 +42,7 @@ export default function InventoryForm({ inventory, onCancel, onSuccess }: Invent
         setIsLoading(true);
 
         try {
-            const response = await fetch(`/api/inventory/${inventory!.id}`, {
+            const response = await apiFetch(`/api/inventory/${inventory!.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

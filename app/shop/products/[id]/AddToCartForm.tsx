@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import QuantityStepper from "@/components/QuantityStepper";
 import { notifyCartChanged } from "@/lib/cart-events";
+import { apiFetch } from "@/lib/fetch";
 
 interface Props {
   productId: string;
@@ -39,7 +40,7 @@ export default function AddToCartForm({ productId, maxQty }: Props) {
     setError(null);
 
     try {
-      const res = await fetch("/api/cart", {
+      const res = await apiFetch("/api/cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId, quantity: qty }),

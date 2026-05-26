@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import CartItemsList from "../_components/CartItemsList";
 import CheckoutForm, { CheckoutFormData } from "./CheckoutForm";
 import { notifyCartChanged } from "@/lib/cart-events";
+import { apiFetch } from "@/lib/fetch";
 
 interface CartItem {
   id: string;
@@ -68,7 +69,7 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
           return;
         }
 
-        const postRes = await fetch("/api/cart/reserve", { method: "POST" });
+        const postRes = await apiFetch("/api/cart/reserve", { method: "POST" });
         const postData = await postRes.json();
 
         if (!postRes.ok) {
@@ -117,7 +118,7 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
 
   const releaseCart = async () => {
     try {
-      await fetch("/api/cart/release", { method: "POST" });
+      await apiFetch("/api/cart/release", { method: "POST" });
     } catch (error) {
       console.error("Release reservation failed", error);
     }
@@ -141,7 +142,7 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
     isCompletingRef.current = true;
 
     try {
-      const res = await fetch("/api/orders", {
+      const res = await apiFetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

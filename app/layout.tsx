@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/app/providers";
 import Tour from "@/components/Tour";
+import GlobalLoader from "@/components/GlobalLoader";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,6 +37,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <Tour />
+          <GlobalLoader />
         </Providers>
       </body>
     </html>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import PasswordInput from "@/components/PasswordInput";
+import { apiFetch } from "@/lib/fetch";
 
 export default function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -23,7 +24,7 @@ export default function ChangePasswordForm() {
 
     setLoading(true);
     try {
-      const response = await fetch("/api/user/changepassword", {
+      const response = await apiFetch("/api/user/changepassword", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword, newPassword }),
