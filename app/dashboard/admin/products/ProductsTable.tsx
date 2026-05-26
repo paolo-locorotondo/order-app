@@ -200,6 +200,12 @@ export default function ProductsTable({ products }: { products: ProductWithInven
       ),
     },
     {
+      key: "id",
+      header: "ID",
+      cell: (p) => <span className="font-mono text-xs text-slate-500">{p.id.slice(0, 8)}</span>,
+      hideOnMobile: true,
+    },
+    {
       key: "name",
       header: "Nome",
       sortable: true,

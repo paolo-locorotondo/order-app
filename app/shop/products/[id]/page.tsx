@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import AddToCartForm from "./AddToCartForm";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import AccessDenied from "@/components/AccessDenied";
 import PendingApproval from "@/components/PendingApproval";
 import { getProductImage } from "@/lib/product-image";
@@ -36,6 +37,16 @@ export default async function ProductPage({ params }: Props) {
         </main>
       </div>
     );
+  }
+
+  // Auto-hide dei prodotti scaduti: stessa policy della lista shop.
+  // L'admin che vuole comunque vederlo lo trova nella tabella admin.
+  if (product.deliveryDate) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    if (new Date(product.deliveryDate) < todayStart) {
+      notFound();
+    }
   }
 
   return (

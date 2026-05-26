@@ -598,6 +598,9 @@ Aggiunto il campo opzionale `deliveryDate DateTime?` a `Product`, esposto sia in
 - [x] Shop list/detail (`/shop`, `/shop/products/[id]`) — "Consegna: DD/MM/YYYY" sotto al nome del prodotto se presente
 - [x] `CartItemsList` — stessa riga "Consegna: …" sotto al nome (visibile in `/shop/cart` e `/shop/checkout` via componente condiviso)
 - [x] `/shop/order-confirmation/[id]` — "Consegna: …" sotto al `productName`, joinando con `Product.deliveryDate` (vedi nota sullo snapshot)
+- [x] Filtro range "Consegna prodotto — Da/A" in `CustomerOrdersTable` e admin `OrdersTable`. Un ordine matcha se almeno un suo articolo ha `product.deliveryDate` nel range; gli articoli senza data sono esclusi.
+- [x] **Auto-hide prodotti scaduti** in shop: lista (`/shop`) filtra `deliveryDate IS NULL OR deliveryDate >= midnight today`; dettaglio (`/shop/products/[id]`) restituisce `notFound()` se la data è passata. Admin vede tutto. Carrello/checkout non toccati: se un prodotto è già nel carrello l'admin gestisce caso per caso (consegna in ritardo o annulla).
+- [x] Admin ProductsTable: nuova colonna "ID" (font-mono, slice 8). ProductForm in edit-mode mostra l'`id` completo come campo read-only sopra al "Nome".
 
 **File coinvolti**:
 - `prisma/schema.prisma`, `prisma/migrations/20260526200000_add_product_delivery_date/migration.sql`
@@ -608,6 +611,8 @@ Aggiunto il campo opzionale `deliveryDate DateTime?` a `Product`, esposto sia in
 - `app/shop/_components/CartItemsList.tsx`
 - `app/shop/cart/CartClient.tsx`, `app/shop/checkout/CheckoutClient.tsx` (estesi i tipi locali per propagare il nuovo campo)
 - `app/shop/order-confirmation/[id]/page.tsx` (join `Product.deliveryDate`)
+- `app/dashboard/orders/page.tsx`, `app/dashboard/orders/CustomerOrdersTable.tsx`, `app/dashboard/admin/orders/OrdersTable.tsx` (filtro range "Consegna prodotto")
+- `app/shop/page.tsx`, `app/shop/products/[id]/page.tsx` (auto-hide prodotti scaduti)
 
 **Priority**: 🟡 MEDIUM
 

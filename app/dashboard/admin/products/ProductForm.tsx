@@ -114,6 +114,16 @@ export default function ProductForm({ product, onSubmit, loading = false, error,
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* ID (solo in modifica, read-only) */}
+      {product && (
+        <div>
+          <label className="block text-sm font-medium text-slate-700">ID</label>
+          <p className="mt-1 break-all rounded-md bg-slate-50 px-3 py-2 font-mono text-xs text-slate-600">
+            {product.id}
+          </p>
+        </div>
+      )}
+
       {/* Nome */}
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-slate-700">

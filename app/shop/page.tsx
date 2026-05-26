@@ -21,7 +21,21 @@ async function getProductsLite() {
 }
 
 async function getProducts() {
-  return prisma.product.findMany({ include: { inventory: true }, orderBy: { createdAt: "desc" } });
+  // Auto-hide dei prodotti la cui data di consegna è già passata: lo shop
+  // non deve mostrare prodotti non più ordinabili. Quelli senza deliveryDate
+  // restano sempre visibili (campo opzionale).
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return prisma.product.findMany({
+    where: {
+      OR: [
+        { deliveryDate: null },
+        { deliveryDate: { gte: todayStart } },
+      ],
+    },
+    include: { inventory: true },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 export default async function ShopPage() {
@@ -60,7 +74,6 @@ export default async function ShopPage() {
                     Consegna: {new Date(product.deliveryDate).toLocaleDateString("it-IT")}
                   </p>
                 )}
-                <p className="text-slate-600">{product.description ?? "Nessuna descrizione"}</p>
                 <p className="mt-2 font-bold">€{product.price.toFixed(2)}</p>
                 <p className="text-sm text-slate-500">Disponibilità: {product.inventory?.quantity ?? 0}</p>
                 <div className="mt-3">
