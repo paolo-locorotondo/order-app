@@ -9,6 +9,7 @@ import FiltersAccordion from "@/components/FiltersAccordion";
 import ExportOrdersButton from "./ExportOrdersButton";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
+import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 import CreateOrderForm from "./CreateOrderForm";
 import EditOrderPanel from "./EditOrderPanel";
 
@@ -22,14 +23,6 @@ const orderTotal = (o: OrderWithDetails) =>
 
 type SortField = "createdAt" | "updatedAt" | "total";
 type SortDir = "asc" | "desc";
-
-const STATUS_COLORS: Record<OrderStatus, string> = {
-    [OrderStatus.PENDING]: "bg-yellow-100 text-yellow-900",
-    [OrderStatus.PAID]: "bg-blue-100 text-blue-900",
-    [OrderStatus.SHIPPED]: "bg-purple-100 text-purple-900",
-    [OrderStatus.DELIVERED]: "bg-green-100 text-green-900",
-    [OrderStatus.CANCELLED]: "bg-red-100 text-red-900",
-};
 
 interface OrdersTableProps {
     orders: OrderWithDetails[];
@@ -227,10 +220,10 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             cell: (o) => (
                 <span
                     className={`rounded px-2 py-1 text-xs font-medium ${
-                        STATUS_COLORS[o.status] ?? "bg-gray-100 text-gray-900"
+                        ORDER_STATUS_COLORS[o.status] ?? "bg-gray-100 text-gray-900"
                     }`}
                 >
-                    {o.status}
+                    {orderStatusLabel(o.status)}
                 </span>
             ),
         },
@@ -387,7 +380,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                                 : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                                         }`}
                                     >
-                                        {status} ({count})
+                                        {orderStatusLabel(status)} ({count})
                                     </button>
                                     );
                                 })}

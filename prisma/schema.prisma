@@ -80,7 +80,7 @@ model Order {
   id              String      @id @default(cuid())
   user            User        @relation(fields: [userId], references: [id])
   userId          String
-  status          OrderStatus @default(PENDING)
+  status          OrderStatus @default(IN_ATTESA)
   address         String      // Shipping address
   notes           String?     // Note opzionali del cliente
   paymentMethod   PaymentMethods @default(CASH)
@@ -91,11 +91,13 @@ model Order {
 }
 
 enum OrderStatus {
-  PENDING
-  PAID
-  SHIPPED
-  DELIVERED
-  CANCELLED
+  IN_ATTESA
+  CONFERMATO
+  SPEDITO
+  PAGATO_DA_CONSEGNARE
+  CONSEGNATO_DA_PAGARE
+  CONSEGNATO_E_PAGATO
+  ANNULLATO
 }
 
 enum PaymentMethods { 

@@ -1,6 +1,7 @@
 "use client";
 
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
+import { orderStatusLabel } from "@/lib/order-status";
 
 interface OrderWithDetails extends OrderModel {
     items: (OrderItemModel & { product: ProductModel })[];
@@ -60,7 +61,7 @@ function buildCsv(orders: OrderWithDetails[]): string {
             formatDateTime(order.updatedAt),
             order.user?.name ?? "",
             order.user?.email ?? "",
-            order.status,
+            orderStatusLabel(order.status),
             order.address ?? "",
             order.notes ?? "",
             order.paymentMethod,

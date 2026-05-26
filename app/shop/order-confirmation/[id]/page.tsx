@@ -5,6 +5,7 @@ import { validateAuthFromServerSession, UserRole } from "@/lib/auth-helpers";
 import { notFound } from "next/navigation";
 import AccessDenied from "@/components/AccessDenied";
 import { PaymentMethods } from "@/app/generated/prisma/enums";
+import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 
 export default async function OrderConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -131,8 +132,8 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
                 <span>€{orderTotal.toFixed(2)}</span>
               </div>
               <div className="pt-3">
-                <span className="inline-block rounded bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                  Status: {order.status}
+                <span className={`inline-block rounded px-3 py-1 text-xs font-medium ${ORDER_STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-900"}`}>
+                  Status: {orderStatusLabel(order.status)}
                 </span>
               </div>
             </div>

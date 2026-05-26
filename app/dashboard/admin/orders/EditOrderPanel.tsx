@@ -6,6 +6,7 @@ import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/gener
 import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
 import QuantityStepper from "@/components/QuantityStepper";
+import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 
 interface OrderWithDetails extends OrderModel {
     items: (OrderItemModel & { product: ProductModel })[];
@@ -18,14 +19,6 @@ interface EditableItem {
     quantity: number;
     price: number;
 }
-
-const STATUS_COLORS: Record<OrderStatus, string> = {
-    [OrderStatus.PENDING]: "bg-yellow-100 text-yellow-900",
-    [OrderStatus.PAID]: "bg-blue-100 text-blue-900",
-    [OrderStatus.SHIPPED]: "bg-purple-100 text-purple-900",
-    [OrderStatus.DELIVERED]: "bg-green-100 text-green-900",
-    [OrderStatus.CANCELLED]: "bg-red-100 text-red-900",
-};
 
 const PAYMENT_LABELS: Record<PaymentMethods, string> = {
     [PaymentMethods.CASH]: "Contanti (Pagamento alla consegna)",
@@ -432,7 +425,7 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
                                                 : "bg-slate-200 text-slate-900 hover:bg-slate-300"
                                                 }`}
                                         >
-                                            {statusLoading ? "..." : status}
+                                            {statusLoading ? "..." : orderStatusLabel(status)}
                                         </button>
                                     ))}
                             </div>
@@ -446,8 +439,8 @@ export default function EditOrderPanel({ order, products, onCancel, onSuccess }:
                         </div>
                     ) : (
                         <div className="flex items-center justify-between">
-                            <span className={`rounded px-2 py-1 text-xs font-medium ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-900"}`}>
-                                {order.status}
+                            <span className={`rounded px-2 py-1 text-xs font-medium ${ORDER_STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-900"}`}>
+                                {orderStatusLabel(order.status)}
                             </span>
                             <button
                                 onClick={() => setEditingStatus(true)}

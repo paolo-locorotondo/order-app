@@ -5,7 +5,15 @@ import { validateAuth, UserRole } from "@/lib/auth-helpers";
 import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 
 const updateOrderSchema = z.object({
-  status: z.enum([OrderStatus.PENDING, OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.CANCELLED]).optional(),
+  status: z.enum([
+    OrderStatus.IN_ATTESA,
+    OrderStatus.CONFERMATO,
+    OrderStatus.SPEDITO,
+    OrderStatus.PAGATO_DA_CONSEGNARE,
+    OrderStatus.CONSEGNATO_DA_PAGARE,
+    OrderStatus.CONSEGNATO_E_PAGATO,
+    OrderStatus.ANNULLATO,
+  ]).optional(),
   address: z
     .string()
     .refine((v) => v.length === 0 || v.length >= 10, "Indirizzo deve essere almeno 10 caratteri")

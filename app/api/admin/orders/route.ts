@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         address: parsed.data.address,
         notes: parsed.data.notes || null,
         paymentMethod: parsed.data.paymentMethod,
-        status: OrderStatus.PENDING,
+        status: OrderStatus.IN_ATTESA,
         stripePaymentId: null,
         items: {
           create: parsed.data.items.map((item) => {

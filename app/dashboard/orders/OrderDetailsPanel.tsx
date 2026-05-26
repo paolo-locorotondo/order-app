@@ -1,19 +1,12 @@
 "use client";
 
 import { OrderModel, OrderItemModel } from "@/app/generated/prisma/models";
-import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
+import { PaymentMethods } from "@/app/generated/prisma/enums";
+import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 
 interface OrderWithItems extends OrderModel {
     items: OrderItemModel[];
 }
-
-const STATUS_COLORS: Record<OrderStatus, string> = {
-    [OrderStatus.PENDING]: "bg-yellow-100 text-yellow-900",
-    [OrderStatus.PAID]: "bg-blue-100 text-blue-900",
-    [OrderStatus.SHIPPED]: "bg-purple-100 text-purple-900",
-    [OrderStatus.DELIVERED]: "bg-green-100 text-green-900",
-    [OrderStatus.CANCELLED]: "bg-red-100 text-red-900",
-};
 
 const PAYMENT_LABELS: Record<PaymentMethods, string> = {
     [PaymentMethods.CASH]: "Contanti (Pagamento alla consegna)",
@@ -59,8 +52,8 @@ export default function OrderDetailsPanel({ order, onClose }: OrderDetailsPanelP
                 {/* Status */}
                 <div className="rounded-lg bg-blue-50 p-3">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
-                    <span className={`rounded px-2 py-1 text-xs font-medium ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-900"}`}>
-                        {order.status}
+                    <span className={`rounded px-2 py-1 text-xs font-medium ${ORDER_STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-900"}`}>
+                        {orderStatusLabel(order.status)}
                     </span>
                 </div>
 
