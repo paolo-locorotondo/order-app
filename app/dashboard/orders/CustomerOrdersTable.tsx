@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import FiltersAccordion from "@/components/FiltersAccordion";
+import RefreshButton from "@/components/RefreshButton";
 import { OrderModel, OrderItemModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
@@ -120,8 +121,21 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
         {
             key: "items",
             header: "Articoli",
-            cell: (o) => `${o.items.length} ${o.items.length === 1 ? "articolo" : "articoli"}`,
-            hideOnMobile: true,
+            cell: (o) => (
+                <div className="flex flex-wrap gap-1">
+                    {o.items.map((item) => (
+                        <span
+                            key={item.id}
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900"
+                        >
+                            <span className="font-bold">{item.quantity}×</span>
+                            <span className="max-w-[140px] truncate" title={item.productName}>
+                                {item.productName}
+                            </span>
+                        </span>
+                    ))}
+                </div>
+            ),
         },
         {
             key: "total",
@@ -169,6 +183,11 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
     return (
         <>
             <div className="space-y-4">
+                {/* Azioni: refresh */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <RefreshButton />
+                </div>
+
                 {/* Filtri — accordion */}
                 <FiltersAccordion
                     summary={

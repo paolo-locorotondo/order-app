@@ -522,3 +522,20 @@ Caller aggiornati: `CustomerOrdersTable`, `OrdersTable` (admin), `UsersTable`.
 - `app/dashboard/admin/users/UsersTable.tsx` (caller)
 
 **Priority**: 🟢 LOW (UX polish + data quality)
+
+---
+
+### #4 — Parità tabella Storico Ordini ↔ Admin Ordini
+
+Allineate le due tabelle dove divergevano:
+
+- **Storico customer (`CustomerOrdersTable`)**: ora cella "Articoli" mostra le **pill blu** snapshot (`qty× productName` con `flex-wrap` e truncate a 140px), stesso markup dell'admin. Aggiunto `RefreshButton` come azione sopra l'accordion filtri.
+- **Admin (`OrdersTable`)**: aggiunto **filtro per prodotto** (select degli articoli effettivamente presenti negli ordini, derivata da `orders[].items[]` e ordinata alfabeticamente). Esteso `filtersActive` e `resetFilters` di conseguenza.
+
+Il pattern del filtro prodotto è identico in entrambe le tabelle (deriva la lista da `orders[].items[]`, fa filter su `o.items.some(it => it.productId === productFilter)`). CSV export non impattato (riusa `processedOrders`, già coerente).
+
+**File coinvolti**:
+- `app/dashboard/orders/CustomerOrdersTable.tsx` (pill articoli + RefreshButton)
+- `app/dashboard/admin/orders/OrdersTable.tsx` (filtro prodotto)
+
+**Priority**: 🟡 MEDIUM

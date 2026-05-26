@@ -34,7 +34,7 @@
 
 Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1 = primo da fare).
 
-> #1, #2, #5, #6 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
+> #1, #2, #4, #5, #6 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
 
 ### #3 — Data consegna come campo dedicato — DECISO: `Product.deliveryDate`
 **Stato**: 🟡 DA IMPLEMENTARE (decisione presa)  
@@ -54,27 +54,6 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 - [ ] Aggiungere filtro range data in `ProductsTable` (riusare `FiltersAccordion` + pattern già usato in OrdersTable)
 - [ ] Decidere se mostrarla anche nello shop (probabile sì, sotto il nome). Da confermare prima di implementare lato customer.
 - [ ] Backfill manuale dei prodotti esistenti se hanno la data nel nome (es. `"Prodotto X 28-05-2026"` → estrarre data, ripulire nome). Opzionale, da decidere caso per caso.
-
----
-
-### #4 — Parità tabella Storico Ordini ↔ Admin Ordini
-**Stato**: 🔴 TODO  
-**Priority**: 🟡 MEDIUM
-
-**Descrizione**: allineare le due tabelle dove differiscono. Oggi:
-- **Storico (customer)**: ha filtro per prodotto (select dei prodotti acquistati). Admin no.
-- **Admin**: ha pill colorate per articoli (snapshot `productName` × qty) e tasto Aggiorna. Customer no — mostra solo il count e non ha tasto refresh.
-
-**Task**:
-- [ ] Aggiungere filtro prodotto a `OrdersTable` admin (select coi prodotti effettivamente presenti negli ordini → derivata da `orders[].items[].productId`, simile a [CustomerOrdersTable](app/dashboard/orders/CustomerOrdersTable.tsx))
-- [ ] Estendere il filtro per prodotto al reset filtri (`filtersActive` + `resetFilters`)
-- [ ] Sostituire la cella "Articoli" di `CustomerOrdersTable` con le pill blu (stesso markup di `OrdersTable`: badge `qty× nome` con flex-wrap)
-- [ ] Aggiungere tasto Aggiorna su `CustomerOrdersTable`
-- [ ] Verificare che CSV export non sia impattato (l'export è solo admin, già OK)
-
-**File coinvolti**:
-- `app/dashboard/admin/orders/OrdersTable.tsx`
-- `app/dashboard/orders/CustomerOrdersTable.tsx`
 
 ---
 

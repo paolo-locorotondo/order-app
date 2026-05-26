@@ -36,6 +36,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
     const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
     const [userFilter, setUserFilter] = useState("");
+    const [productFilter, setProductFilter] = useState<string>("ALL");
     const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
     const [dateFrom, setDateFrom] = useState<string>("");
     const [dateTo, setDateTo] = useState<string>("");
@@ -44,11 +45,16 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [totalsOpen, setTotalsOpen] = useState(true);
 
     const filtersActive =
-        statusFilter !== "ALL" || userFilter.trim() !== "" || dateFrom !== "" || dateTo !== "";
+        statusFilter !== "ALL" ||
+        userFilter.trim() !== "" ||
+        productFilter !== "ALL" ||
+        dateFrom !== "" ||
+        dateTo !== "";
 
     const resetFilters = () => {
         setStatusFilter("ALL");
         setUserFilter("");
+        setProductFilter("ALL");
         setDateField("createdAt");
         setDateFrom("");
         setDateTo("");
@@ -58,6 +64,22 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
 
     // Derivato dalla prop `orders`: dopo router.refresh() l'ordine selezionato riflette i nuovi dati.
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : undefined;
+
+    // Lista prodotti unici effettivamente presenti negli ordini (derivata): { productId, productName }.
+    // Pattern allineato a CustomerOrdersTable.
+    const purchasedProducts = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const order of orders) {
+            for (const item of order.items) {
+                if (!map.has(item.productId)) {
+                    map.set(item.productId, item.productName);
+                }
+            }
+        }
+        return Array.from(map.entries())
+            .map(([productId, productName]) => ({ productId, productName }))
+            .sort((a, b) => a.productName.localeCompare(b.productName));
+    }, [orders]);
 
     const openModal = (order: OrderWithDetails) => {
         setSelectedOrderId(order.id);
@@ -119,6 +141,10 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             );
         }
 
+        if (productFilter !== "ALL") {
+            result = result.filter((o) => o.items.some((it) => it.productId === productFilter));
+        }
+
         if (dateFrom || dateTo) {
             const fromTs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : -Infinity;
             const toTs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : Infinity;
@@ -145,7 +171,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         });
 
         return result;
-    }, [orders, statusFilter, userFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
+    }, [orders, statusFilter, userFilter, productFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
 
     // Aggregazione per prodotto sui soli ordini filtrati. Chiave = productId per
     // evitare collisioni se due prodotti hanno snapshot di nome uguali.
@@ -331,6 +357,19 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                             placeholder="Cerca per nome o email..."
                             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
                         />
+
+                        <select
+                            value={productFilter}
+                            onChange={(e) => setProductFilter(e.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none w-full sm:w-64"
+                        >
+                            <option value="ALL">Tutti i prodotti</option>
+                            {purchasedProducts.map((p) => (
+                                <option key={p.productId} value={p.productId}>
+                                    {p.productName}
+                                </option>
+                            ))}
+                        </select>
 
                         <div className="flex flex-wrap items-center gap-2">
                             <select
