@@ -11,7 +11,7 @@ import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 import OrderDetailsPanel from "./OrderDetailsPanel";
 
 interface OrderWithItems extends OrderModel {
-    items: OrderItemModel[];
+    items: (OrderItemModel & { product: { deliveryDate: Date | null } })[];
 }
 
 const orderTotal = (o: OrderWithItems) =>
@@ -32,11 +32,18 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
     const [dateField, setDateField] = useState<SortField>("createdAt");
     const [dateFrom, setDateFrom] = useState<string>("");
     const [dateTo, setDateTo] = useState<string>("");
+    const [deliveryFrom, setDeliveryFrom] = useState<string>("");
+    const [deliveryTo, setDeliveryTo] = useState<string>("");
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
 
     const filtersActive =
-        statusFilter !== "ALL" || productFilter !== "ALL" || dateFrom !== "" || dateTo !== "";
+        statusFilter !== "ALL" ||
+        productFilter !== "ALL" ||
+        dateFrom !== "" ||
+        dateTo !== "" ||
+        deliveryFrom !== "" ||
+        deliveryTo !== "";
 
     const resetFilters = () => {
         setStatusFilter("ALL");
@@ -44,6 +51,8 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
         setDateField("createdAt");
         setDateFrom("");
         setDateTo("");
+        setDeliveryFrom("");
+        setDeliveryTo("");
     };
 
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : undefined;
@@ -103,6 +112,21 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
             });
         }
 
+        // Filtro per data consegna prodotto: l'ordine matcha se almeno un suo
+        // articolo ha `product.deliveryDate` nel range. Articoli senza data sono
+        // esclusi dal range — coerente con il filtro analogo di ProductsTable.
+        if (deliveryFrom || deliveryTo) {
+            const fromTs = deliveryFrom ? new Date(deliveryFrom + "T00:00:00").getTime() : -Infinity;
+            const toTs = deliveryTo ? new Date(deliveryTo + "T23:59:59.999").getTime() : Infinity;
+            result = result.filter((o) =>
+                o.items.some((it) => {
+                    if (!it.product?.deliveryDate) return false;
+                    const t = new Date(it.product.deliveryDate).getTime();
+                    return t >= fromTs && t <= toTs;
+                })
+            );
+        }
+
         result.sort((a, b) => {
             const valA = new Date(sortField === "createdAt" ? a.createdAt : a.updatedAt).getTime();
             const valB = new Date(sortField === "createdAt" ? b.createdAt : b.updatedAt).getTime();
@@ -110,7 +134,7 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
         });
 
         return result;
-    }, [orders, statusFilter, productFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
+    }, [orders, statusFilter, productFilter, dateField, dateFrom, dateTo, deliveryFrom, deliveryTo, sortField, sortDir]);
 
     const columns: AdminTableColumn<OrderWithItems>[] = [
         {
@@ -233,6 +257,23 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
                                 type="date"
                                 value={dateTo}
                                 onChange={(e) => setDateTo(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <label className="text-xs text-slate-500">Consegna prodotto — Da</label>
+                            <input
+                                type="date"
+                                value={deliveryFrom}
+                                onChange={(e) => setDeliveryFrom(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            />
+                            <label className="text-xs text-slate-500">A</label>
+                            <input
+                                type="date"
+                                value={deliveryTo}
+                                onChange={(e) => setDeliveryTo(e.target.value)}
                                 className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
                             />
                         </div>

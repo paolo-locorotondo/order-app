@@ -41,6 +41,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
     const [dateFrom, setDateFrom] = useState<string>("");
     const [dateTo, setDateTo] = useState<string>("");
+    const [deliveryFrom, setDeliveryFrom] = useState<string>("");
+    const [deliveryTo, setDeliveryTo] = useState<string>("");
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
     const [totalsOpen, setTotalsOpen] = useState(true);
@@ -50,7 +52,9 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         userFilter.trim() !== "" ||
         productFilter !== "ALL" ||
         dateFrom !== "" ||
-        dateTo !== "";
+        dateTo !== "" ||
+        deliveryFrom !== "" ||
+        deliveryTo !== "";
 
     const resetFilters = () => {
         setStatusFilter("ALL");
@@ -59,6 +63,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         setDateField("createdAt");
         setDateFrom("");
         setDateTo("");
+        setDeliveryFrom("");
+        setDeliveryTo("");
     };
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
@@ -155,6 +161,21 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             });
         }
 
+        // Filtro per data consegna prodotto: l'ordine matcha se almeno un suo
+        // articolo ha `product.deliveryDate` nel range. Stesso pattern di
+        // CustomerOrdersTable e ProductsTable.
+        if (deliveryFrom || deliveryTo) {
+            const fromTs = deliveryFrom ? new Date(deliveryFrom + "T00:00:00").getTime() : -Infinity;
+            const toTs = deliveryTo ? new Date(deliveryTo + "T23:59:59.999").getTime() : Infinity;
+            result = result.filter((o) =>
+                o.items.some((it) => {
+                    if (!it.product?.deliveryDate) return false;
+                    const t = new Date(it.product.deliveryDate).getTime();
+                    return t >= fromTs && t <= toTs;
+                })
+            );
+        }
+
         result.sort((a, b) => {
             let valA: number;
             let valB: number;
@@ -172,7 +193,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         });
 
         return result;
-    }, [orders, statusFilter, userFilter, productFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
+    }, [orders, statusFilter, userFilter, productFilter, dateField, dateFrom, dateTo, deliveryFrom, deliveryTo, sortField, sortDir]);
 
     // Aggregazione per prodotto sui soli ordini filtrati. Chiave = productId per
     // evitare collisioni se due prodotti hanno snapshot di nome uguali.
@@ -393,6 +414,23 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                 type="date"
                                 value={dateTo}
                                 onChange={(e) => setDateTo(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <label className="text-xs text-slate-500">Consegna prodotto — Da</label>
+                            <input
+                                type="date"
+                                value={deliveryFrom}
+                                onChange={(e) => setDeliveryFrom(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+                            />
+                            <label className="text-xs text-slate-500">A</label>
+                            <input
+                                type="date"
+                                value={deliveryTo}
+                                onChange={(e) => setDeliveryTo(e.target.value)}
                                 className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
                             />
                         </div>

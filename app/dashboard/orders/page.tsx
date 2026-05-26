@@ -15,7 +15,9 @@ export default async function OrderHistoryPage() {
 
   const orders = await prisma.order.findMany({
     where: { userId: auth.session.user.id },
-    include: { items: true },
+    // `product.deliveryDate` serve al filtro "Data consegna" lato client.
+    // Niente snapshot su OrderItem: vediamo il valore corrente del prodotto.
+    include: { items: { include: { product: { select: { deliveryDate: true } } } } },
     orderBy: { createdAt: "desc" },
   });
 
