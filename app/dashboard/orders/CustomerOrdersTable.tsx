@@ -28,7 +28,8 @@ interface CustomerOrdersTableProps {
 export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps) {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
-    const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
+    // Filtro status cumulativo: set vuoto = "Tutti".
+    const [statusFilter, setStatusFilter] = useState<Set<OrderStatus>>(() => new Set());
     const [productFilter, setProductFilter] = useState<string>("ALL");
     const [dateField, setDateField] = useState<SortField>("createdAt");
     const [dateFrom, setDateFrom] = useState<string>("");
@@ -39,7 +40,7 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
     const [sortDir, setSortDir] = useState<SortDir>("desc");
 
     const filtersActive =
-        statusFilter !== "ALL" ||
+        statusFilter.size > 0 ||
         productFilter !== "ALL" ||
         dateFrom !== "" ||
         dateTo !== "" ||
@@ -47,13 +48,22 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
         deliveryTo !== "";
 
     const resetFilters = () => {
-        setStatusFilter("ALL");
+        setStatusFilter(new Set());
         setProductFilter("ALL");
         setDateField("createdAt");
         setDateFrom("");
         setDateTo("");
         setDeliveryFrom("");
         setDeliveryTo("");
+    };
+
+    const toggleStatusFilter = (status: OrderStatus) => {
+        setStatusFilter((prev) => {
+            const next = new Set(prev);
+            if (next.has(status)) next.delete(status);
+            else next.add(status);
+            return next;
+        });
     };
 
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : undefined;
@@ -109,8 +119,8 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
     const processedOrders = useMemo(() => {
         let result = [...orders];
 
-        if (statusFilter !== "ALL") {
-            result = result.filter((o) => o.status === statusFilter);
+        if (statusFilter.size > 0) {
+            result = result.filter((o) => statusFilter.has(o.status));
         }
 
         if (productFilter !== "ALL") {
@@ -300,9 +310,9 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
 
                         <div className="flex flex-wrap gap-2">
                             <button
-                                onClick={() => setStatusFilter("ALL")}
+                                onClick={() => setStatusFilter(new Set())}
                                 className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                    statusFilter === "ALL"
+                                    statusFilter.size === 0
                                         ? "bg-slate-900 text-white"
                                         : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                                 }`}
@@ -311,12 +321,13 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
                             </button>
                             {Object.values(OrderStatus).map((status) => {
                                 const count = orders.filter((o) => o.status === status).length;
+                                const active = statusFilter.has(status);
                                 return (
                                     <button
                                         key={status}
-                                        onClick={() => setStatusFilter(status)}
+                                        onClick={() => toggleStatusFilter(status)}
                                         className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                            statusFilter === status
+                                            active
                                                 ? "bg-slate-900 text-white"
                                                 : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                                         }`}

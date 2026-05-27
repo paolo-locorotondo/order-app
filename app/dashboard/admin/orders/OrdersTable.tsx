@@ -26,7 +26,7 @@ interface OrderWithDetails extends OrderModel {
 const orderTotal = (o: OrderWithDetails) =>
     o.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-type SortField = "createdAt" | "updatedAt" | "total";
+type SortField = "createdAt" | "updatedAt" | "total" | "user" | "status";
 type SortDir = "asc" | "desc";
 
 interface OrdersTableProps {
@@ -39,7 +39,9 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const router = useRouter();
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
-    const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
+    // Filtro status cumulativo: set vuoto = "Tutti" (mostra ogni record).
+    // Selezione multipla via toggle su ogni status; "Tutti" azzera il set.
+    const [statusFilter, setStatusFilter] = useState<Set<OrderStatus>>(() => new Set());
     const [userFilter, setUserFilter] = useState("");
     const [productFilter, setProductFilter] = useState<string>("ALL");
     const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
@@ -52,7 +54,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [totalsOpen, setTotalsOpen] = useState(true);
 
     const filtersActive =
-        statusFilter !== "ALL" ||
+        statusFilter.size > 0 ||
         userFilter.trim() !== "" ||
         productFilter !== "ALL" ||
         dateFrom !== "" ||
@@ -61,7 +63,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         deliveryTo !== "";
 
     const resetFilters = () => {
-        setStatusFilter("ALL");
+        setStatusFilter(new Set());
         setUserFilter("");
         setProductFilter("ALL");
         setDateField("createdAt");
@@ -69,6 +71,15 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         setDateTo("");
         setDeliveryFrom("");
         setDeliveryTo("");
+    };
+
+    const toggleStatusFilter = (status: OrderStatus) => {
+        setStatusFilter((prev) => {
+            const next = new Set(prev);
+            if (next.has(status)) next.delete(status);
+            else next.add(status);
+            return next;
+        });
     };
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
@@ -151,8 +162,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const processedOrders = useMemo(() => {
         let result = [...orders];
 
-        if (statusFilter !== "ALL") {
-            result = result.filter((o) => o.status === statusFilter);
+        if (statusFilter.size > 0) {
+            result = result.filter((o) => statusFilter.has(o.status));
         }
 
         if (userFilter.trim()) {
@@ -193,19 +204,30 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         }
 
         result.sort((a, b) => {
-            let valA: number;
-            let valB: number;
+            let valA: number | string;
+            let valB: number | string;
             if (sortField === "createdAt") {
                 valA = new Date(a.createdAt).getTime();
                 valB = new Date(b.createdAt).getTime();
             } else if (sortField === "updatedAt") {
                 valA = new Date(a.updatedAt).getTime();
                 valB = new Date(b.updatedAt).getTime();
-            } else {
+            } else if (sortField === "total") {
                 valA = orderTotal(a);
                 valB = orderTotal(b);
+            } else if (sortField === "user") {
+                // Sort per nome cliente; fallback a email se nome assente; lowercase
+                // per non avere "Z" prima di "a".
+                valA = (a.user?.name ?? a.user?.email ?? "").toLowerCase();
+                valB = (b.user?.name ?? b.user?.email ?? "").toLowerCase();
+            } else {
+                // status: ordine alfabetico dell'enum (IN_ATTESA, ANNULLATO, ...).
+                valA = a.status;
+                valB = b.status;
             }
-            return sortDir === "asc" ? valA - valB : valB - valA;
+            if (valA < valB) return sortDir === "asc" ? -1 : 1;
+            if (valA > valB) return sortDir === "asc" ? 1 : -1;
+            return 0;
         });
 
         return result;
@@ -250,6 +272,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         {
             key: "user",
             header: "Cliente",
+            sortable: true,
             cell: (o) => (
                 <div>
                     <p className="text-sm font-medium text-slate-700">{o.user?.name || "N/A"}</p>
@@ -292,6 +315,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         {
             key: "status",
             header: "Status",
+            sortable: true,
             cell: (o) => (
                 <span
                     className={`rounded px-2 py-1 text-xs font-medium ${
@@ -472,9 +496,9 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
 
                         <div className="flex flex-wrap gap-2">
                             <button
-                                onClick={() => setStatusFilter("ALL")}
+                                onClick={() => setStatusFilter(new Set())}
                                 className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                    statusFilter === "ALL"
+                                    statusFilter.size === 0
                                         ? "bg-slate-900 text-white"
                                         : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                                 }`}
@@ -483,12 +507,13 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                             </button>
                             {Object.values(OrderStatus).map((status) => {
                                 const count = orders.filter((o) => o.status === status).length;
+                                const active = statusFilter.has(status);
                                 return (
                                     <button
                                         key={status}
-                                        onClick={() => setStatusFilter(status)}
+                                        onClick={() => toggleStatusFilter(status)}
                                         className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                                            statusFilter === status
+                                            active
                                                 ? "bg-slate-900 text-white"
                                                 : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                                         }`}

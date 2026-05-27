@@ -39,7 +39,8 @@ export default function UsersTable({ users }: { users: User[] }) {
   const [approveLoading, setApproveLoading] = useState<string | null>(null);
 
   const [searchFilter, setSearchFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState<UserRole | "ALL">("ALL");
+  // Filtro ruolo cumulativo: set vuoto = "Tutti".
+  const [roleFilter, setRoleFilter] = useState<Set<UserRole>>(() => new Set());
   const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -75,14 +76,23 @@ export default function UsersTable({ users }: { users: User[] }) {
   const clearSelection = () => setSelectedIds(new Set());
 
   const filtersActive =
-    searchFilter.trim() !== "" || roleFilter !== "ALL" || dateFrom !== "" || dateTo !== "";
+    searchFilter.trim() !== "" || roleFilter.size > 0 || dateFrom !== "" || dateTo !== "";
 
   const resetFilters = () => {
     setSearchFilter("");
-    setRoleFilter("ALL");
+    setRoleFilter(new Set());
     setDateField("createdAt");
     setDateFrom("");
     setDateTo("");
+  };
+
+  const toggleRoleFilter = (role: UserRole) => {
+    setRoleFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      return next;
+    });
   };
 
   const router = useRouter();
@@ -149,8 +159,8 @@ export default function UsersTable({ users }: { users: User[] }) {
       );
     }
 
-    if (roleFilter !== "ALL") {
-      result = result.filter((u) => u.role === roleFilter);
+    if (roleFilter.size > 0) {
+      result = result.filter((u) => roleFilter.has(u.role));
     }
 
     if (dateFrom || dateTo) {
@@ -366,9 +376,9 @@ export default function UsersTable({ users }: { users: User[] }) {
 
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setRoleFilter("ALL")}
+                onClick={() => setRoleFilter(new Set())}
                 className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                  roleFilter === "ALL"
+                  roleFilter.size === 0
                     ? "bg-slate-900 text-white"
                     : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                 }`}
@@ -377,12 +387,13 @@ export default function UsersTable({ users }: { users: User[] }) {
               </button>
               {Object.values(UserRole).map((role) => {
                 const count = users.filter((u) => u.role === role).length;
+                const active = roleFilter.has(role);
                 return (
                   <button
                     key={role}
-                    onClick={() => setRoleFilter(role)}
+                    onClick={() => toggleRoleFilter(role)}
                     className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                      roleFilter === role
+                      active
                         ? "bg-slate-900 text-white"
                         : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                     }`}
