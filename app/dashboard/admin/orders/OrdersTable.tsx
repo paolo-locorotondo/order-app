@@ -10,6 +10,8 @@ import Combobox from "@/components/Combobox";
 import { apiFetch } from "@/lib/fetch";
 import ExportOrdersButton from "./ExportOrdersButton";
 import ExportOrdersPdfButton from "./ExportOrdersPdfButton";
+import WhatsAppButton from "@/components/WhatsAppButton";
+import { orderMessage, buildOrderConfirmationUrl } from "@/lib/whatsapp";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
@@ -18,7 +20,7 @@ import EditOrderPanel from "./EditOrderPanel";
 
 interface OrderWithDetails extends OrderModel {
     items: (OrderItemModel & { product: ProductModel })[];
-    user: Pick<UserModel, "id" | "name" | "email">;
+    user: Pick<UserModel, "id" | "name" | "email" | "phoneNumber">;
 }
 
 const orderTotal = (o: OrderWithDetails) =>
@@ -29,7 +31,7 @@ type SortDir = "asc" | "desc";
 
 interface OrdersTableProps {
     orders: OrderWithDetails[];
-    users: Pick<UserModel, "id" | "name" | "email">[];
+    users: Pick<UserModel, "id" | "name" | "email" | "phoneNumber">[];
     products: (ProductModel & { inventory: { quantity: number; reserved: number } | null })[];
 }
 
@@ -510,6 +512,15 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                     onSort={handleSort}
                     renderActions={(order) => (
                         <>
+                            <WhatsAppButton
+                                phoneNumber={order.user?.phoneNumber}
+                                message={orderMessage({
+                                    name: order.user?.name,
+                                    shortId: order.id.slice(0, 8),
+                                    orderUrl: buildOrderConfirmationUrl(order.id),
+                                })}
+                                title={`Apri chat WhatsApp con ${order.user?.name || order.user?.email || "cliente"}`}
+                            />
                             <button
                                 onClick={() => openModal(order)}
                                 className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"

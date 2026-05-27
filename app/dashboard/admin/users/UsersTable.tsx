@@ -7,14 +7,17 @@ import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
 import FiltersAccordion from "@/components/FiltersAccordion";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import { apiFetch } from "@/lib/fetch";
 import { UserRole } from "@/app/generated/prisma/enums";
+import { greetingMessage } from "@/lib/whatsapp";
 
 interface User {
   id: string;
   name: string | null;
   email: string;
   role: UserRole;
+  phoneNumber: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -291,6 +294,11 @@ export default function UsersTable({ users }: { users: User[] }) {
                   {approveLoading === user.id ? "..." : "Approva"}
                 </button>
               )}
+              <WhatsAppButton
+                phoneNumber={user.phoneNumber}
+                message={greetingMessage(user.name)}
+                title={`Apri chat WhatsApp con ${user.name || user.email}`}
+              />
               <button
                 onClick={() => openModal(user)}
                 className="rounded bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600"

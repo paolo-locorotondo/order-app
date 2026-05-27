@@ -136,58 +136,6 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 
 ---
 
-### Step 9. Integrazione WhatsApp (deep link `wa.me`)
-**Stato**: 🔴 TODO
-**Descrizione**: Aggiungere un canale di contatto rapido tra admin e cliente via WhatsApp. Cliccando su un bottone "WhatsApp" nelle pagine admin (utenti, ordini, dettaglio ordine), si apre la chat WhatsApp con il numero del cliente e un messaggio precompilato. Niente API Meta: usiamo il deep link pubblico `https://wa.me/<numero>?text=<messaggio>` che funziona da mobile (apre l'app) e da desktop (apre WhatsApp Web). L'admin preme Invio nella chat — niente auto-send.
-
-**Decisioni di design**:
-- **Numero su `User.phoneNumber String?`**: opzionale, gestito **solo dall'admin** (in CreateUserForm + edit utente). Niente self-service customer in questa iterazione.
-- **Validazione e normalizzazione**: input libero (`+39 333 1234567`, `333.1234567`, ecc.), helper `normalizePhone()` strippa tutto tranne le cifre. Memorizzato nel DB già normalizzato (es. `391234567890`). Validazione Zod minima: 7-15 cifre quando presente. Senza prefisso internazionale `wa.me` non funziona affidabilmente → richiediamo che il numero abbia il country code; se l'admin inserisce un numero "nudo" (es. `333...`), la validazione lo rifiuta con messaggio esplicativo.
-- **Component riutilizzabile** `components/WhatsAppButton.tsx`: thin wrapper su `<a target="_blank" rel="noopener noreferrer">`. Props `phoneNumber`, `message?`, `size?`, `iconOnly?`. Se `phoneNumber` è `null` o non valido → **non renderizza** (scelta di pulizia visiva). Stile verde WhatsApp + icona SVG.
-- **Helper module** `lib/whatsapp.ts`: `normalizePhone(raw)`, `buildWhatsAppUrl(phone, message?)`, `greetingMessage(name)`, `orderMessage({ name, shortId, orderUrl })`. Il caller compone il messaggio chiamando il template appropriato; il component non sa nulla del dominio.
-- **Punti di integrazione** (3):
-    1. `UsersTable` admin: bottone "WhatsApp" nella riga utente. Messaggio = `greetingMessage(user.name)`.
-    2. `OrdersTable` admin: bottone "WhatsApp" nella riga ordine accanto a "Modifica/Elimina". Messaggio = `orderMessage(...)` con link a `/shop/order-confirmation/<id>`.
-    3. `EditOrderPanel`: stesso bottone nel pannello dettaglio.
-- **URL assoluto richiesto** per il link al dettaglio ordine: WhatsApp non rende cliccabili i path relativi. Nuova env var **`NEXT_PUBLIC_APP_URL`** (es. `https://order-app.vercel.app`) usata dal template `orderMessage`. Documentata in `.env.example` e `README.md`. Su Vercel preview vs prod ognuno setta la propria URL canonica.
-- **Pagina target del link**: `/shop/order-confirmation/[id]` (esistente, gated per ownership). Nessuna nuova route da creare.
-
-**Task**:
-- [ ] Migration `add_user_phone_number`: `ALTER TABLE "User" ADD COLUMN "phoneNumber" VARCHAR`
-- [ ] `prisma/schema.prisma`: campo `phoneNumber String?` su User
-- [ ] `lib/whatsapp.ts` (NEW): `normalizePhone`, `buildWhatsAppUrl`, template (`greetingMessage`, `orderMessage`)
-- [ ] `components/WhatsAppButton.tsx` (NEW): bottone link con icona, no-render se phone invalido
-- [ ] `lib/validators.ts`: aggiungere `phoneSchema` (digits-only, 7-15 char, opzionale) usato in `userCreateSchema` e `userUpdateSchema`. Normalizzazione (strip non-digit) prima della validazione
-- [ ] `app/api/admin/users/route.ts` e `[id]/route.ts`: persistono `phoneNumber` (normalizzato)
-- [ ] `app/dashboard/admin/users/CreateUserForm.tsx`: nuovo campo "Numero WhatsApp (opzionale, formato internazionale)"
-- [ ] `app/dashboard/admin/users/UsersTable.tsx`: nuovo bottone WhatsApp in riga utente + edit del campo nel modal
-- [ ] `app/dashboard/admin/orders/OrdersTable.tsx`: bottone WhatsApp in riga ordine (richiede pull `user.phoneNumber` nella query Prisma del page parent)
-- [ ] `app/dashboard/admin/orders/EditOrderPanel.tsx`: bottone WhatsApp nel pannello header
-- [ ] `app/dashboard/admin/orders/page.tsx`: aggiornare `select` user per includere `phoneNumber`
-- [ ] `.env.example` + `README.md`: documentare `NEXT_PUBLIC_APP_URL`
-- [ ] Smoke test: utente con/senza numero, click da mobile (apre app), click da desktop (apre WhatsApp Web), link a order-confirmation cliccabile in chat
-
-**File coinvolti**:
-- `prisma/schema.prisma`, `prisma/migrations/<timestamp>_add_user_phone_number/`
-- `lib/whatsapp.ts` (NEW), `lib/validators.ts`
-- `components/WhatsAppButton.tsx` (NEW)
-- `app/api/admin/users/route.ts`, `app/api/admin/users/[id]/route.ts`
-- `app/dashboard/admin/users/{UsersTable,CreateUserForm}.tsx`
-- `app/dashboard/admin/orders/{OrdersTable,EditOrderPanel,page}.tsx`
-- `.env.example`, `README.md`
-
-**Anti-scope**:
-- Niente WhatsApp Business / Cloud API (Meta) — costoso, burocratico, overkill per "apri chat con un click".
-- Niente self-service customer per inserire/modificare il proprio numero (rimandato a un futuro `/user/profile`).
-- Niente invio automatico messaggi: l'admin deve sempre confermare con Invio nella chat.
-- Niente storico messaggi inviati (impossibile tramite deep link, lato Meta servirebbe l'API).
-- Niente template approvati Meta (Business API only).
-- Niente i18n del messaggio precompilato: italiano hard-coded, single-tenant.
-
-**Priority**: 🟡 MEDIUM (UX admin reale, valore alto, costo basso)
-
----
-
 ### Step 9-bis. Template messaggi WhatsApp in DB (follow-up di Step 9)
 **Stato**: 🔴 TODO (backlog non bloccante)
 **Descrizione**: Spostare i template dei messaggi WhatsApp da `lib/whatsapp.ts` (hardcoded) a una tabella `MessageTemplate { key, body }` editabile a runtime tramite UI admin. Per ora resta hardcoded perché redeploy Vercel su git push è ~90s e il single-admin (te) ha accesso al codice.

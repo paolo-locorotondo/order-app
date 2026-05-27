@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       name: true,
       email: true,
       role: true,
+      phoneNumber: true,
       createdAt: true,
     },
   });
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: errorMessages.join(", ") }, { status: 400 });
     }
 
-    const { name, email, password } = validationResult.data;
+    const { name, email, password, phoneNumber } = validationResult.data;
     // 3 ruoli supportati: NUOVO, CUSTOMER, ADMIN. Se il body porta un valore
     // sconosciuto (o non lo passa) ricadiamo su CUSTOMER — l'admin sta creando
     // un account già operativo, non in attesa di approvazione.
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         role,
+        phoneNumber: phoneNumber ?? null,
       },
     });
 
@@ -76,6 +78,7 @@ export async function POST(request: NextRequest) {
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
+          phoneNumber: newUser.phoneNumber,
         },
       },
       { status: 201 }

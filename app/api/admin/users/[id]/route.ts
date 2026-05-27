@@ -23,14 +23,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: errorMessages.join(", ") }, { status: 400 });
     }
 
-    const { name, email, password, role } = validationResult.data;
+    const { name, email, password, role, phoneNumber } = validationResult.data;
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return NextResponse.json({ error: "Utente non trovato." }, { status: 404 });
     }
 
-    const updateData: { name?: string; email?: string; password?: string; role?: UserRole } = {};
+    const updateData: { name?: string; email?: string; password?: string; role?: UserRole; phoneNumber?: string | null } = {};
 
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) {
@@ -59,6 +59,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
       updateData.role = role;
     }
+    // phoneNumber: applichiamo solo se la chiave è nel body originale
+    // (validationResult.data.phoneNumber è sempre presente dopo il transform —
+    // null se omesso o vuoto. Distinguiamo "non aggiornare" da "azzera" guardando
+    // direttamente il body raw).
+    if (Object.prototype.hasOwnProperty.call(body, "phoneNumber")) {
+      updateData.phoneNumber = phoneNumber;
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -68,6 +75,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         name: true,
         email: true,
         role: true,
+        phoneNumber: true,
         createdAt: true,
       },
     });

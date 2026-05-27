@@ -64,6 +64,16 @@ Esempi:
 
 I prodotti senza `deliveryDate` non sono mai impattati.
 
+### WhatsApp deep link (Opzionale)
+```env
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+**URL canonica dell'app**: usata per costruire link assoluti nei messaggi precompilati di WhatsApp (es. il link al dettaglio ordine in `/shop/order-confirmation/[id]`). I deep link `wa.me` non rendono cliccabili i path relativi: senza un URL assoluto, il messaggio inviato non avrebbe link funzionante. Imposta:
+- in locale → `http://localhost:3000`
+- su Vercel → il dominio canonico (es. `https://order-app.vercel.app`); su preview imposta l'URL del preview se vuoi link cliccabili anche da quegli ambienti.
+
+Se la variabile è assente, i bottoni WhatsApp restano funzionanti ma il messaggio precompilato non include il link al dettaglio ordine. La feature WhatsApp è interamente lato client (deep link `https://wa.me/<numero>?text=...`), nessuna API Meta richiesta.
+
 ### Sicurezza
 - **NON committare mai** il file `.env` su Git
 - Usa chiavi diverse per sviluppo e produzione

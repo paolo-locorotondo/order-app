@@ -8,12 +8,14 @@ import FormFeedback from "@/components/FormFeedback";
 import QuantityStepper from "@/components/QuantityStepper";
 import PriceInput from "@/components/PriceInput";
 import Combobox from "@/components/Combobox";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import { apiFetch } from "@/lib/fetch";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
+import { orderMessage, buildOrderConfirmationUrl } from "@/lib/whatsapp";
 
 interface OrderWithDetails extends OrderModel {
     items: (OrderItemModel & { product: ProductModel })[];
-    user: Pick<UserModel, "id" | "name" | "email">;
+    user: Pick<UserModel, "id" | "name" | "email" | "phoneNumber">;
 }
 
 interface EditableItem {
@@ -32,7 +34,7 @@ const PAYMENT_LABELS: Record<PaymentMethods, string> = {
 interface EditOrderPanelProps {
     order: OrderWithDetails;
     products: (ProductModel & { inventory: { quantity: number; reserved: number } | null })[];
-    users: Pick<UserModel, "id" | "name" | "email">[];
+    users: Pick<UserModel, "id" | "name" | "email" | "phoneNumber">[];
     onSuccess?: () => void;
 }
 
@@ -320,10 +322,21 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
                             </p>
                         </div>
                     ) : (
-                        <>
-                            <p className="text-sm font-medium text-slate-800">{order.user?.name || "N/A"}</p>
-                            <p className="text-xs text-slate-500">{order.user?.email}</p>
-                        </>
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <p className="text-sm font-medium text-slate-800">{order.user?.name || "N/A"}</p>
+                                <p className="text-xs text-slate-500">{order.user?.email}</p>
+                            </div>
+                            <WhatsAppButton
+                                phoneNumber={order.user?.phoneNumber}
+                                message={orderMessage({
+                                    name: order.user?.name,
+                                    shortId: order.id.slice(0, 8),
+                                    orderUrl: buildOrderConfirmationUrl(order.id),
+                                })}
+                                title={`Apri chat WhatsApp con ${order.user?.name || order.user?.email || "cliente"}`}
+                            />
+                        </div>
                     )}
                 </div>
 

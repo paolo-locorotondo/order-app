@@ -24,6 +24,7 @@ model User {
   image          String?
   role           UserRole @default(NUOVO)
   googleId       String?  @unique
+  phoneNumber    String?
   orders         Order[]
   cartItems      CartItem[]
   reservation    CartReservation?
@@ -84,7 +85,7 @@ model Order {
   userId          String
   status          OrderStatus @default(IN_ATTESA)
   address         String      // Shipping address
-  notes           String?     // Note opzionali del cliente
+  notes           String?     // Note opzionali
   paymentMethod   PaymentMethods @default(CASH)
   stripePaymentId String?
   items           OrderItem[]
@@ -114,9 +115,9 @@ model OrderItem {
   orderId      String
   product      Product @relation(fields: [productId], references: [id])
   productId    String
-  productName  String  // Snapshot del nome al momento dell'ordine
-  quantity     Int
-  price        Float
+  productName  String  // Snapshot del productName al momento dell'ordine
+  quantity     Int // Snapshot della quantity al momento dell'ordine
+  price        Float // Snapshot del price al momento dell'ordine
 }
 
 model CartReservation {

@@ -12,6 +12,24 @@ export const priceSchema = z
     message: "Massimo 2 decimali",
   });
 
+// Numero di telefono in formato internazionale (richiesto da WhatsApp wa.me).
+// Accetta input libero (spazi, +, dashes) e normalizza a sole cifre. Empty
+// string e null entrambi → null (pulisce il campo). Range 7-15 cifre dopo lo
+// strip è il limite E.164; consigliamo lato UI di includere il country code
+// (un numero italiano "nudo" tipo `333...` passa il check ma non funzionerà
+// su WhatsApp — l'errore emerge al primo invio, accettabile per MVP).
+export const phoneSchema = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((v) => {
+    if (v == null) return null;
+    const digits = String(v).replace(/\D+/g, "");
+    return digits === "" ? null : digits;
+  })
+  .refine((v) => v == null || (v.length >= 7 && v.length <= 15), {
+    message: "Numero non valido: 7-15 cifre incluso il prefisso internazionale.",
+  });
+
 export const productSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
@@ -60,6 +78,9 @@ export const userRegistrationSchema = z.object({
     .regex(/[a-z]/, "Password deve contenere almeno una lettera minuscola")
     .regex(/\d/, "Password deve contenere almeno un numero")
     .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Password deve contenere almeno un carattere speciale"),
+  // Solo l'admin-create lo userà; la self-registration non lo invia
+  // (resta `undefined` → trasformato a `null` da phoneSchema).
+  phoneNumber: phoneSchema,
 });
 
 export const userLoginSchema = z.object({
@@ -89,6 +110,7 @@ export const userUpdateSchema = z.object({
     .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Password deve contenere almeno un carattere speciale")
     .optional(),
   role: z.enum([UserRole.NUOVO, UserRole.CUSTOMER, UserRole.ADMIN]).optional(),
+  phoneNumber: phoneSchema,
 });
 
 export const changePasswordSchema = z.object({

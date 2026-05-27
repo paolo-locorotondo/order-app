@@ -12,6 +12,7 @@ interface User {
   name: string | null;
   email: string;
   role: UserRole;
+  phoneNumber: string | null;
 }
 
 interface CreateUserFormProps {
@@ -28,6 +29,7 @@ export default function CreateUserForm({ user, onSuccess }: CreateUserFormProps)
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<UserRole>(user?.role || UserRole.CUSTOMER);
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || "");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +41,7 @@ export default function CreateUserForm({ user, onSuccess }: CreateUserFormProps)
     setPassword("");
     setConfirmPassword("");
     setRole(user?.role || UserRole.CUSTOMER);
+    setPhoneNumber(user?.phoneNumber || "");
     setError("");
     setSuccess("");
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -71,6 +74,10 @@ export default function CreateUserForm({ user, onSuccess }: CreateUserFormProps)
           name,
           email,
           role,
+          // phoneNumber sempre incluso: empty string viene normalizzato a null
+          // server-side da phoneSchema, quindi azzera il campo se l'admin lo
+          // svuota in edit.
+          phoneNumber,
           ...(!isEdit && { password }),
           ...(isEdit && password && { password }),
         }),
@@ -92,6 +99,7 @@ export default function CreateUserForm({ user, onSuccess }: CreateUserFormProps)
         setPassword("");
         setConfirmPassword("");
         setRole(UserRole.CUSTOMER);
+        setPhoneNumber("");
       }
 
       // Chiama callback di successo se fornito
@@ -189,6 +197,25 @@ export default function CreateUserForm({ user, onSuccess }: CreateUserFormProps)
             <option value={UserRole.CUSTOMER}>Customer</option>
             <option value={UserRole.ADMIN}>Admin</option>
           </select>
+        </div>
+
+        <div>
+          <label htmlFor="phoneNumber" className="block text-sm font-medium text-slate-700">
+            Numero WhatsApp <span className="font-normal text-slate-400">(opzionale)</span>
+          </label>
+          <input
+            id="phoneNumber"
+            type="tel"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            placeholder="+39 333 1234567"
+            className={inputClass}
+            inputMode="tel"
+            autoComplete="tel"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Includi il prefisso internazionale (es. <span className="font-mono">+39</span> per Italia). Spazi e simboli vengono rimossi automaticamente.
+          </p>
         </div>
 
         <FormFeedback error={error} success={success} className="mt-4" />

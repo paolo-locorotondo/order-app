@@ -618,6 +618,55 @@ Aggiunto il campo opzionale `deliveryDate DateTime?` a `Product`, esposto sia in
 
 ---
 
+### Step 9 — Integrazione WhatsApp (deep link `wa.me`)
+
+Bottone WhatsApp in 3 punti dell'admin (Utenti, Ordini, EditOrderPanel) per aprire la chat con il cliente direttamente da mobile o WhatsApp Web. Implementazione interamente lato client via deep link `https://wa.me/<numero>?text=<messaggio>` — niente WhatsApp Business / Cloud API (costoso, burocratico, overkill per "apri chat con un click"). L'admin preme Invio nella chat: nessun invio automatico.
+
+**Schema**:
+- Migration `20260527150000_add_user_phone_number`: `ALTER TABLE "User" ADD COLUMN "phoneNumber" TEXT`. Niente backfill.
+- `prisma/schema.prisma`: `phoneNumber String?` su `User`. Memorizzato già normalizzato (sole cifre, formato internazionale es. `391234567890`).
+
+**Helpers**:
+- `lib/whatsapp.ts` (NEW): `normalizePhone(raw)` strippa tutto tranne le cifre e ritorna `null` se length < 7 o > 15 (range E.164). `buildWhatsAppUrl(phone, message?)` ritorna `null` su numero invalido (segnale al component per non renderizzare). Template builder: `greetingMessage(name)` per uso generico, `orderMessage({ name, shortId, orderUrl })` per il contesto ordine. `buildOrderConfirmationUrl(orderId)` legge `NEXT_PUBLIC_APP_URL` per costruire il link assoluto a `/shop/order-confirmation/[id]` — necessario perché WhatsApp non rende cliccabili path relativi nei messaggi.
+- `lib/validators.ts`: nuovo `phoneSchema` riusato da `userRegistrationSchema` e `userUpdateSchema`. Empty string e null entrambi → null (per pulire il campo da edit). Range 7-15 cifre dopo lo strip; il prefisso internazionale è raccomandato lato UI ma non strict-enforced (un numero "nudo" passa la validazione ma non funziona su WhatsApp — l'errore emerge al primo invio, accettabile per MVP).
+
+**Component riutilizzabile** `components/WhatsAppButton.tsx`: thin wrapper su `<a target="_blank" rel="noopener noreferrer">`. Props `phoneNumber`, `message?`, `size?` (`sm` o `icon`), `stopPropagation?`, `title?`. Se `phoneNumber` è null/non valido **non renderizza** (scelta di pulizia: niente bottoni grigi inattivi). `stopPropagation: true` di default per evitare che il click sul bottone apra anche il modal della riga su cui vive.
+
+**Punti di integrazione** (3):
+- `UsersTable` admin (riga utente): messaggio = `greetingMessage(user.name)`.
+- `OrdersTable` admin (riga ordine): messaggio = `orderMessage({...})` con link al dettaglio ordine.
+- `EditOrderPanel` admin (sezione Cliente, vista non-editing): stesso messaggio dell'OrdersTable.
+- `CreateUserForm`: nuovo campo input "Numero WhatsApp (opzionale)" sotto al ruolo, con helper testuale sul prefisso internazionale richiesto.
+
+**Query Prisma estese** (per esporre `phoneNumber`):
+- `app/dashboard/admin/users/page.tsx`: `select` esteso.
+- `app/dashboard/admin/orders/page.tsx`: `select` su `user` nested + array `users` esteso.
+- `app/api/admin/users/route.ts`: GET espone `phoneNumber`; POST persiste (con normalizzazione via Zod transform).
+- `app/api/admin/users/[id]/route.ts`: PUT applica `phoneNumber` solo se la chiave è nel body raw (distinguiamo "non aggiornare" da "azzera": altrimenti ogni edit di un altro campo cancellerebbe il numero).
+
+**Config**:
+- `NEXT_PUBLIC_APP_URL` (opzionale): URL canonica dell'app per i link assoluti nei messaggi precompilati. In locale `http://localhost:3000`, su Vercel imposta il dominio canonico. Se mancante i bottoni WhatsApp restano funzionanti ma il link al dettaglio ordine è omesso. Documentata in `.env.example` e `README.md`.
+
+**Anti-scope** (preservare):
+- Niente WhatsApp Business / Cloud API.
+- Niente self-service customer per modificare il proprio numero (rimandato a un futuro `/user/profile`, vedi TODO).
+- Niente invio automatico.
+- Niente storico messaggi inviati (impossibile via deep link).
+- Niente i18n: italiano hard-coded. Per spostare i template in DB e rendere editabili a runtime vedi TODO Step 9-bis (backlog).
+
+**File coinvolti**:
+- `prisma/schema.prisma`, `prisma/migrations/20260527150000_add_user_phone_number/migration.sql`
+- `lib/whatsapp.ts` (NEW), `lib/validators.ts`
+- `components/WhatsAppButton.tsx` (NEW)
+- `app/api/admin/users/route.ts`, `app/api/admin/users/[id]/route.ts`
+- `app/dashboard/admin/users/{UsersTable,CreateUserForm,page}.tsx`
+- `app/dashboard/admin/orders/{OrdersTable,EditOrderPanel,page}.tsx`
+- `.env.example`, `README.md`
+
+**Priority**: 🟡 MEDIUM (UX admin reale, valore alto, costo basso)
+
+---
+
 ### Admin Ordini — Export PDF aggregato + riordino colonne CSV
 
 **Riordino colonne CSV** (rimosso "Articolo - SKU"). Nuovo ordine: `ID Ordine | Data creazione | Data modifica | Indirizzo | Note | Pagamento | Status | Email | Cliente | Totale Ordine (€) | Articolo - Nome | Articolo - Quantità | Articolo - Prezzo Unitario (€) | Articolo - Subtotale (€)`.

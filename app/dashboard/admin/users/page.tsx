@@ -20,6 +20,7 @@ export default async function AdminUsers() {
       name: true,
       email: true,
       role: true,
+      phoneNumber: true,
       createdAt: true,
       updatedAt: true,
     },

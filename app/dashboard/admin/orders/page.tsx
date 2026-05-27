@@ -16,12 +16,12 @@ export default async function AdminOrders() {
             orderBy: { createdAt: "desc" },
             include: {
                 items: { include: { product: true } },
-                user: { select: { id: true, name: true, email: true } },
+                user: { select: { id: true, name: true, email: true, phoneNumber: true } },
             },
         }),
         prisma.user.findMany({
             orderBy: { name: "asc" },
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true, email: true, phoneNumber: true },
         }),
         prisma.product.findMany({
             orderBy: { name: "asc" },
