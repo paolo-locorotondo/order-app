@@ -533,8 +533,17 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                         onClick={() => handleDelete(order.id)}
                                         disabled={deleteLoading}
                                         className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                        title={
+                                            order.status !== OrderStatus.ANNULLATO
+                                                ? "Lo stock NON verrà restituito (annulla prima l'ordine se vuoi liberare lo stock)."
+                                                : undefined
+                                        }
                                     >
-                                        {deleteLoading ? "..." : "Conferma"}
+                                        {deleteLoading
+                                            ? "..."
+                                            : order.status !== OrderStatus.ANNULLATO
+                                                ? "Conferma (stock non restituito)"
+                                                : "Conferma"}
                                     </button>
                                     <button
                                         onClick={() => setDeleteConfirm(null)}

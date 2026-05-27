@@ -316,15 +316,15 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   }
 
   try {
-    // Atomic: restore inventory + delete items + delete order.
-    // Se uno step fallisce, niente viene applicato (no stock fantasma né ordini orfani).
+    // DELETE meccanico: solo cleanup di OrderItem + Order. NIENTE restore
+    // inventory: l'inventory è guidato esclusivamente dalle transizioni di
+    // status (NON-ANNULLATO ↔ ANNULLATO, vedi PUT). Se restituissimo qui lo
+    // stock causeremmo un double-restore sugli ordini già ANNULLATO (lo stock
+    // era stato ripristinato al momento della transizione). Conseguenza
+    // accettata: DELETE su ordine non-ANNULLATO lascia lo stock "occupato"
+    // (leak fantasma); l'admin deve annullare prima per liberarlo. La UI mostra
+    // un avviso esplicito in caso di status != ANNULLATO.
     await prisma.$transaction([
-      ...order.items.map((item) =>
-        prisma.inventory.update({
-          where: { productId: item.productId },
-          data: { quantity: { increment: item.quantity } },
-        }),
-      ),
       prisma.orderItem.deleteMany({ where: { orderId: params.id } }),
       prisma.order.delete({ where: { id: params.id } }),
     ]);
