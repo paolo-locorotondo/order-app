@@ -28,6 +28,9 @@ const ROLE_COLORS: Record<UserRole, string> = {
   [UserRole.NUOVO]: "bg-amber-100 text-amber-900",
 };
 
+type SortField = "name" | "email" | "role" | "createdAt" | "updatedAt";
+type SortDir = "asc" | "desc";
+
 export default function UsersTable({ users }: { users: User[] }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
@@ -40,6 +43,18 @@ export default function UsersTable({ users }: { users: User[] }) {
   const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const handleSort = (key: string) => {
+    const field = key as SortField;
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  };
 
   const filtersActive =
     searchFilter.trim() !== "" || roleFilter !== "ALL" || dateFrom !== "" || dateTo !== "";
@@ -129,23 +144,52 @@ export default function UsersTable({ users }: { users: User[] }) {
       });
     }
 
+    if (sortField) {
+      result.sort((a, b) => {
+        let valA: number | string;
+        let valB: number | string;
+        if (sortField === "name") {
+          valA = (a.name ?? "").toLowerCase();
+          valB = (b.name ?? "").toLowerCase();
+        } else if (sortField === "email") {
+          valA = a.email.toLowerCase();
+          valB = b.email.toLowerCase();
+        } else if (sortField === "role") {
+          valA = a.role;
+          valB = b.role;
+        } else if (sortField === "createdAt") {
+          valA = new Date(a.createdAt).getTime();
+          valB = new Date(b.createdAt).getTime();
+        } else {
+          valA = new Date(a.updatedAt).getTime();
+          valB = new Date(b.updatedAt).getTime();
+        }
+        if (valA < valB) return sortDir === "asc" ? -1 : 1;
+        if (valA > valB) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
     return result;
-  }, [users, searchFilter, roleFilter, dateField, dateFrom, dateTo]);
+  }, [users, searchFilter, roleFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
 
   const columns: AdminTableColumn<User>[] = [
     {
       key: "name",
       header: "Nome",
+      sortable: true,
       cell: (u) => <span className="font-medium">{u.name || "-"}</span>,
     },
     {
       key: "email",
       header: "Email",
+      sortable: true,
       cell: (u) => u.email,
     },
     {
       key: "role",
       header: "Ruolo",
+      sortable: true,
       cell: (u) => (
         <span
           className={`rounded px-2 py-1 text-xs font-medium ${
@@ -159,6 +203,7 @@ export default function UsersTable({ users }: { users: User[] }) {
     {
       key: "createdAt",
       header: "Data creazione",
+      sortable: true,
       hideOnMobile: true,
       cell: (u) => (
         <span className="text-xs text-slate-500">
@@ -170,6 +215,7 @@ export default function UsersTable({ users }: { users: User[] }) {
     {
       key: "updatedAt",
       header: "Data modifica",
+      sortable: true,
       hideOnMobile: true,
       cell: (u) => (
         <span className="text-xs text-slate-500">
@@ -282,6 +328,9 @@ export default function UsersTable({ users }: { users: User[] }) {
           rowKey={(u) => u.id}
           onRowClick={(u) => openModal(u)}
           emptyMessage="Nessun utente trovato."
+          sortField={sortField ?? undefined}
+          sortDir={sortDir}
+          onSort={handleSort}
           renderActions={(user) => (
             <>
               {user.role === UserRole.NUOVO && (
