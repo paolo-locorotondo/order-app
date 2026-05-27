@@ -1,4 +1,4 @@
-import { PaymentMethods, UserRole } from "@/app/generated/prisma/enums";
+import { PaymentMethods, UserRole, OrderStatus } from "@/app/generated/prisma/enums";
 import { z } from "zod";
 
 // Single source of truth per i prezzi (Product, OrderItem, ecc.).
@@ -111,6 +111,28 @@ export const userUpdateSchema = z.object({
     .optional(),
   role: z.enum([UserRole.NUOVO, UserRole.CUSTOMER, UserRole.ADMIN]).optional(),
   phoneNumber: phoneSchema,
+});
+
+// Body per il bulk status-change da POST /api/admin/orders/bulk.
+// `ids`: lista di order id (cuid). `status`: target. Le transizioni
+// NON-ANNULLATO ↔ ANNULLATO ribilanciano l'inventory atomicamente nell'handler.
+export const bulkOrderStatusSchema = z.object({
+  ids: z.array(z.string().cuid()).min(1, "Seleziona almeno un ordine"),
+  status: z.enum([
+    OrderStatus.IN_ATTESA,
+    OrderStatus.CONFERMATO,
+    OrderStatus.SPEDITO,
+    OrderStatus.PAGATO_DA_CONSEGNARE,
+    OrderStatus.CONSEGNATO_DA_PAGARE,
+    OrderStatus.CONSEGNATO_E_PAGATO,
+    OrderStatus.ANNULLATO,
+  ]),
+});
+
+// Body per il bulk delete da DELETE /api/admin/orders/bulk.
+// Cleanup meccanico (no inventory restore, vedi commit b49ef44).
+export const bulkOrderDeleteSchema = z.object({
+  ids: z.array(z.string().cuid()).min(1, "Seleziona almeno un ordine"),
 });
 
 // Body per il bulk role-change da POST /api/admin/users/bulk.

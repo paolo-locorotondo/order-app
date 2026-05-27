@@ -1,6 +1,6 @@
 # Authorization Matrix
 
-> **Snapshot del 2026-05-26.** La sorgente di verità sono le chiamate
+> **Snapshot del 2026-05-27.** La sorgente di verità sono le chiamate
 > `validateAuth(request, ...)` nelle `route.ts` (API) e
 > `validateAuthFromServerSession(...)` nelle `page.tsx` (server components),
 > più il matcher di [middleware.ts](../middleware.ts).
@@ -59,9 +59,11 @@ I ruoli sono definiti in `prisma/schema.prisma` (`enum UserRole`):
 | `PUT /api/inventory/[id]` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET\|POST /api/admin/users` | ↪ | 🔒 | 🔒 | ✅ |
 | `PUT\|DELETE /api/admin/users/[id]` | ↪ | 🔒 | 🔒 | ✅ |
+| `POST /api/admin/users/bulk` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET\|POST /api/admin/orders` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET /api/admin/orders/[id]` | ↪ | 🔒 | ✅ (solo proprio) | ✅ |
 | `PUT\|DELETE /api/admin/orders/[id]` | ↪ | 🔒 | 🔒 | ✅ |
+| `POST\|DELETE /api/admin/orders/bulk` | ↪ | 🔒 | 🔒 | ✅ |
 | `POST /api/user/changepassword` | ↪ | ✅ (cred) / 400 (oauth) | ✅ (cred) / 400 (oauth) | ✅ (cred) / 400 (oauth) |
 
 ## Note

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
@@ -81,6 +81,13 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             return next;
         });
     };
+    // Selezione multipla per azioni bulk. Auto-prune via useEffect su processedOrders:
+    // gli id non più visibili (a causa di filtri) escono dal set automaticamente, così
+    // l'azione bulk opera sempre solo sulle righe attualmente visibili.
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+    const [bulkStatus, setBulkStatus] = useState<OrderStatus>(OrderStatus.CONFERMATO);
+    const [bulkLoading, setBulkLoading] = useState(false);
+
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -232,6 +239,109 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
 
         return result;
     }, [orders, statusFilter, userFilter, productFilter, dateField, dateFrom, dateTo, deliveryFrom, deliveryTo, sortField, sortDir]);
+
+    // Auto-prune: stesso pattern di UsersTable. Quando i filtri cambiano,
+    // gli id non più visibili escono dal set selectedIds.
+    useEffect(() => {
+        setSelectedIds((prev) => {
+            if (prev.size === 0) return prev;
+            const visibleIds = new Set(processedOrders.map((o) => o.id));
+            const next = new Set<string>();
+            for (const id of prev) {
+                if (visibleIds.has(id)) next.add(id);
+            }
+            return next.size === prev.size ? prev : next;
+        });
+    }, [processedOrders]);
+
+    const allVisibleSelected =
+        processedOrders.length > 0 &&
+        processedOrders.every((o) => selectedIds.has(o.id));
+
+    const toggleRowSelection = (id: string) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleAllVisible = () => {
+        setSelectedIds((prev) => {
+            if (allVisibleSelected) {
+                const next = new Set(prev);
+                for (const o of processedOrders) next.delete(o.id);
+                return next;
+            }
+            const next = new Set(prev);
+            for (const o of processedOrders) next.add(o.id);
+            return next;
+        });
+    };
+
+    const clearSelection = () => setSelectedIds(new Set());
+
+    const handleBulkStatusChange = async () => {
+        if (selectedIds.size === 0) return;
+        const ids = Array.from(selectedIds);
+        if (!confirm(`Confermi cambio status a ${orderStatusLabel(bulkStatus)} per ${ids.length} ${ids.length === 1 ? "ordine" : "ordini"}?`)) {
+            return;
+        }
+        setBulkLoading(true);
+        try {
+            const response = await apiFetch("/api/admin/orders/bulk", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids, status: bulkStatus }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data?.error || "Errore durante l'aggiornamento bulk.");
+                return;
+            }
+            clearSelection();
+            router.refresh();
+        } catch {
+            alert("Errore di rete. Riprova più tardi.");
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
+        const ids = Array.from(selectedIds);
+        // Avviso esteso se almeno un selezionato non è ANNULLATO (stock fantasma).
+        const nonAnnullatoCount = processedOrders.filter(
+            (o) => selectedIds.has(o.id) && o.status !== OrderStatus.ANNULLATO,
+        ).length;
+        const warn = nonAnnullatoCount > 0
+            ? ` ATTENZIONE: ${nonAnnullatoCount} ${nonAnnullatoCount === 1 ? "ordine non è stato annullato" : "ordini non sono stati annullati"}; lo stock NON verrà restituito (annulla prima per liberare lo stock).`
+            : "";
+        if (!confirm(`Eliminare definitivamente ${ids.length} ${ids.length === 1 ? "ordine" : "ordini"}?${warn}`)) {
+            return;
+        }
+        setBulkLoading(true);
+        try {
+            const response = await apiFetch("/api/admin/orders/bulk", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data?.error || "Errore durante l'eliminazione bulk.");
+                return;
+            }
+            clearSelection();
+            router.refresh();
+        } catch {
+            alert("Errore di rete. Riprova più tardi.");
+        } finally {
+            setBulkLoading(false);
+        }
+    };
 
     // Aggregazione per prodotto sui soli ordini filtrati. Chiave = productId per
     // evitare collisioni se due prodotti hanno snapshot di nome uguali.
@@ -526,6 +636,53 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                         </div>
                 </FiltersAccordion>
 
+                {/* Action bar bulk: appare quando ≥1 ordine selezionato */}
+                {selectedIds.size > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+                        <span className="font-medium text-blue-900">
+                            {selectedIds.size} {selectedIds.size === 1 ? "ordine selezionato" : "ordini selezionati"}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <label className="text-xs text-slate-600">Cambia status a</label>
+                            <select
+                                value={bulkStatus}
+                                onChange={(e) => setBulkStatus(e.target.value as OrderStatus)}
+                                disabled={bulkLoading}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+                            >
+                                {Object.values(OrderStatus).map((s) => (
+                                    <option key={s} value={s}>{orderStatusLabel(s)}</option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={handleBulkStatusChange}
+                                disabled={bulkLoading}
+                                className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                {bulkLoading ? "..." : "Applica"}
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleBulkDelete}
+                            disabled={bulkLoading}
+                            className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                            title="Elimina i selezionati (lo stock NON verrà restituito per ordini non-ANNULLATO)"
+                        >
+                            Elimina selezionati
+                        </button>
+                        <button
+                            type="button"
+                            onClick={clearSelection}
+                            disabled={bulkLoading}
+                            className="rounded bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-300 disabled:opacity-50"
+                        >
+                            Annulla selezione
+                        </button>
+                    </div>
+                )}
+
                 <AdminTable
                     rows={processedOrders}
                     columns={columns}
@@ -535,6 +692,10 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                     sortField={sortField}
                     sortDir={sortDir}
                     onSort={handleSort}
+                    selectable
+                    selectedIds={selectedIds}
+                    onToggleRowSelection={toggleRowSelection}
+                    onToggleAllVisible={toggleAllVisible}
                     renderActions={(order) => (
                         <>
                             <WhatsAppButton
