@@ -223,11 +223,11 @@ function buildPdf(orders: OrderWithDetails[]): jsPDF {
             "", // subtotale nella riga dedicata sotto
             "", // appunti
         ]);
+        // colSpan=4 fonde Cliente+Prodotto+Qtà+Totale (38+45+14+22 = 119mm) in
+        // un'unica cella per la label "Totale {nome}". Evita il wrap su nomi
+        // cliente lunghi che con la sola colonna Prodotto (45mm) sforavano.
         const subtotalRow = [
-            { content: "", styles: { ...subtotalCellStyles } },
-            { content: `Totale ${agg.name}`, styles: { ...subtotalCellStyles, fontStyle: "bold" as const, halign: "right" as const } },
-            { content: "", styles: { ...subtotalCellStyles } },
-            { content: "", styles: { ...subtotalCellStyles } },
+            { content: `Totale ${agg.name}`, colSpan: 4, styles: { ...subtotalCellStyles, fontStyle: "bold" as const, halign: "right" as const } },
             { content: formatPrice(agg.subtotal), styles: { ...subtotalCellStyles, fontStyle: "bold" as const, textColor: [21, 128, 61] as [number, number, number], halign: "right" as const } },
             { content: "", styles: { ...subtotalCellStyles } },
         ];
