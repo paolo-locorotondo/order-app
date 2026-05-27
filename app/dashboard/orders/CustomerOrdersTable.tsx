@@ -359,7 +359,7 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
             <AdminModal
                 isOpen={modalOpen}
                 onClose={closeModal}
-                title={selectedOrder ? `Dettaglio ordine #${selectedOrder.id.slice(0, 8)}` : "Dettaglio ordine"}
+                title={selectedOrder ? `Dettaglio ordine #${selectedOrder.id}` : "Dettaglio ordine"}
             >
                 {selectedOrder && <OrderDetailsPanel order={selectedOrder} />}
             </AdminModal>
