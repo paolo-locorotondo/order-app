@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CreateUserForm from "./CreateUserForm";
 import AdminModal from "@/components/AdminModal";
@@ -46,6 +46,13 @@ export default function UsersTable({ users }: { users: User[] }) {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
+  // Selezione multipla per azioni bulk. La selezione viene auto-pruned alla
+  // soltanto le righe visibili (vedi useEffect più sotto): quando l'admin
+  // cambia filtri, gli id non più visibili escono automaticamente dal set.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkRole, setBulkRole] = useState<UserRole>(UserRole.CUSTOMER);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const handleSort = (key: string) => {
     const field = key as SortField;
     if (sortField === field) {
@@ -55,6 +62,17 @@ export default function UsersTable({ users }: { users: User[] }) {
       setSortDir("asc");
     }
   };
+
+  const toggleRowSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   const filtersActive =
     searchFilter.trim() !== "" || roleFilter !== "ALL" || dateFrom !== "" || dateTo !== "";
@@ -172,6 +190,68 @@ export default function UsersTable({ users }: { users: User[] }) {
 
     return result;
   }, [users, searchFilter, roleFilter, dateField, dateFrom, dateTo, sortField, sortDir]);
+
+  // Auto-prune della selezione: quando processedUsers cambia (filtri/ricerca),
+  // rimuovo dal set gli id non più visibili. Decisione UX: l'azione bulk deve
+  // operare solo sulle righe attualmente visibili (no ghost edit di righe
+  // selezionate prima del filtro). Vedi discussione TODO Step #9.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleIds = new Set(processedUsers.map((u) => u.id));
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visibleIds.has(id)) next.add(id);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+  }, [processedUsers]);
+
+  const allVisibleSelected =
+    processedUsers.length > 0 &&
+    processedUsers.every((u) => selectedIds.has(u.id));
+
+  const toggleAllVisible = () => {
+    setSelectedIds((prev) => {
+      if (allVisibleSelected) {
+        // Tutti i visibili erano selezionati → li deseleziono.
+        const next = new Set(prev);
+        for (const u of processedUsers) next.delete(u.id);
+        return next;
+      }
+      // Aggiungi tutti i visibili al set.
+      const next = new Set(prev);
+      for (const u of processedUsers) next.add(u.id);
+      return next;
+    });
+  };
+
+  const handleBulkRoleChange = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (!confirm(`Confermi cambio ruolo a ${bulkRole} per ${ids.length} ${ids.length === 1 ? "utente" : "utenti"}?`)) {
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const response = await apiFetch("/api/admin/users/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, role: bulkRole }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data?.error || "Errore durante l'aggiornamento bulk.");
+        return;
+      }
+      clearSelection();
+      router.refresh();
+    } catch {
+      alert("Errore di rete. Riprova più tardi.");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   const columns: AdminTableColumn<User>[] = [
     {
@@ -322,6 +402,44 @@ export default function UsersTable({ users }: { users: User[] }) {
           </p>
         )}
 
+        {/* Action bar bulk: appare quando ≥1 utente selezionato */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+            <span className="font-medium text-blue-900">
+              {selectedIds.size} {selectedIds.size === 1 ? "utente selezionato" : "utenti selezionati"}
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs text-slate-600">Cambia ruolo a</label>
+              <select
+                value={bulkRole}
+                onChange={(e) => setBulkRole(e.target.value as UserRole)}
+                disabled={bulkLoading}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+              >
+                {Object.values(UserRole).map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleBulkRoleChange}
+                disabled={bulkLoading}
+                className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {bulkLoading ? "..." : "Applica"}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={clearSelection}
+              disabled={bulkLoading}
+              className="rounded bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-300 disabled:opacity-50"
+            >
+              Annulla selezione
+            </button>
+          </div>
+        )}
+
         <AdminTable
           rows={processedUsers}
           columns={columns}
@@ -331,6 +449,10 @@ export default function UsersTable({ users }: { users: User[] }) {
           sortField={sortField ?? undefined}
           sortDir={sortDir}
           onSort={handleSort}
+          selectable
+          selectedIds={selectedIds}
+          onToggleRowSelection={toggleRowSelection}
+          onToggleAllVisible={toggleAllVisible}
           renderActions={(user) => (
             <>
               {user.role === UserRole.NUOVO && (

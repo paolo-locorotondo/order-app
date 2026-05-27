@@ -36,11 +36,21 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 
 > #1, #2, #3, #4, #5, #6, #7 e #8 di questa iterazione sono stati completati e spostati in [CHANGELOG.md](./CHANGELOG.md#-iterazione-2026-05-26).
 
-### #9 — In Admin Utenti Tasto Disabilita tutti gli utenti
-**Stato**: 🔴 TODO  
+### #9 — Righe selezionabili per azione su più record
+**Stato**: 🟡 IN LAVORAZIONE
 **Priority**: 🟢 LOW (UX, non bloccante)
 
-**Descrizione**: Nella pagina Gestione Utenti sarebbe comodo poter selezionare tutti o alcuni utenti e cambiare per tutti il ruolo a NUOVO o altro.
+**Descrizione**: Selezione multipla via checkbox + action bar bulk per applicare azioni su più record contemporaneamente. Iniziato da Admin Utenti, da estendere ad Admin Ordini.
+
+**Fatto** (commit pending push):
+- [x] `AdminTable` esteso con prop opt-in `selectable` / `selectedIds` / `onToggleRowSelection` / `onToggleAllVisible` (retrocompatibile: le altre tabelle non cambiano comportamento finché non passano `selectable={true}`).
+- [x] `Admin Utenti`: checkbox per riga + header con select-all-visibili (stato indeterminato per selezione parziale) + action bar "Cambia ruolo a..." + auto-prune della selezione quando cambiano filtri/sort (per evitare ghost-edit di righe non visibili).
+- [x] Endpoint `POST /api/admin/users/bulk` con `prisma.updateMany` atomico + self-demotion guard estesa (admin loggato non può togliersi il ruolo ADMIN da nessun endpoint, single PUT e bulk).
+
+**Da fare**:
+- [ ] **Admin Ordini**: portare la stessa selezione multipla in `OrdersTable`. Casi d'uso da concordare: cambio status bulk (es. tutti i selezionati → `CONFERMATO`), eliminazione bulk?
+- [ ] Endpoint bulk per ordini: `POST /api/admin/orders/bulk { ids, status }` con `updateMany`. Da decidere se gestire lo stesso ripristino inventory di MIGLIORAMENTO #2 anche in transizione bulk verso `ANNULLATO` (atomic + restore stock per ogni order item dei selezionati).
+- [ ] Smoke test: bulk status change su 3-5 ordini in stati diversi.
 
 ---
 

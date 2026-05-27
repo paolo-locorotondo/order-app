@@ -113,6 +113,15 @@ export const userUpdateSchema = z.object({
   phoneNumber: phoneSchema,
 });
 
+// Body per il bulk role-change da POST /api/admin/users/bulk.
+// `ids`: lista di user id (cuid) non vuota e con duplicati ignorati lato handler.
+// `role`: ruolo target. Niente NUOVO se l'admin è in `ids` (controllo nel handler,
+// non qui — è una regola di business che dipende dalla session).
+export const bulkUserRoleSchema = z.object({
+  ids: z.array(z.string().cuid()).min(1, "Seleziona almeno un utente"),
+  role: z.enum([UserRole.NUOVO, UserRole.CUSTOMER, UserRole.ADMIN]),
+});
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Password attuale richiesta"),
   newPassword: z.string()

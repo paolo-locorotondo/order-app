@@ -49,11 +49,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       updateData.password = await bcryptjs.hash(password, 10);
     }
     if (role !== undefined) {
-      // Mirror del check su DELETE: un admin non può degradarsi a NUOVO da solo,
-      // altrimenti perderebbe accesso e l'unico modo per riassegnarlo sarebbe da DB.
-      if (auth.token.id === userId && role === UserRole.NUOVO) {
+      // Mirror del check su DELETE: un admin non può autodegradarsi (a CUSTOMER
+      // o NUOVO), perché perderebbe accesso e l'unico modo per riassegnarsi
+      // ADMIN sarebbe da DB. Self → role ADMIN è ammesso (no-op).
+      if (auth.token.id === userId && role !== UserRole.ADMIN) {
         return NextResponse.json(
-          { error: "Non puoi assegnare il ruolo NUOVO al tuo account." },
+          { error: "Non puoi togliere il ruolo ADMIN al tuo account." },
           { status: 400 }
         );
       }
