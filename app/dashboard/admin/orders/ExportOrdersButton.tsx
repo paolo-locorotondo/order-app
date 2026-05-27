@@ -37,15 +37,14 @@ function buildCsv(orders: OrderWithDetails[]): string {
         "ID Ordine",
         "Data creazione",
         "Data modifica",
-        "Cliente",
-        "Email",
-        "Status",
         "Indirizzo",
         "Note",
         "Pagamento",
+        "Status",
+        "Email",
+        "Cliente",
         "Totale Ordine (€)",
         "Articolo - Nome",
-        "Articolo - SKU",
         "Articolo - Quantità",
         "Articolo - Prezzo Unitario (€)",
         "Articolo - Subtotale (€)",
@@ -59,19 +58,19 @@ function buildCsv(orders: OrderWithDetails[]): string {
             order.id,
             formatDateTime(order.createdAt),
             formatDateTime(order.updatedAt),
-            order.user?.name ?? "",
-            order.user?.email ?? "",
-            orderStatusLabel(order.status),
             order.address ?? "",
             order.notes ?? "",
             order.paymentMethod,
+            orderStatusLabel(order.status),
+            order.user?.email ?? "",
+            order.user?.name ?? "",
             formatPrice(orderTotal),
         ];
 
         if (order.items.length === 0) {
             // Edge case: ordine senza articoli (non dovrebbe accadere ma evitiamo di
             // perderlo dall'export). Riga con campi articolo vuoti.
-            rows.push([...baseFields, "", "", "", "", ""].map(escapeCsv).join(SEPARATOR));
+            rows.push([...baseFields, "", "", "", ""].map(escapeCsv).join(SEPARATOR));
             continue;
         }
 
@@ -80,7 +79,6 @@ function buildCsv(orders: OrderWithDetails[]): string {
                 [
                     ...baseFields,
                     item.productName,
-                    item.product?.sku ?? "",
                     item.quantity,
                     formatPrice(item.price),
                     formatPrice(item.price * item.quantity),

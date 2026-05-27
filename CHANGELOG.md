@@ -618,6 +618,27 @@ Aggiunto il campo opzionale `deliveryDate DateTime?` a `Product`, esposto sia in
 
 ---
 
+### Admin Ordini — Export PDF aggregato + riordino colonne CSV
+
+**Riordino colonne CSV** (rimosso "Articolo - SKU"). Nuovo ordine: `ID Ordine | Data creazione | Data modifica | Indirizzo | Note | Pagamento | Status | Email | Cliente | Totale Ordine (€) | Articolo - Nome | Articolo - Quantità | Articolo - Prezzo Unitario (€) | Articolo - Subtotale (€)`.
+
+**Nuovo button "Esporta PDF"** in `OrdersTable` admin (accanto al CSV). Genera un PDF lato client con `jspdf` + `jspdf-autotable` (download diretto, stesso flusso del CSV; nessuna API route aggiuntiva). Esporta gli stessi `processedOrders` filtrati visibili in tabella, con due sezioni:
+
+1. **Totali per prodotto**: stessa aggregazione del pannello in tabella (somma qty + totale per `productId`, ordinata per totale desc), riga finale "Totale complessivo".
+2. **Aggregato per cliente**: clienti in ordine alfabetico per nome; per ogni cliente le righe sono `(prodotto, qta, totale)` ordinate per `deliveryDate asc nulls last` (tiebreak per nome). Dopo le righe di ciascun cliente è inserita una riga subtotale dedicata "Totale {nome}: €X.XX" con sfondo grigio chiaro. Le 6 colonne richieste: `Cliente | Prodotto | Qtà | Totale | Subtot. cliente | Appunti` (ultima colonna riservata, sempre vuota — uno spazio per annotazioni a mano dopo la stampa).
+
+**Nomi canonici da `Product`** (non da OrderItem snapshot) per entrambe le sezioni del PDF: scelta esplicita per l'aggregazione — un OrderItem rinominato (es. "B scontato") non frammenta i conteggi. Fallback allo snapshot solo se il prodotto è stato eliminato.
+
+**File coinvolti**:
+- `app/dashboard/admin/orders/ExportOrdersPdfButton.tsx` (NEW)
+- `app/dashboard/admin/orders/ExportOrdersButton.tsx` (riordino headers + body)
+- `app/dashboard/admin/orders/OrdersTable.tsx` (mount del nuovo button)
+- `package.json` (deps `jspdf` + `jspdf-autotable`)
+
+**Priority**: 🟡 MEDIUM (admin reporting)
+
+---
+
 ### Polish — Sort Combobox per data consegna + shop con filtri + buffer visibilità configurabile
 
 **Sort Combobox prodotti per `deliveryDate` asc**: in tutte e 6 le combobox prodotto le option sono ora ordinate per data consegna asc (imminente prima); i prodotti senza data finiscono in fondo, tiebreak per nome. Punti toccati: `CreateOrderForm`, `EditOrderPanel`, `OrdersTable` (filtro), `CustomerOrdersTable` (filtro), `ProductsTable` (filtro), `InventoryTable` (filtro), `ShopList` (filtro). Ognuno usa una `useMemo` `productsForCombobox` per il sort, indipendente dal sort della tabella sottostante.

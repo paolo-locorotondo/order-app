@@ -9,6 +9,7 @@ import FiltersAccordion from "@/components/FiltersAccordion";
 import Combobox from "@/components/Combobox";
 import { apiFetch } from "@/lib/fetch";
 import ExportOrdersButton from "./ExportOrdersButton";
+import ExportOrdersPdfButton from "./ExportOrdersPdfButton";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
@@ -336,6 +337,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                     </button>
                     <RefreshButton />
                     <ExportOrdersButton orders={processedOrders} />
+                    <ExportOrdersPdfButton orders={processedOrders} />
                 </div>
 
                 {/* Totali per prodotto (sui soli ordini filtrati) — accordion in cima */}
