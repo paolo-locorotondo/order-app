@@ -5,7 +5,7 @@ import { PaymentMethods } from "@/app/generated/prisma/enums";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 
 interface OrderWithItems extends OrderModel {
-    items: OrderItemModel[];
+    items: (OrderItemModel & { product: { name: string; deliveryDate: Date | null } | null })[];
 }
 
 const PAYMENT_LABELS: Record<PaymentMethods, string> = {
@@ -81,6 +81,11 @@ export default function OrderDetailsPanel({ order }: OrderDetailsPanelProps) {
                             <div key={item.id} className="flex items-center justify-between text-sm">
                                 <div>
                                     <p className="font-medium text-slate-800">{item.productName}</p>
+                                    {item.product?.deliveryDate && (
+                                        <p className="text-xs text-slate-500">
+                                            Consegna: {new Date(item.product.deliveryDate).toLocaleDateString("it-IT")}
+                                        </p>
+                                    )}
                                     <p className="text-xs text-slate-500">Qtà: {item.quantity} × €{item.price.toFixed(2)}</p>
                                 </div>
                                 <p className="font-semibold text-slate-800">€{(item.price * item.quantity).toFixed(2)}</p>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { PaymentMethods } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
 import QuantityStepper from "@/components/QuantityStepper";
+import Combobox from "@/components/Combobox";
 import { apiFetch } from "@/lib/fetch";
 
 interface OrderItem {
@@ -50,6 +51,17 @@ export default function CreateOrderForm({ users, products }: CreateOrderFormProp
         const product = products.find((p) => p.id === item.productId);
         return sum + (product?.price ?? 0) * item.quantity;
     }, 0);
+
+    // Lista per la Combobox prodotti: ordinata per data consegna asc (imminente
+    // prima); i prodotti senza data finiscono in fondo.
+    const productsForCombobox = useMemo(() => {
+        return [...products].sort((a, b) => {
+            const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+            const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+            if (aTs !== bTs) return aTs - bTs;
+            return a.name.localeCompare(b.name);
+        });
+    }, [products]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -96,14 +108,16 @@ export default function CreateOrderForm({ users, products }: CreateOrderFormProp
                 {/* Utente */}
                 <div>
                     <label className={labelClass}>Utente *</label>
-                    <select value={userId} onChange={(e) => setUserId(e.target.value)} required className={inputClass}>
-                        <option value="">Seleziona utente...</option>
-                        {users.map((u) => (
-                            <option key={u.id} value={u.id}>
-                                {u.name || u.email} {u.name ? `(${u.email})` : ""}
-                            </option>
-                        ))}
-                    </select>
+                    <Combobox
+                        value={userId}
+                        onChange={setUserId}
+                        required
+                        placeholder="Seleziona utente..."
+                        options={users.map((u) => ({
+                            value: u.id,
+                            label: u.name ? `${u.name} (${u.email})` : u.email,
+                        }))}
+                    />
                 </div>
 
                 {/* Indirizzo */}
@@ -153,22 +167,24 @@ export default function CreateOrderForm({ users, products }: CreateOrderFormProp
                                 (selectedProduct?.inventory?.reserved ?? 0);
                             return (
                                 <div key={index} className="flex gap-2 items-start">
-                                    <select
+                                    <Combobox
+                                        className="min-w-0 flex-1"
                                         value={item.productId}
-                                        onChange={(e) => updateItem(index, "productId", e.target.value)}
+                                        onChange={(v) => updateItem(index, "productId", v)}
                                         required
-                                        className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
-                                    >
-                                        <option value="">Seleziona prodotto...</option>
-                                        {products.map((p) => {
+                                        placeholder="Seleziona prodotto..."
+                                        options={productsForCombobox.map((p) => {
                                             const disp = (p.inventory?.quantity ?? 0) - (p.inventory?.reserved ?? 0);
-                                            return (
-                                                <option key={p.id} value={p.id} disabled={disp <= 0}>
-                                                    {p.name} — €{p.price.toFixed(2)} {disp <= 0 ? "(esaurito)" : `(disp: ${disp})`}
-                                                </option>
-                                            );
+                                            const delivery = p.deliveryDate
+                                                ? ` (cons. ${new Date(p.deliveryDate).toLocaleDateString("it-IT")})`
+                                                : "";
+                                            return {
+                                                value: p.id,
+                                                label: `${p.name}${delivery} — €${p.price.toFixed(2)} ${disp <= 0 ? "(esaurito)" : `(disp: ${disp})`}`,
+                                                disabled: disp <= 0,
+                                            };
                                         })}
-                                    </select>
+                                    />
                                     <QuantityStepper
                                         value={item.quantity}
                                         onChange={(n) => updateItem(index, "quantity", n)}

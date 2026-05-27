@@ -616,3 +616,59 @@ Aggiunto il campo opzionale `deliveryDate DateTime?` a `Product`, esposto sia in
 
 **Priority**: 🟡 MEDIUM
 
+---
+
+### Polish — Sort Combobox per data consegna + shop con filtri + buffer visibilità configurabile
+
+**Sort Combobox prodotti per `deliveryDate` asc**: in tutte e 6 le combobox prodotto le option sono ora ordinate per data consegna asc (imminente prima); i prodotti senza data finiscono in fondo, tiebreak per nome. Punti toccati: `CreateOrderForm`, `EditOrderPanel`, `OrdersTable` (filtro), `CustomerOrdersTable` (filtro), `ProductsTable` (filtro), `InventoryTable` (filtro), `ShopList` (filtro). Ognuno usa una `useMemo` `productsForCombobox` per il sort, indipendente dal sort della tabella sottostante.
+
+**Combobox: nome canonico da `Product.name`** (invece di `OrderItem.productName`): nelle combobox dei filtri ordini (Storico + Admin) la label è ora il nome corrente del Product (`item.product?.name ?? item.productName` come fallback se il prodotto è stato eliminato). Risolve la duplicazione che si verificava quando un OrderItem veniva rinominato (es. "B" → "B scontato" per applicare uno sconto): la chiave del filtro resta `productId`, quindi un prodotto = una entry nella dropdown a prescindere da quanti rename ci sono stati. Stesso allineamento sull'aggregazione `productTotals` di Admin Ordini. La query `/dashboard/orders` (Storico) ora seleziona anche `product.name` oltre a `product.deliveryDate`. I pill della colonna "Articoli" continuano a mostrare `item.productName` (snapshot) per preservare la visibilità per-ordine del rename.
+
+**Shop con filtri client** (`ShopList`): la lista pubblica `/shop` ora ha un `FiltersAccordion` con Combobox prodotto + range Data consegna, identico per pattern alle tabelle admin. La page resta server (auth/SEO), `getProducts()` ritorna i prodotti già filtrati per il cutoff e ordinati per `deliveryDate asc nulls last` lato Prisma — il client wrapper si limita ad applicare i filtri UX. Da-A inclusivi (`T00:00:00` → `T23:59:59.999`); prodotti senza data esclusi dal range.
+
+**Buffer di visibilità via env** (`SHOP_HIDE_BEFORE_HOURS`): nuovo helper `lib/shop-visibility.ts` espone `shopVisibilityCutoff()` = `now + SHOP_HIDE_BEFORE_HOURS` ore. La policy precedente "nascondi se `deliveryDate < midnight today`" è stata sostituita da "nascondi se `deliveryDate < cutoff`" sia in `/shop` (filtro Prisma) sia in `/shop/products/[id]` (`notFound()`). Default `0` → comportamento "vedi tutto fino al momento esatto della consegna"; valore tipico in produzione `24` → lead time minimo 24h. Sono accettati anche **valori negativi** (es. `-24` per mostrare prodotti scaduti da meno di 24h, utile in test). Variabile assente o non numerica → trattata come 0. Documentata in `.env.example` e `README.md`.
+
+**Pill colonna "Articoli" arricchiti**: in `OrdersTable` admin e `CustomerOrdersTable` i pill blu `qty× nome` mostrano ora ` (cons. DD/MM/YYYY)` se il prodotto ha `deliveryDate`. `max-w` portato da 140px a 200px; il `title` (tooltip) contiene la stringa completa.
+
+**File coinvolti**:
+- `lib/shop-visibility.ts` (NEW)
+- `app/shop/page.tsx`, `app/shop/ShopList.tsx` (NEW), `app/shop/products/[id]/page.tsx`
+- `app/dashboard/orders/page.tsx` (select `product.name`)
+- `app/dashboard/admin/orders/{CreateOrderForm,EditOrderPanel,OrdersTable}.tsx`
+- `app/dashboard/orders/{CustomerOrdersTable,OrderDetailsPanel}.tsx`
+- `app/dashboard/admin/products/ProductsTable.tsx`
+- `app/dashboard/admin/inventory/InventoryTable.tsx`
+- `.env.example`, `README.md`
+
+**Priority**: 🟢 LOW (UX polish + admin config)
+
+---
+
+### Polish — Combobox typeahead + filtri prodotto/inventario uniformi
+
+**Combobox riusabile** (`components/Combobox.tsx`): typeahead con filtro realtime, alternativa a `<select>` quando la lista è lunga (utenti, prodotti). Stato interno `query` separato dal `value` (id), sync solo a chiusura del dropdown — l'utente può digitare liberamente mentre filtra. Keyboard nav (ArrowUp/Down salta i `disabled`, Enter, Escape), click-outside chiude, scroll dell'opzione highlighted in vista. Hidden input per la validazione HTML5 `required`. Bottone clear "✕" per resettare. Selezione su `mousedown` per evitare race con il `blur`. ARIA `combobox`/`listbox` corretti.
+
+Sostituito `<select>` con `Combobox` in **6 punti**:
+- `CreateOrderForm` admin (utente + per-row prodotto)
+- `EditOrderPanel` admin (per-row prodotto in modalità modifica)
+- `OrdersTable` admin (filtro prodotto)
+- `CustomerOrdersTable` (filtro prodotto)
+- `ProductsTable` admin (filtro prodotto)
+- `InventoryTable` admin (filtro prodotto)
+
+**Label arricchite con la data consegna**: in tutte e 6 le combobox prodotto la label ora è `${name} (cons. DD/MM/YYYY)` se `deliveryDate` è presente, altrimenti il solo `name`. Questo disambigua i prodotti omonimi che differiscono per data consegna (caso reale: stesso articolo per slot di consegna diversi). Stesso trattamento applicato al `productTotals` aggregato dell'`OrdersTable` admin, dove la riga mostra ora `(cons. …)` accanto al nome — fix collaterale di un duplicate-key React quando due prodotti omonimi finivano sotto lo stesso `key={p.name}`: la chiave del Map è ora `productId` (non più `productName`) e la `<tr key>` riusa l'id.
+
+**Admin Prodotti — riordino colonne + tutte sortable**: colonne ora `Immagine | ID | SKU | Nome | Data consegna | Prezzo | Stock | Azioni`. Tutte sortable tranne `Immagine` (puramente visiva). Aggiunto filtro per nome prodotto (Combobox sopra il range data consegna) — `processedProducts` ora applica filtro per nome PRIMA del filtro range, e il sort gestisce anche i nuovi campi (`id`, `sku` case-insensitive, `stock` da `inventory.quantity`).
+
+**Admin Inventario — colonna Data consegna + filtri allineati a Prodotti**: aggiunta colonna "Data consegna" (DD/MM/YYYY o "—") subito dopo "Prodotto", **tutte** le colonne sortable (`Prodotto`, `Data consegna`, `Quantità`, `Riservato`, `Disponibile`, `Reorder Point`). Filtri identici a Admin Prodotti: Combobox prodotti (label arricchita) + range date consegna in `FiltersAccordion`. La lista prodotti del Combobox è derivata dall'inventory passato in prop, ordinata alfabeticamente. Il sort di `Disponibile` usa il calcolato `quantity - reserved`. I prodotti senza `deliveryDate` finiscono in fondo all'ordinamento per data (coerente con `ProductsTable`) e sono esclusi dal filtro range.
+
+**File coinvolti**:
+- `components/Combobox.tsx` (NEW)
+- `app/dashboard/admin/orders/{CreateOrderForm,EditOrderPanel,OrdersTable}.tsx`
+- `app/dashboard/orders/CustomerOrdersTable.tsx`
+- `app/dashboard/admin/products/ProductsTable.tsx`
+- `app/dashboard/admin/inventory/InventoryTable.tsx`
+- `app/dashboard/orders/OrderDetailsPanel.tsx` (delivery date sotto productName negli items — incluso nel batch di rifiniture)
+
+**Priority**: 🟢 LOW (UX polish)
+

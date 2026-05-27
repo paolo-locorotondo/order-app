@@ -7,6 +7,7 @@ import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
 import FiltersAccordion from "@/components/FiltersAccordion";
+import Combobox from "@/components/Combobox";
 import { ProductModel, InventoryModel } from "@/app/generated/prisma/models";
 import { getProductImage } from "@/lib/product-image";
 import { apiFetch } from "@/lib/fetch";
@@ -15,7 +16,7 @@ interface ProductWithInventory extends ProductModel {
   inventory: InventoryModel | null;
 }
 
-type SortField = "name" | "price" | "deliveryDate";
+type SortField = "id" | "sku" | "name" | "deliveryDate" | "price" | "stock";
 type SortDir = "asc" | "desc";
 
 export default function ProductsTable({ products }: { products: ProductWithInventory[] }) {
@@ -33,13 +34,15 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
   const [deliveryFrom, setDeliveryFrom] = useState<string>("");
   const [deliveryTo, setDeliveryTo] = useState<string>("");
+  const [productFilter, setProductFilter] = useState<string>("");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const filtersActive = deliveryFrom !== "" || deliveryTo !== "";
+  const filtersActive = deliveryFrom !== "" || deliveryTo !== "" || productFilter !== "";
   const resetFilters = () => {
     setDeliveryFrom("");
     setDeliveryTo("");
+    setProductFilter("");
   };
 
   const handleSort = (key: string) => {
@@ -54,6 +57,10 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
   const processedProducts = useMemo(() => {
     let result = [...products];
+
+    if (productFilter) {
+      result = result.filter((p) => p.id === productFilter);
+    }
 
     if (deliveryFrom || deliveryTo) {
       const fromTs = deliveryFrom ? new Date(deliveryFrom + "T00:00:00").getTime() : -Infinity;
@@ -77,6 +84,15 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         } else if (sortField === "price") {
           valA = a.price;
           valB = b.price;
+        } else if (sortField === "stock") {
+          valA = a.inventory?.quantity ?? 0;
+          valB = b.inventory?.quantity ?? 0;
+        } else if (sortField === "id") {
+          valA = a.id;
+          valB = b.id;
+        } else if (sortField === "sku") {
+          valA = a.sku.toLowerCase();
+          valB = b.sku.toLowerCase();
         } else {
           valA = a.name.toLowerCase();
           valB = b.name.toLowerCase();
@@ -88,7 +104,19 @@ export default function ProductsTable({ products }: { products: ProductWithInven
     }
 
     return result;
-  }, [products, deliveryFrom, deliveryTo, sortField, sortDir]);
+  }, [products, productFilter, deliveryFrom, deliveryTo, sortField, sortDir]);
+
+  // Lista per la Combobox dei filtri: ordinata per data consegna asc (imminente
+  // prima); i prodotti senza data finiscono in fondo. Indipendente dal sort
+  // colonna scelto dall'utente in tabella.
+  const productsForCombobox = useMemo(() => {
+    return [...products].sort((a, b) => {
+      const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+      const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+      if (aTs !== bTs) return aTs - bTs;
+      return a.name.localeCompare(b.name);
+    });
+  }, [products]);
 
   const openModal = (product?: ProductWithInventory) => {
     setSelectedProduct(product);
@@ -185,6 +213,8 @@ export default function ProductsTable({ products }: { products: ProductWithInven
     }
   };
 
+  // Ordine colonne richiesto: Immagine | ID | SKU | Nome | Data consegna | Prezzo | Stock | Azioni.
+  // Tutte sortable tranne Immagine (visivo).
   const columns: AdminTableColumn<ProductWithInventory>[] = [
     {
       key: "image",
@@ -202,7 +232,15 @@ export default function ProductsTable({ products }: { products: ProductWithInven
     {
       key: "id",
       header: "ID",
+      sortable: true,
       cell: (p) => <span className="font-mono text-xs text-slate-500">{p.id.slice(0, 8)}</span>,
+      hideOnMobile: true,
+    },
+    {
+      key: "sku",
+      header: "SKU",
+      sortable: true,
+      cell: (p) => <span className="text-slate-500">{p.sku}</span>,
       hideOnMobile: true,
     },
     {
@@ -210,18 +248,6 @@ export default function ProductsTable({ products }: { products: ProductWithInven
       header: "Nome",
       sortable: true,
       cell: (p) => <span className="font-medium">{p.name}</span>,
-    },
-    {
-      key: "sku",
-      header: "Sku",
-      cell: (p) => <span className="text-slate-500">{p.sku}</span>,
-      hideOnMobile: true,
-    },
-    {
-      key: "price",
-      header: "Prezzo",
-      sortable: true,
-      cell: (p) => `€${p.price.toFixed(2)}`,
     },
     {
       key: "deliveryDate",
@@ -237,8 +263,15 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         ),
     },
     {
+      key: "price",
+      header: "Prezzo",
+      sortable: true,
+      cell: (p) => `€${p.price.toFixed(2)}`,
+    },
+    {
       key: "stock",
       header: "Stock",
+      sortable: true,
       cell: (p) => (
         <span
           className={`rounded px-2 py-1 text-xs font-medium ${
@@ -277,21 +310,35 @@ export default function ProductsTable({ products }: { products: ProductWithInven
           onReset={resetFilters}
           canReset={filtersActive}
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs text-slate-500">Data consegna — Da</label>
-            <input
-              type="date"
-              value={deliveryFrom}
-              onChange={(e) => setDeliveryFrom(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+            <Combobox
+              className="w-full sm:w-72"
+              value={productFilter}
+              onChange={setProductFilter}
+              placeholder="Tutti i prodotti"
+              options={productsForCombobox.map((p) => ({
+                value: p.id,
+                label: p.deliveryDate
+                  ? `${p.name} (cons. ${new Date(p.deliveryDate).toLocaleDateString("it-IT")})`
+                  : p.name,
+              }))}
             />
-            <label className="text-xs text-slate-500">A</label>
-            <input
-              type="date"
-              value={deliveryTo}
-              onChange={(e) => setDeliveryTo(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs text-slate-500">Data consegna — Da</label>
+              <input
+                type="date"
+                value={deliveryFrom}
+                onChange={(e) => setDeliveryFrom(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+              />
+              <label className="text-xs text-slate-500">A</label>
+              <input
+                type="date"
+                value={deliveryTo}
+                onChange={(e) => setDeliveryTo(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
           </div>
         </FiltersAccordion>
       </div>

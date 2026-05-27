@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import AccessDenied from "@/components/AccessDenied";
 import PendingApproval from "@/components/PendingApproval";
 import { getProductImage } from "@/lib/product-image";
+import { shopVisibilityCutoff } from "@/lib/shop-visibility";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -39,14 +40,11 @@ export default async function ProductPage({ params }: Props) {
     );
   }
 
-  // Auto-hide dei prodotti scaduti: stessa policy della lista shop.
-  // L'admin che vuole comunque vederlo lo trova nella tabella admin.
-  if (product.deliveryDate) {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    if (new Date(product.deliveryDate) < todayStart) {
-      notFound();
-    }
+  // Auto-hide dei prodotti scaduti / entro il buffer SHOP_HIDE_BEFORE_HOURS:
+  // stessa policy della lista shop. L'admin che vuole comunque vederlo lo
+  // trova nella tabella admin.
+  if (product.deliveryDate && new Date(product.deliveryDate) < shopVisibilityCutoff()) {
+    notFound();
   }
 
   return (

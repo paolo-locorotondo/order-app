@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
 import { PaymentMethods, OrderStatus } from "@/app/generated/prisma/enums";
 import FormFeedback from "@/components/FormFeedback";
 import QuantityStepper from "@/components/QuantityStepper";
 import PriceInput from "@/components/PriceInput";
+import Combobox from "@/components/Combobox";
 import { apiFetch } from "@/lib/fetch";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 
@@ -241,6 +242,17 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
         }
     };
 
+    // Lista per la Combobox prodotti: ordinata per data consegna asc (imminente
+    // prima); i prodotti senza data finiscono in fondo.
+    const productsForCombobox = useMemo(() => {
+        return [...products].sort((a, b) => {
+            const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+            const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+            if (aTs !== bTs) return aTs - bTs;
+            return a.name.localeCompare(b.name);
+        });
+    }, [products]);
+
     return (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             {/* Header */}
@@ -278,17 +290,15 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
                     </div>
                     {editingUser ? (
                         <div className="space-y-2">
-                            <select
+                            <Combobox
                                 value={userDraft}
-                                onChange={(e) => setUserDraft(e.target.value)}
-                                className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-                            >
-                                {users.map((u) => (
-                                    <option key={u.id} value={u.id}>
-                                        {u.name || u.email} {u.name ? `(${u.email})` : ""}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={setUserDraft}
+                                placeholder="Seleziona cliente..."
+                                options={users.map((u) => ({
+                                    value: u.id,
+                                    label: u.name ? `${u.name} (${u.email})` : u.email,
+                                }))}
+                            />
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleSaveUser}
@@ -405,20 +415,24 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
                                 const max = baseAvailable + (original?.quantity ?? 0);
                                 return (
                                     <div key={index} className="rounded border border-slate-200 bg-white p-2 space-y-2">
-                                        <select
+                                        <Combobox
                                             value={item.productId}
-                                            onChange={(e) => onProductChange(index, e.target.value)}
-                                            className="w-full rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm"
-                                        >
-                                            {products.map((p) => {
+                                            onChange={(v) => onProductChange(index, v)}
+                                            placeholder="Seleziona prodotto..."
+                                            options={productsForCombobox.map((p) => {
                                                 const disp = (p.inventory?.quantity ?? 0) - (p.inventory?.reserved ?? 0);
-                                                return (
-                                                    <option key={p.id} value={p.id} disabled={disp <= 0 && p.id !== item.productId}>
-                                                        {p.name} — €{p.price.toFixed(2)} (disp: {disp})
-                                                    </option>
-                                                );
+                                                const delivery = p.deliveryDate
+                                                    ? ` (cons. ${new Date(p.deliveryDate).toLocaleDateString("it-IT")})`
+                                                    : "";
+                                                return {
+                                                    value: p.id,
+                                                    label: `${p.name}${delivery} — €${p.price.toFixed(2)} (disp: ${disp})`,
+                                                    // Permettiamo comunque di mantenere selezionato il prodotto corrente
+                                                    // se è esaurito (era già caricato sull'ordine).
+                                                    disabled: disp <= 0 && p.id !== item.productId,
+                                                };
                                             })}
-                                        </select>
+                                        />
                                         <input
                                             type="text"
                                             value={item.productName}
@@ -487,6 +501,11 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
                                     <div key={item.id} className="flex items-center justify-between text-sm">
                                         <div>
                                             <p className="font-medium text-slate-800">{item.productName}</p>
+                                            {item.product?.deliveryDate && (
+                                                <p className="text-xs text-slate-500">
+                                                    Consegna: {new Date(item.product.deliveryDate).toLocaleDateString("it-IT")}
+                                                </p>
+                                            )}
                                             <p className="text-xs text-slate-500">Qtà: {item.quantity} × €{item.price.toFixed(2)}</p>
                                         </div>
                                         <p className="font-semibold text-slate-800">€{(item.price * item.quantity).toFixed(2)}</p>

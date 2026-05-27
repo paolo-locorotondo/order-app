@@ -52,6 +52,18 @@ SENDGRID_API_KEY="your-sendgrid-api-key"
 ```
 **SendGrid API Key**: Per invio email automatiche (conferme ordini, notifiche). Registrati su [SendGrid](https://sendgrid.com/) per ottenere la chiave.
 
+### Shop visibility (Opzionale)
+```env
+SHOP_HIDE_BEFORE_HOURS="0"
+```
+**Cutoff di visibilità prodotti**: numero di ore (anche negativo) di offset rispetto a "now" per il cutoff di visibilità in `/shop` e dettaglio prodotto. Un prodotto con `deliveryDate` resta visibile finché `deliveryDate >= now + SHOP_HIDE_BEFORE_HOURS h`. Se la variabile è assente o non valida (NaN/Infinity) vale `0`: il prodotto resta visibile fino all'istante esatto della consegna.
+
+Esempi:
+- `24` → nessun ordine può arrivare a meno di 24h dalla consegna (lead time minimo di preparazione).
+- `-24` → mostra anche prodotti la cui consegna è passata da meno di 24h (utile in fase di test o per mantenere visibili prodotti scaduti di poco).
+
+I prodotti senza `deliveryDate` non sono mai impattati.
+
 ### Sicurezza
 - **NON committare mai** il file `.env` su Git
 - Usa chiavi diverse per sviluppo e produzione

@@ -6,6 +6,7 @@ import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
 import FiltersAccordion from "@/components/FiltersAccordion";
+import Combobox from "@/components/Combobox";
 import { apiFetch } from "@/lib/fetch";
 import ExportOrdersButton from "./ExportOrdersButton";
 import { OrderModel, OrderItemModel, ProductModel, UserModel } from "@/app/generated/prisma/models";
@@ -72,20 +73,32 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     // Derivato dalla prop `orders`: dopo router.refresh() l'ordine selezionato riflette i nuovi dati.
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : undefined;
 
-    // Lista prodotti unici effettivamente presenti negli ordini (derivata): { productId, productName }.
-    // Pattern allineato a CustomerOrdersTable.
+    // Lista prodotti unici effettivamente presenti negli ordini (derivata).
+    // Label canonica = `Product.name` (fallback allo snapshot solo se il prodotto è
+    // stato cancellato). Così rinomine in OrderItem.productName (es. "B scontato")
+    // non duplicano la dropdown: la chiave del filtro resta `productId`.
     const purchasedProducts = useMemo(() => {
-        const map = new Map<string, string>();
+        const map = new Map<string, { productName: string; deliveryDate: Date | null }>();
         for (const order of orders) {
             for (const item of order.items) {
                 if (!map.has(item.productId)) {
-                    map.set(item.productId, item.productName);
+                    map.set(item.productId, {
+                        productName: item.product?.name ?? item.productName,
+                        deliveryDate: item.product?.deliveryDate ?? null,
+                    });
                 }
             }
         }
         return Array.from(map.entries())
-            .map(([productId, productName]) => ({ productId, productName }))
-            .sort((a, b) => a.productName.localeCompare(b.productName));
+            .map(([productId, v]) => ({ productId, productName: v.productName, deliveryDate: v.deliveryDate }))
+            .sort((a, b) => {
+                // Sort per data consegna asc (imminente prima); senza data → in fondo;
+                // tiebreak per nome.
+                const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+                const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+                if (aTs !== bTs) return aTs - bTs;
+                return a.productName.localeCompare(b.productName);
+            });
     }, [orders]);
 
     const openModal = (order: OrderWithDetails) => {
@@ -198,7 +211,10 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     // Aggregazione per prodotto sui soli ordini filtrati. Chiave = productId per
     // evitare collisioni se due prodotti hanno snapshot di nome uguali.
     const productTotals = useMemo(() => {
-        const map = new Map<string, { name: string; quantity: number; total: number }>();
+        // Chiave = productId per evitare collisioni tra prodotti omonimi (es. lo
+        // stesso articolo per date di consegna diverse). Manteniamo `id` e
+        // `deliveryDate` nel value per disambiguarli a render.
+        const map = new Map<string, { id: string; name: string; deliveryDate: Date | null; quantity: number; total: number }>();
         for (const order of processedOrders) {
             for (const item of order.items) {
                 const existing = map.get(item.productId);
@@ -207,7 +223,9 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                     existing.total += item.quantity * item.price;
                 } else {
                     map.set(item.productId, {
-                        name: item.productName,
+                        id: item.productId,
+                        name: item.product?.name ?? item.productName,
+                        deliveryDate: item.product?.deliveryDate ?? null,
                         quantity: item.quantity,
                         total: item.quantity * item.price,
                     });
@@ -241,17 +259,23 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             header: "Articoli",
             cell: (o) => (
                 <div className="flex flex-wrap gap-1">
-                    {o.items.map((item) => (
-                        <span
-                            key={item.id}
-                            className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900"
-                        >
-                            <span className="font-bold">{item.quantity}×</span>
-                            <span className="max-w-[140px] truncate" title={item.productName}>
-                                {item.productName}
+                    {o.items.map((item) => {
+                        const delivery = item.product?.deliveryDate
+                            ? ` (cons. ${new Date(item.product.deliveryDate).toLocaleDateString("it-IT")})`
+                            : "";
+                        const label = `${item.productName}${delivery}`;
+                        return (
+                            <span
+                                key={item.id}
+                                className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900"
+                            >
+                                <span className="font-bold">{item.quantity}×</span>
+                                <span className="max-w-[200px] truncate" title={label}>
+                                    {label}
+                                </span>
                             </span>
-                        </span>
-                    ))}
+                        );
+                    })}
                 </div>
             ),
         },
@@ -343,8 +367,15 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                     </thead>
                                     <tbody>
                                         {productTotals.map((p) => (
-                                            <tr key={p.name} className="border-b border-slate-100 last:border-0">
-                                                <td className="py-1.5 pr-4 text-slate-800">{p.name}</td>
+                                            <tr key={p.id} className="border-b border-slate-100 last:border-0">
+                                                <td className="py-1.5 pr-4 text-slate-800">
+                                                    {p.name}
+                                                    {p.deliveryDate && (
+                                                        <span className="ml-1 text-xs text-slate-500">
+                                                            (cons. {new Date(p.deliveryDate).toLocaleDateString("it-IT")})
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td className="py-1.5 px-4 text-right text-slate-700">{p.quantity}</td>
                                                 <td className="py-1.5 pl-4 text-right font-medium text-slate-800">€{p.total.toFixed(2)}</td>
                                             </tr>
@@ -380,18 +411,18 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none w-full sm:w-56"
                         />
 
-                        <select
-                            value={productFilter}
-                            onChange={(e) => setProductFilter(e.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none w-full sm:w-64"
-                        >
-                            <option value="ALL">Tutti i prodotti</option>
-                            {purchasedProducts.map((p) => (
-                                <option key={p.productId} value={p.productId}>
-                                    {p.productName}
-                                </option>
-                            ))}
-                        </select>
+                        <Combobox
+                            className="w-full sm:w-64"
+                            value={productFilter === "ALL" ? "" : productFilter}
+                            onChange={(v) => setProductFilter(v || "ALL")}
+                            placeholder="Tutti i prodotti"
+                            options={purchasedProducts.map((p) => ({
+                                value: p.productId,
+                                label: p.deliveryDate
+                                    ? `${p.productName} (cons. ${new Date(p.deliveryDate).toLocaleDateString("it-IT")})`
+                                    : p.productName,
+                            }))}
+                        />
 
                         <div className="flex flex-wrap items-center gap-2">
                             <select

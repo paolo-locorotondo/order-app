@@ -5,13 +5,14 @@ import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import FiltersAccordion from "@/components/FiltersAccordion";
 import RefreshButton from "@/components/RefreshButton";
+import Combobox from "@/components/Combobox";
 import { OrderModel, OrderItemModel } from "@/app/generated/prisma/models";
 import { OrderStatus } from "@/app/generated/prisma/enums";
 import { ORDER_STATUS_COLORS, orderStatusLabel } from "@/lib/order-status";
 import OrderDetailsPanel from "./OrderDetailsPanel";
 
 interface OrderWithItems extends OrderModel {
-    items: (OrderItemModel & { product: { deliveryDate: Date | null } })[];
+    items: (OrderItemModel & { product: { name: string; deliveryDate: Date | null } | null })[];
 }
 
 const orderTotal = (o: OrderWithItems) =>
@@ -57,19 +58,32 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
 
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : undefined;
 
-    // Lista prodotti unici acquistati (derivata): { productId, productName }
+    // Lista prodotti unici acquistati (derivata): { productId, productName, deliveryDate }.
+    // Label canonica = `Product.name` (fallback allo snapshot OrderItem.productName se
+    // il prodotto è stato cancellato); così rinomine in OrderItem non duplicano la
+    // dropdown — la chiave di filtro resta `productId`.
     const purchasedProducts = useMemo(() => {
-        const map = new Map<string, string>();
+        const map = new Map<string, { productName: string; deliveryDate: Date | null }>();
         for (const order of orders) {
             for (const item of order.items) {
                 if (!map.has(item.productId)) {
-                    map.set(item.productId, item.productName);
+                    map.set(item.productId, {
+                        productName: item.product?.name ?? item.productName,
+                        deliveryDate: item.product?.deliveryDate ?? null,
+                    });
                 }
             }
         }
         return Array.from(map.entries())
-            .map(([productId, productName]) => ({ productId, productName }))
-            .sort((a, b) => a.productName.localeCompare(b.productName));
+            .map(([productId, v]) => ({ productId, productName: v.productName, deliveryDate: v.deliveryDate }))
+            .sort((a, b) => {
+                // Sort per data consegna asc (imminente prima); senza data → in fondo;
+                // tiebreak per nome.
+                const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+                const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+                if (aTs !== bTs) return aTs - bTs;
+                return a.productName.localeCompare(b.productName);
+            });
     }, [orders]);
 
     const openDetails = (order: OrderWithItems) => {
@@ -147,17 +161,23 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
             header: "Articoli",
             cell: (o) => (
                 <div className="flex flex-wrap gap-1">
-                    {o.items.map((item) => (
-                        <span
-                            key={item.id}
-                            className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900"
-                        >
-                            <span className="font-bold">{item.quantity}×</span>
-                            <span className="max-w-[140px] truncate" title={item.productName}>
-                                {item.productName}
+                    {o.items.map((item) => {
+                        const delivery = item.product?.deliveryDate
+                            ? ` (cons. ${new Date(item.product.deliveryDate).toLocaleDateString("it-IT")})`
+                            : "";
+                        const label = `${item.productName}${delivery}`;
+                        return (
+                            <span
+                                key={item.id}
+                                className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900"
+                            >
+                                <span className="font-bold">{item.quantity}×</span>
+                                <span className="max-w-[200px] truncate" title={label}>
+                                    {label}
+                                </span>
                             </span>
-                        </span>
-                    ))}
+                        );
+                    })}
                 </div>
             ),
         },
@@ -223,18 +243,18 @@ export default function CustomerOrdersTable({ orders }: CustomerOrdersTableProps
                     canReset={filtersActive}
                 >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-                        <select
-                            value={productFilter}
-                            onChange={(e) => setProductFilter(e.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none w-full sm:w-64"
-                        >
-                            <option value="ALL">Tutti i prodotti</option>
-                            {purchasedProducts.map((p) => (
-                                <option key={p.productId} value={p.productId}>
-                                    {p.productName}
-                                </option>
-                            ))}
-                        </select>
+                        <Combobox
+                            className="w-full sm:w-64"
+                            value={productFilter === "ALL" ? "" : productFilter}
+                            onChange={(v) => setProductFilter(v || "ALL")}
+                            placeholder="Tutti i prodotti"
+                            options={purchasedProducts.map((p) => ({
+                                value: p.productId,
+                                label: p.deliveryDate
+                                    ? `${p.productName} (cons. ${new Date(p.deliveryDate).toLocaleDateString("it-IT")})`
+                                    : p.productName,
+                            }))}
+                        />
 
                         <div className="flex flex-wrap items-center gap-2">
                             <select
