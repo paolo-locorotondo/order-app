@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProductForm, { ProductFormData } from "./ProductForm";
 import AdminModal from "@/components/AdminModal";
@@ -27,6 +27,11 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Selezione multipla per bulk delete con auto-prune (stesso pattern di
+  // UsersTable e OrdersTable). Le righe nascoste dai filtri escono dal set.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
   // Incrementato dopo creazione riuscita: cambiare il `key` di ProductForm
   // ne forza il remount con stato vuoto (reset dei campi).
   const [createResetCount, setCreateResetCount] = useState(0);
@@ -105,6 +110,75 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
     return result;
   }, [products, productFilter, deliveryFrom, deliveryTo, sortField, sortDir]);
+
+  // Auto-prune della selezione: gli id non più visibili escono dal set quando
+  // cambiano filtri/sort. Stesso pattern di UsersTable / OrdersTable.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleIds = new Set(processedProducts.map((p) => p.id));
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visibleIds.has(id)) next.add(id);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+  }, [processedProducts]);
+
+  const allVisibleSelected =
+    processedProducts.length > 0 &&
+    processedProducts.every((p) => selectedIds.has(p.id));
+
+  const toggleRowSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    setSelectedIds((prev) => {
+      if (allVisibleSelected) {
+        const next = new Set(prev);
+        for (const p of processedProducts) next.delete(p.id);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const p of processedProducts) next.add(p.id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (!confirm(`Eliminare definitivamente ${ids.length} ${ids.length === 1 ? "prodotto" : "prodotti"}? L'operazione fallirà se anche un solo prodotto è presente in ordini storici.`)) {
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const response = await apiFetch("/api/admin/products/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data?.error || "Errore durante l'eliminazione bulk.");
+        return;
+      }
+      clearSelection();
+      router.refresh();
+    } catch {
+      alert("Errore di rete. Riprova più tardi.");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   // Lista per la Combobox dei filtri: ordinata per data consegna asc (imminente
   // prima); i prodotti senza data finiscono in fondo. Indipendente dal sort
@@ -343,6 +417,32 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         </FiltersAccordion>
       </div>
 
+      {/* Action bar bulk: appare quando ≥1 prodotto selezionato */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+          <span className="font-medium text-blue-900">
+            {selectedIds.size} {selectedIds.size === 1 ? "prodotto selezionato" : "prodotti selezionati"}
+          </span>
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            disabled={bulkLoading}
+            className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            title="Elimina i selezionati. L'operazione fallisce se anche un solo prodotto è presente in ordini storici."
+          >
+            {bulkLoading ? "..." : "Elimina selezionati"}
+          </button>
+          <button
+            type="button"
+            onClick={clearSelection}
+            disabled={bulkLoading}
+            className="rounded bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-300 disabled:opacity-50"
+          >
+            Annulla selezione
+          </button>
+        </div>
+      )}
+
       <AdminTable
         rows={processedProducts}
         columns={columns}
@@ -352,6 +452,10 @@ export default function ProductsTable({ products }: { products: ProductWithInven
         sortField={sortField ?? undefined}
         sortDir={sortDir}
         onSort={handleSort}
+        selectable
+        selectedIds={selectedIds}
+        onToggleRowSelection={toggleRowSelection}
+        onToggleAllVisible={toggleAllVisible}
         renderActions={(product) => (
           <>
             <button

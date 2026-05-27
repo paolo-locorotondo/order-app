@@ -130,6 +130,52 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 
 ---
 
+### Step 10. Archiviazione ordini e prodotti (soft-hide reversibile)
+**Stato**: 🔴 TODO
+**Priority**: 🟡 MEDIUM (sblocca lo svuotamento periodico delle tabelle senza perdere lo storico)
+
+**Descrizione**: Oggi `Product` non può essere eliminato se referenziato da `OrderItem` (block-if-orders, single + bulk). L'unica via per "ripulire" il catalogo è disattivarli, ma non c'è ancora un meccanismo. Stessa cosa per `Order`: ordini chiusi (CONSEGNATO_E_PAGATO, ANNULLATO) si accumulano nella tabella admin e rumorano i filtri. Soluzione: **archiviazione soft** — un flag sul record che lo nasconde dalle viste operative senza alterare i dati storici.
+
+**Decisioni di design (da confermare prima dell'implementazione)**:
+- **Schema**: nuovo campo `archivedAt: DateTime?` su `Product` e su `Order`. Null = attivo, valorizzato = archiviato (e contiene il timestamp dell'azione, utile per audit). Reversibile semplicemente settando a null.
+- **Visibilità — Product archiviato**:
+  - **Shop** (`/shop`, `/shop/products/[id]`): NON visibile (filtro server `archivedAt: null`). Coerente col cutoff `SHOP_HIDE_BEFORE_HOURS`.
+  - **Admin Prodotti** (`/dashboard/admin/products`): nascosto di default; toggle "Mostra archiviati" nei filtri per accedervi (riusabile pattern simile al filtro role/status).
+  - **Admin Inventario**: idem (un prodotto archiviato non dovrebbe più consumare slot di gestione stock).
+  - **CreateOrderForm / EditOrderPanel** (admin ordini): NON selezionabile come nuovo articolo (filtrare via Combobox options).
+  - **OrderItem snapshot**: il `productName` è già snapshot, quindi gli ordini storici continuano a renderizzare correttamente anche se il prodotto risulta archiviato (la pagina order-confirmation può joinare con `Product` ma il fallback allo snapshot — già implementato per il rename — copre anche questo caso).
+- **Visibilità — Order archiviato**:
+  - **Admin Ordini**: nascosto di default; toggle "Mostra archiviati" nei filtri.
+  - **Storico Ordini cliente** (`/dashboard/orders`): da decidere — il cliente vede ancora i propri ordini archiviati o no? Proposta: NO (sparisce dalla view default), ma questo va concordato perché tocca la trasparenza UX.
+  - **CSV/PDF export**: l'export di default opera su `processedOrders` (filtri attivi) — niente lavoro extra, basta che il filtro "archiviati" sia spento di default.
+- **Azione UI**: bottone "Archivia" / "Ripristina" per riga + bulk via action bar (riusa la selezione multipla già introdotta in #9). Per Product un'archiviazione bulk è più utile del bulk delete (che fallisce su prodotti con ordini storici).
+- **Niente cron / TTL automatico**: l'archiviazione è una decisione esplicita dell'admin. Niente "archivia automaticamente dopo 90gg".
+
+**Task** (alta granularità, da rifinire):
+- [ ] Migration `add_archived_at_product_order`: `ALTER TABLE Product / Order ADD COLUMN archivedAt TIMESTAMP NULL`
+- [ ] `prisma/schema.prisma`: campi su entrambi i model
+- [ ] `lib/validators.ts`: nuovi `bulkProductArchiveSchema` / `bulkOrderArchiveSchema` (riusa pattern bulk esistenti)
+- [ ] Endpoint:
+    - [ ] `POST /api/admin/products/bulk` esteso con action `archive` / `unarchive` (oppure nuova route dedicata `/archive`)
+    - [ ] `POST /api/admin/orders/bulk` stesso pattern
+    - [ ] PUT single per archive/unarchive di un singolo record (o riusare l'endpoint esistente con campo `archivedAt`)
+- [ ] Query Prisma server-side: filtro `archivedAt: null` di default in shop + admin tables; toggle per mostrarli
+- [ ] UI:
+    - [ ] `ProductsTable` / `OrdersTable`: toggle "Mostra archiviati" nei filtri; badge visivo "Archiviato" sulla riga
+    - [ ] Action bar bulk: pulsante "Archivia selezionati"
+    - [ ] `CreateOrderForm` / `EditOrderPanel`: escludere prodotti archiviati dalle Combobox
+- [ ] Decisione UX su `/dashboard/orders` cliente (vedi sopra)
+- [ ] Authorization Matrix: aggiungere le eventuali nuove route
+- [ ] Smoke test: archivia → riga sparisce dalla view default → toggle → riappare con badge → ripristina → torna alla view default
+
+**Anti-scope**:
+- Niente cron/TTL: solo azione manuale.
+- Niente eliminazione fisica al momento dell'archiviazione: i dati restano in DB; il "delete reale" resta solo per record privi di referenze (block-if-orders).
+- Niente analytics separate "archivio vs attivi" in questa iterazione.
+- Niente versioning/storia delle archiviazioni: un solo timestamp di ultima azione, sovrascritto a ogni unarchive→archive successivo.
+
+---
+
 ### Step 9-bis. Template messaggi WhatsApp in DB (follow-up di Step 9)
 **Stato**: 🔴 TODO (backlog non bloccante)
 **Descrizione**: Spostare i template dei messaggi WhatsApp da `lib/whatsapp.ts` (hardcoded) a una tabella `MessageTemplate { key, body }` editabile a runtime tramite UI admin. Per ora resta hardcoded perché redeploy Vercel su git push è ~90s e il single-admin (te) ha accesso al codice.

@@ -56,6 +56,7 @@ I ruoli sono definiti in `prisma/schema.prisma` (`enum UserRole`):
 | `GET /api/orders/[id]` | ↪ | 🔒 | ✅ (solo proprio) | ✅ |
 | `GET\|POST /api/products` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET\|PUT\|DELETE /api/products/[id]` | ↪ | 🔒 | 🔒 | ✅ |
+| `DELETE /api/admin/products/bulk` | ↪ | 🔒 | 🔒 | ✅ |
 | `PUT /api/inventory/[id]` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET\|POST /api/admin/users` | ↪ | 🔒 | 🔒 | ✅ |
 | `PUT\|DELETE /api/admin/users/[id]` | ↪ | 🔒 | 🔒 | ✅ |

@@ -135,6 +135,13 @@ export const bulkOrderDeleteSchema = z.object({
   ids: z.array(z.string().cuid()).min(1, "Seleziona almeno un ordine"),
 });
 
+// Body per il bulk delete da DELETE /api/admin/products/bulk.
+// Block-if-orders pre-flight all-or-nothing: se UN solo prodotto è referenziato
+// da OrderItem storici, l'intera operazione viene rifiutata.
+export const bulkProductDeleteSchema = z.object({
+  ids: z.array(z.string().cuid()).min(1, "Seleziona almeno un prodotto"),
+});
+
 // Body per il bulk role-change da POST /api/admin/users/bulk.
 // `ids`: lista di user id (cuid) non vuota e con duplicati ignorati lato handler.
 // `role`: ruolo target. Niente NUOVO se l'admin è in `ids` (controllo nel handler,
