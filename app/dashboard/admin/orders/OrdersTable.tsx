@@ -52,18 +52,36 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
     const [totalsOpen, setTotalsOpen] = useState(true);
-    // Sort dedicato per la tabella "Totali per prodotto". Default: data consegna
-    // discendente (più recente in cima); i prodotti senza data finiscono in fondo.
-    const [totalsSortField, setTotalsSortField] = useState<"deliveryDate" | "name" | "quantity" | "total">("deliveryDate");
-    const [totalsSortDir, setTotalsSortDir] = useState<SortDir>("desc");
+    // Sort multi-livello per la tabella "Totali per prodotto": il primo elemento
+    // è il sort primario; gli altri agiscono da tiebreaker in cascata.
+    // Click su colonna nuova: la promuove a primaria (default desc), demote la
+    // precedente a secondaria; max 2 livelli.
+    // Click su colonna già primaria: toggle direzione (resta primaria).
+    type TotalsSortField = "deliveryDate" | "name" | "quantity" | "total";
+    type TotalsSort = { field: TotalsSortField; dir: SortDir };
+    const TOTALS_MAX_SORT_LEVELS = 2;
+    const [totalsSorts, setTotalsSorts] = useState<TotalsSort[]>([
+        { field: "deliveryDate", dir: "desc" },
+        { field: "name", dir: "asc" },
+    ]);
 
-    const handleTotalsSort = (field: typeof totalsSortField) => {
-        if (totalsSortField === field) {
-            setTotalsSortDir((d) => (d === "asc" ? "desc" : "asc"));
-        } else {
-            setTotalsSortField(field);
-            setTotalsSortDir("desc");
-        }
+    const handleTotalsSort = (field: TotalsSortField) => {
+        setTotalsSorts((prev) => {
+            if (prev[0]?.field === field) {
+                // Toggle direzione della primaria, mantieni le secondarie.
+                const newDir: SortDir = prev[0].dir === "asc" ? "desc" : "asc";
+                return [{ field, dir: newDir }, ...prev.slice(1)];
+            }
+            // Promuovi field a primaria (default desc), rimuovi eventuali duplicati dal resto, tronca.
+            const filtered = prev.filter((s) => s.field !== field);
+            const newPrimary: TotalsSort = { field, dir: "desc" };
+            return [newPrimary, ...filtered].slice(0, TOTALS_MAX_SORT_LEVELS);
+        });
+    };
+
+    const getTotalsSortInfo = (field: TotalsSortField): { dir: SortDir; level: number } | null => {
+        const idx = totalsSorts.findIndex((s) => s.field === field);
+        return idx === -1 ? null : { dir: totalsSorts[idx].dir, level: idx + 1 };
     };
 
     const filtersActive =
@@ -380,35 +398,40 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 }
             }
         }
-        return Array.from(map.values()).sort((a, b) => {
-            let valA: number | string;
-            let valB: number | string;
-            if (totalsSortField === "name") {
-                valA = a.name.toLowerCase();
-                valB = b.name.toLowerCase();
-            } else if (totalsSortField === "quantity") {
-                valA = a.quantity;
-                valB = b.quantity;
-            } else if (totalsSortField === "total") {
-                valA = a.total;
-                valB = b.total;
-            } else {
-                // deliveryDate: prodotti senza data sempre in fondo (a prescindere
-                // dalla direzione), coerente col pattern di ProductsTable.
-                const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : null;
-                const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : null;
-                if (aTs === null && bTs === null) {
-                    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-                }
-                if (aTs === null) return 1;
-                if (bTs === null) return -1;
-                return totalsSortDir === "asc" ? aTs - bTs : bTs - aTs;
+        // Comparator per un singolo livello di sort (riusato in cascata sotto).
+        // Per deliveryDate: prodotti senza data sempre in fondo (a prescindere
+        // dalla direzione), coerente col pattern di ProductsTable.
+        const compareOne = (a: typeof map extends Map<string, infer V> ? V : never, b: typeof a, sort: TotalsSort): number => {
+            if (sort.field === "name") {
+                const va = a.name.toLowerCase();
+                const vb = b.name.toLowerCase();
+                if (va < vb) return sort.dir === "asc" ? -1 : 1;
+                if (va > vb) return sort.dir === "asc" ? 1 : -1;
+                return 0;
             }
-            if (valA < valB) return totalsSortDir === "asc" ? -1 : 1;
-            if (valA > valB) return totalsSortDir === "asc" ? 1 : -1;
+            if (sort.field === "quantity") {
+                return sort.dir === "asc" ? a.quantity - b.quantity : b.quantity - a.quantity;
+            }
+            if (sort.field === "total") {
+                return sort.dir === "asc" ? a.total - b.total : b.total - a.total;
+            }
+            // deliveryDate
+            const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : null;
+            const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : null;
+            if (aTs === null && bTs === null) return 0;
+            if (aTs === null) return 1;
+            if (bTs === null) return -1;
+            return sort.dir === "asc" ? aTs - bTs : bTs - aTs;
+        };
+
+        return Array.from(map.values()).sort((a, b) => {
+            for (const s of totalsSorts) {
+                const c = compareOne(a, b, s);
+                if (c !== 0) return c;
+            }
             return 0;
         });
-    }, [processedOrders, totalsSortField, totalsSortDir]);
+    }, [processedOrders, totalsSorts]);
 
     const grandTotal = productTotals.reduce((s, p) => s + p.total, 0);
     const grandQty = productTotals.reduce((s, p) => s + p.quantity, 0);
@@ -538,50 +561,31 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                 <table className="min-w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-                                            <th
-                                                className="py-2 pr-4 text-left font-semibold cursor-pointer select-none hover:text-slate-800"
-                                                onClick={() => handleTotalsSort("name")}
-                                            >
-                                                Prodotto
-                                                {totalsSortField === "name" ? (
-                                                    <span className="ml-1">{totalsSortDir === "asc" ? "↑" : "↓"}</span>
-                                                ) : (
-                                                    <span className="ml-1 text-slate-300">↕</span>
-                                                )}
-                                            </th>
-                                            <th
-                                                className="py-2 px-4 text-left font-semibold cursor-pointer select-none hover:text-slate-800"
-                                                onClick={() => handleTotalsSort("deliveryDate")}
-                                            >
-                                                Data consegna
-                                                {totalsSortField === "deliveryDate" ? (
-                                                    <span className="ml-1">{totalsSortDir === "asc" ? "↑" : "↓"}</span>
-                                                ) : (
-                                                    <span className="ml-1 text-slate-300">↕</span>
-                                                )}
-                                            </th>
-                                            <th
-                                                className="py-2 px-4 text-right font-semibold cursor-pointer select-none hover:text-slate-800"
-                                                onClick={() => handleTotalsSort("quantity")}
-                                            >
-                                                Quantità
-                                                {totalsSortField === "quantity" ? (
-                                                    <span className="ml-1">{totalsSortDir === "asc" ? "↑" : "↓"}</span>
-                                                ) : (
-                                                    <span className="ml-1 text-slate-300">↕</span>
-                                                )}
-                                            </th>
-                                            <th
-                                                className="py-2 pl-4 text-right font-semibold cursor-pointer select-none hover:text-slate-800"
-                                                onClick={() => handleTotalsSort("total")}
-                                            >
-                                                Totale
-                                                {totalsSortField === "total" ? (
-                                                    <span className="ml-1">{totalsSortDir === "asc" ? "↑" : "↓"}</span>
-                                                ) : (
-                                                    <span className="ml-1 text-slate-300">↕</span>
-                                                )}
-                                            </th>
+                                            {(["name", "deliveryDate", "quantity", "total"] as const).map((field) => {
+                                                const info = getTotalsSortInfo(field);
+                                                const headerLabel = field === "name" ? "Prodotto" : field === "deliveryDate" ? "Data consegna" : field === "quantity" ? "Quantità" : "Totale";
+                                                const align = field === "name" || field === "deliveryDate" ? "text-left" : "text-right";
+                                                const padding = field === "name" ? "pr-4" : field === "total" ? "pl-4" : "px-4";
+                                                return (
+                                                    <th
+                                                        key={field}
+                                                        className={`py-2 ${padding} ${align} font-semibold cursor-pointer select-none hover:text-slate-800`}
+                                                        onClick={() => handleTotalsSort(field)}
+                                                    >
+                                                        {headerLabel}
+                                                        {info ? (
+                                                            <span className="ml-1">
+                                                                {info.dir === "asc" ? "↑" : "↓"}
+                                                                {totalsSorts.length > 1 && (
+                                                                    <sup className="ml-0.5 text-[9px] text-slate-400">{info.level}</sup>
+                                                                )}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="ml-1 text-slate-300">↕</span>
+                                                        )}
+                                                    </th>
+                                                );
+                                            })}
                                         </tr>
                                     </thead>
                                     <tbody>
