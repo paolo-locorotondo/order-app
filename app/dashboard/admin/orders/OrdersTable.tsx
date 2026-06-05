@@ -52,6 +52,19 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
     const [totalsOpen, setTotalsOpen] = useState(true);
+    // Sort dedicato per la tabella "Totali per prodotto". Default: data consegna
+    // discendente (più recente in cima); i prodotti senza data finiscono in fondo.
+    const [totalsSortField, setTotalsSortField] = useState<"deliveryDate" | "name" | "quantity" | "total">("deliveryDate");
+    const [totalsSortDir, setTotalsSortDir] = useState<SortDir>("desc");
+
+    const handleTotalsSort = (field: typeof totalsSortField) => {
+        if (totalsSortField === field) {
+            setTotalsSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        } else {
+            setTotalsSortField(field);
+            setTotalsSortDir("desc");
+        }
+    };
 
     const filtersActive =
         statusFilter.size > 0 ||
@@ -367,8 +380,35 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                 }
             }
         }
-        return Array.from(map.values()).sort((a, b) => b.total - a.total);
-    }, [processedOrders]);
+        return Array.from(map.values()).sort((a, b) => {
+            let valA: number | string;
+            let valB: number | string;
+            if (totalsSortField === "name") {
+                valA = a.name.toLowerCase();
+                valB = b.name.toLowerCase();
+            } else if (totalsSortField === "quantity") {
+                valA = a.quantity;
+                valB = b.quantity;
+            } else if (totalsSortField === "total") {
+                valA = a.total;
+                valB = b.total;
+            } else {
+                // deliveryDate: prodotti senza data sempre in fondo (a prescindere
+                // dalla direzione), coerente col pattern di ProductsTable.
+                const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : null;
+                const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : null;
+                if (aTs === null && bTs === null) {
+                    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+                }
+                if (aTs === null) return 1;
+                if (bTs === null) return -1;
+                return totalsSortDir === "asc" ? aTs - bTs : bTs - aTs;
+            }
+            if (valA < valB) return totalsSortDir === "asc" ? -1 : 1;
+            if (valA > valB) return totalsSortDir === "asc" ? 1 : -1;
+            return 0;
+        });
+    }, [processedOrders, totalsSortField, totalsSortDir]);
 
     const grandTotal = productTotals.reduce((s, p) => s + p.total, 0);
     const grandQty = productTotals.reduce((s, p) => s + p.quantity, 0);
@@ -498,20 +538,61 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                 <table className="min-w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-                                            <th className="py-2 pr-4 text-left font-semibold">Prodotto</th>
-                                            <th className="py-2 px-4 text-right font-semibold">Quantità</th>
-                                            <th className="py-2 pl-4 text-right font-semibold">Totale</th>
+                                            <th
+                                                className="py-2 pr-4 text-left font-semibold cursor-pointer select-none hover:text-slate-800"
+                                                onClick={() => handleTotalsSort("name")}
+                                            >
+                                                Prodotto
+                                                {totalsSortField === "name" ? (
+                                                    <span className="ml-1">{totalsSortDir === "asc" ? "↑" : "↓"}</span>
+                                                ) : (
+                                                    <span className="ml-1 text-slate-300">↕</span>
+                                                )}
+                                            </th>
+                                            <th
+                                                className="py-2 px-4 text-left font-semibold cursor-pointer select-none hover:text-slate-800"
+                                                onClick={() => handleTotalsSort("deliveryDate")}
+                                            >
+                                                Data consegna
+                                                {totalsSortField === "deliveryDate" ? (
+                                                    <span className="ml-1">{totalsSortDir === "asc" ? "↑" : "↓"}</span>
+                                                ) : (
+                                                    <span className="ml-1 text-slate-300">↕</span>
+                                                )}
+                                            </th>
+                                            <th
+                                                className="py-2 px-4 text-right font-semibold cursor-pointer select-none hover:text-slate-800"
+                                                onClick={() => handleTotalsSort("quantity")}
+                                            >
+                                                Quantità
+                                                {totalsSortField === "quantity" ? (
+                                                    <span className="ml-1">{totalsSortDir === "asc" ? "↑" : "↓"}</span>
+                                                ) : (
+                                                    <span className="ml-1 text-slate-300">↕</span>
+                                                )}
+                                            </th>
+                                            <th
+                                                className="py-2 pl-4 text-right font-semibold cursor-pointer select-none hover:text-slate-800"
+                                                onClick={() => handleTotalsSort("total")}
+                                            >
+                                                Totale
+                                                {totalsSortField === "total" ? (
+                                                    <span className="ml-1">{totalsSortDir === "asc" ? "↑" : "↓"}</span>
+                                                ) : (
+                                                    <span className="ml-1 text-slate-300">↕</span>
+                                                )}
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {productTotals.map((p) => (
                                             <tr key={p.id} className="border-b border-slate-100 last:border-0">
-                                                <td className="py-1.5 pr-4 text-slate-800">
-                                                    {p.name}
-                                                    {p.deliveryDate && (
-                                                        <span className="ml-1 text-xs text-slate-500">
-                                                            (cons. {new Date(p.deliveryDate).toLocaleDateString("it-IT")})
-                                                        </span>
+                                                <td className="py-1.5 pr-4 text-slate-800">{p.name}</td>
+                                                <td className="py-1.5 px-4 text-slate-700">
+                                                    {p.deliveryDate ? (
+                                                        new Date(p.deliveryDate).toLocaleDateString("it-IT")
+                                                    ) : (
+                                                        <span className="text-xs italic text-slate-400">—</span>
                                                     )}
                                                 </td>
                                                 <td className="py-1.5 px-4 text-right text-slate-700">{p.quantity}</td>
@@ -519,7 +600,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                             </tr>
                                         ))}
                                         <tr className="border-t-2 border-slate-300 bg-slate-50">
-                                            <td className="py-2 pr-4 font-semibold text-slate-700">Totale complessivo</td>
+                                            <td colSpan={2} className="py-2 pr-4 font-semibold text-slate-700">Totale complessivo</td>
                                             <td className="py-2 px-4 text-right font-semibold text-slate-700">{grandQty}</td>
                                             <td className="py-2 pl-4 text-right font-bold text-green-700">€{grandTotal.toFixed(2)}</td>
                                         </tr>

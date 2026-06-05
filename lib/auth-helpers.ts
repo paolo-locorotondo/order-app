@@ -97,6 +97,19 @@ export async function validateAuth(
   };
 }
 
+// ─── isAuthenticatedFromServerSession — check leggero, no DB ─────────────────
+
+/**
+ * Check leggero "è loggato?" da Server Component, basato solo sulla session JWT
+ * (zero DB roundtrip). Da usare per scelte cosmetiche (es. mostrare/nascondere
+ * CTA login in homepage), NON come gate di sicurezza — per quello c'è
+ * `validateAuthFromServerSession(...)` che fa anche il DB lookup e il role check.
+ */
+export async function isAuthenticatedFromServerSession(): Promise<boolean> {
+  const session = await getServerSession(authOptions);
+  return !!session?.user?.id;
+}
+
 // ─── validateAuthFromServerSession — per Server Components ───────────────────
 
 /**
