@@ -536,7 +536,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                     </button>
                     <RefreshButton />
                     <ExportOrdersButton orders={processedOrders} />
-                    <ExportOrdersPdfButton orders={processedOrders} />
+                    <ExportOrdersPdfButton orders={processedOrders} productTotals={productTotals} />
                 </div>
 
                 {/* Totali per prodotto (sui soli ordini filtrati) — accordion in cima */}

@@ -9,8 +9,21 @@ interface OrderWithDetails extends OrderModel {
     user: Pick<UserModel, "id" | "name" | "email">;
 }
 
+/**
+ * Shape della riga del pannello "Totali per prodotto" in OrdersTable. Passata
+ * gia ordinata dalla UI per preservare il sort corrente nel PDF (multi-livello).
+ */
+interface ProductTotalRow {
+    name: string;
+    deliveryDate: Date | null;
+    quantity: number;
+    total: number;
+}
+
 interface ExportOrdersPdfButtonProps {
     orders: OrderWithDetails[];
+    /** Se passato, usato direttamente (rispetta il sort UI). Altrimenti aggregazione interna sorted by total desc. */
+    productTotals?: ProductTotalRow[];
 }
 
 const formatPrice = (n: number) => `€${n.toFixed(2)}`;
@@ -116,48 +129,62 @@ function computeCustomerAggregates(orders: OrderWithDetails[]): CustomerAggregat
     return Array.from(byUser.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function buildPdf(orders: OrderWithDetails[]): jsPDF {
+function buildPdf(orders: OrderWithDetails[], productTotalsOrdered?: ProductTotalRow[]): jsPDF {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const productTotals = computeProductTotals(orders);
+    // Se la UI passa la lista già ordinata col sort multi-livello la usiamo
+    // verbatim per coerenza visiva con il pannello on-screen; altrimenti
+    // ricadiamo sull'aggregazione interna (sort by total desc).
+    const productTotals = productTotalsOrdered ?? computeProductTotals(orders);
     const customerAggregates = computeCustomerAggregates(orders);
     const grandTotal = productTotals.reduce((s, p) => s + p.total, 0);
     const grandQty = productTotals.reduce((s, p) => s + p.quantity, 0);
 
+    // Margine orizzontale ridotto a 10mm/lato per massimizzare lo spazio
+    // disponibile (210mm A4 portrait - 20mm margini = 190mm usable). Sia la
+    // tabella sez. 1 (4 col) sia la sez. 2 (6 col) sommano esattamente 190mm
+    // per allinearsi visivamente alla stessa larghezza.
+    const TABLE_MARGIN = 10;
+
     // Header
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("Riepilogo ordini", 14, 18);
+    doc.text("Riepilogo ordini", TABLE_MARGIN, 18);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     const stampLine = `Generato il ${new Date().toLocaleDateString("it-IT")} ${new Date().toLocaleTimeString("it-IT")} — ${orders.length} ${orders.length === 1 ? "ordine" : "ordini"}`;
-    doc.text(stampLine, 14, 24);
+    doc.text(stampLine, TABLE_MARGIN, 24);
 
     // Sezione 1: Totali per prodotto
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("Totali per prodotto", 14, 32);
+    doc.text("Totali per prodotto", TABLE_MARGIN, 32);
     doc.setFont("helvetica", "normal");
 
     autoTable(doc, {
         startY: 35,
-        head: [["Prodotto", "Quantità", "Totale"]],
+        margin: { left: TABLE_MARGIN, right: TABLE_MARGIN },
+        head: [["Prodotto", "Data consegna", "Quantità", "Totale"]],
         body: [
             ...productTotals.map((p) => [
-                p.deliveryDate ? `${p.name}\n(cons. ${formatDate(p.deliveryDate)})` : p.name,
+                p.name,
+                p.deliveryDate ? formatDate(p.deliveryDate) : "—",
                 String(p.quantity),
                 formatPrice(p.total),
             ]),
             [
-                { content: "Totale complessivo", styles: { fontStyle: "bold" } },
-                { content: String(grandQty), styles: { fontStyle: "bold" } },
-                { content: formatPrice(grandTotal), styles: { fontStyle: "bold", textColor: [21, 128, 61] } },
+                // colSpan=2 fonde Prodotto + Data consegna nella label "Totale complessivo".
+                { content: "Totale complessivo", colSpan: 2, styles: { fontStyle: "bold" as const } },
+                { content: String(grandQty), styles: { fontStyle: "bold" as const } },
+                { content: formatPrice(grandTotal), styles: { fontStyle: "bold" as const, textColor: [21, 128, 61] as [number, number, number] } },
             ],
         ],
         headStyles: { fillColor: [51, 65, 85], textColor: 255 },
         columnStyles: {
-            0: { cellWidth: "auto" },
-            1: { halign: "right", cellWidth: 28 },
-            2: { halign: "right", cellWidth: 32 },
+            // Somma 190mm.
+            0: { cellWidth: 100 },                 // Prodotto (più largo possibile per nomi lunghi)
+            1: { cellWidth: 32 },                  // Data consegna
+            2: { halign: "right", cellWidth: 24 }, // Quantità
+            3: { halign: "right", cellWidth: 34 }, // Totale
         },
         styles: { fontSize: 9, cellPadding: 2 },
     });
@@ -167,7 +194,7 @@ function buildPdf(orders: OrderWithDetails[]): jsPDF {
     const afterFirst = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 60;
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("Aggregato per cliente", 14, afterFirst + 10);
+    doc.text("Aggregato per cliente", TABLE_MARGIN, afterFirst + 10);
     doc.setFont("helvetica", "normal");
 
     // Renderizziamo un mini-table per ogni cliente, gestendo manualmente le
@@ -176,14 +203,16 @@ function buildPdf(orders: OrderWithDetails[]): jsPDF {
     // mostrare l'header solo sul primo cliente di ogni pagina (showHead:
     // 'firstPage') invece che ad ogni mini-table.
     // Larghezze colonna esplicite (no "auto") per allineare i mini-table fra loro.
-    const sec2Headers = [["Cliente", "Prodotto", "Qtà", "Totale", "Subtot. cliente", "Appunti"]];
+    // Layout 6 colonne (rimossa "Appunti" — gli appunti si segnano altrove).
+    // Somma 190mm = stessa larghezza della sezione 1 per allineamento visivo.
+    const sec2Headers = [["Cliente", "Prodotto", "Data consegna", "Qtà", "Totale", "Subtot. cliente"]];
     const sec2ColumnStyles = {
-        0: { cellWidth: 38 },
-        1: { cellWidth: 45 }, // Prodotto — fisso per allineare i mini-table
-        2: { halign: "right" as const, cellWidth: 14 },
-        3: { halign: "right" as const, cellWidth: 22 },
-        4: { halign: "right" as const, cellWidth: 28 },
-        5: { cellWidth: 35 }, // Appunti
+        0: { cellWidth: 50 },                        // Cliente (name + email su 2 linee)
+        1: { cellWidth: 52 },                        // Prodotto (single line; lunghi vanno a capo)
+        2: { cellWidth: 26 },                        // Data consegna
+        3: { halign: "right" as const, cellWidth: 14 }, // Qtà
+        4: { halign: "right" as const, cellWidth: 22 }, // Totale
+        5: { halign: "right" as const, cellWidth: 26 }, // Subtot. cliente
     };
     const sec2BaseOpts = {
         head: sec2Headers,
@@ -191,6 +220,7 @@ function buildPdf(orders: OrderWithDetails[]): jsPDF {
         columnStyles: sec2ColumnStyles,
         styles: { fontSize: 9, cellPadding: 2, valign: "middle" as const },
         rowPageBreak: "avoid" as const, // safety: nessuna riga singola spezzata
+        margin: { left: TABLE_MARGIN, right: TABLE_MARGIN },
     };
 
     const subtotalCellStyles = {
@@ -203,8 +233,8 @@ function buildPdf(orders: OrderWithDetails[]): jsPDF {
     // Sovrastimare di poco è ok: al massimo si sposta un gruppo a una pagina
     // nuova quando avrebbe potuto incastrarsi a fondo pagina.
     const HEAD_H = 8;
-    const TALL_ROW_H = 12; // riga prodotto a 2 linee (con "(cons. data)")
-    const SHORT_ROW_H = 8; // riga prodotto a 1 linea (senza data)
+    const FIRST_ROW_H = 12; // prima riga del cliente (customerLabel = name + email su 2 linee)
+    const REST_ROW_H = 8;   // righe successive (cella Cliente vuota, prodotto single-line)
     const SUBTOTAL_H = 9;
     const TOP_MARGIN = 14;
     const BOTTOM_MARGIN = 18; // include spazio per il footer "Pagina X / Y"
@@ -217,23 +247,24 @@ function buildPdf(orders: OrderWithDetails[]): jsPDF {
         const customerLabel = agg.email ? `${agg.name}\n${agg.email}` : agg.name;
         const productBody = agg.rows.map((r, idx) => [
             idx === 0 ? customerLabel : "",
-            r.deliveryDate ? `${r.productName}\n(cons. ${formatDate(r.deliveryDate)})` : r.productName,
+            r.productName,
+            r.deliveryDate ? formatDate(r.deliveryDate) : "—",
             String(r.quantity),
             formatPrice(r.total),
             "", // subtotale nella riga dedicata sotto
-            "", // appunti
         ]);
-        // colSpan=4 fonde Cliente+Prodotto+Qtà+Totale (38+45+14+22 = 119mm) in
-        // un'unica cella per la label "Totale {nome}". Evita il wrap su nomi
-        // cliente lunghi che con la sola colonna Prodotto (45mm) sforavano.
+        // colSpan=5 fonde Cliente+Prodotto+Data+Qtà+Totale in un'unica cella
+        // per la label "Totale {nome}". Evita il wrap su nomi cliente lunghi.
         const subtotalRow = [
-            { content: `Totale ${agg.name}`, colSpan: 4, styles: { ...subtotalCellStyles, fontStyle: "bold" as const, halign: "right" as const } },
+            { content: `Totale ${agg.name}`, colSpan: 5, styles: { ...subtotalCellStyles, fontStyle: "bold" as const, halign: "right" as const } },
             { content: formatPrice(agg.subtotal), styles: { ...subtotalCellStyles, fontStyle: "bold" as const, textColor: [21, 128, 61] as [number, number, number], halign: "right" as const } },
-            { content: "", styles: { ...subtotalCellStyles } },
         ];
 
         // Pre-flight: stima altezza del gruppo (head solo se firstOnPage).
-        const productH = agg.rows.reduce((s, r) => s + (r.deliveryDate ? TALL_ROW_H : SHORT_ROW_H), 0);
+        // Prima riga = FIRST_ROW_H (per il customerLabel a 2 linee), le successive REST_ROW_H.
+        const productH = agg.rows.length === 0
+            ? 0
+            : FIRST_ROW_H + Math.max(0, agg.rows.length - 1) * REST_ROW_H;
         const groupH = (firstOnPage ? HEAD_H : 0) + productH + SUBTOTAL_H;
 
         if (nextY + groupH > pageH - BOTTOM_MARGIN) {
@@ -262,16 +293,16 @@ function buildPdf(orders: OrderWithDetails[]): jsPDF {
         doc.setFont("helvetica", "normal");
         const pageW = doc.internal.pageSize.getWidth();
         const pageH = doc.internal.pageSize.getHeight();
-        doc.text(`Pagina ${i} / ${pageCount}`, pageW - 14, pageH - 8, { align: "right" });
+        doc.text(`Pagina ${i} / ${pageCount}`, pageW - TABLE_MARGIN, pageH - 8, { align: "right" });
     }
 
     return doc;
 }
 
-export default function ExportOrdersPdfButton({ orders }: ExportOrdersPdfButtonProps) {
+export default function ExportOrdersPdfButton({ orders, productTotals }: ExportOrdersPdfButtonProps) {
     const onClick = () => {
         if (orders.length === 0) return;
-        const doc = buildPdf(orders);
+        const doc = buildPdf(orders, productTotals);
         const now = new Date();
         const pad = (n: number) => String(n).padStart(2, "0");
         const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
