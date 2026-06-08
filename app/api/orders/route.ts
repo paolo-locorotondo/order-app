@@ -65,6 +65,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "La prenotazione è vuota" }, { status: 400 });
   }
 
+  // Step 10: guard archiviazione. Se un prodotto è stato archiviato dall'admin
+  // tra reserve e checkout, il finalize fallisce. La reservation resta valida
+  // (l'utente può rimuovere l'item archiviato e riprovare). Etichetta col
+  // `(cons. DD/MM/YYYY)` per disambiguare prodotti omonimi su date diverse.
+  // Body include anche `archivedProductIds` per permettere al client di
+  // mostrare errori inline sotto ogni card prodotto.
+  const archivedItems = reservation.items.filter((it) => it.product.archivedAt);
+  if (archivedItems.length > 0) {
+    const labels = archivedItems.map((it) => {
+      const delivery = it.product.deliveryDate
+        ? ` (cons. ${new Date(it.product.deliveryDate).toLocaleDateString("it-IT")})`
+        : "";
+      return `${it.product.name}${delivery}`;
+    });
+    return NextResponse.json(
+      {
+        error: `${archivedItems.length === 1 ? "Un prodotto è stato archiviato" : `${archivedItems.length} prodotti sono stati archiviati`} dall'amministratore (${labels.join(", ")}). ${archivedItems.length === 1 ? "Rimuovilo" : "Rimuovili"} dal carrello per completare l'ordine.`,
+        archivedProductIds: archivedItems.map((it) => it.productId),
+      },
+      { status: 410 }
+    );
+  }
+
   // 2. Transazione: crea ordine, decrementa quantity e reserved, libera reservation, svuota cart.
   const created = await prisma.$transaction(async (tx) => {
     const order = await tx.order.create({

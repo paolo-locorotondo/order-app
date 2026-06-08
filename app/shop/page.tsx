@@ -23,11 +23,14 @@ async function getProducts() {
   // Auto-hide dei prodotti la cui data di consegna è già passata o entro il
   // buffer configurato via env (vedi `lib/shop-visibility.ts`). I prodotti
   // senza deliveryDate restano sempre visibili (campo opzionale).
+  // Filtro inoltre fuori i prodotti archiviati (Step 10): l'archiviazione
+  // nasconde dallo shop senza eliminarli (storico ordini intatto via snapshot).
   // Sort: per deliveryDate asc (consegna più imminente prima); i prodotti
   // senza data finiscono in fondo (nulls: "last").
   const cutoff = shopVisibilityCutoff();
   return prisma.product.findMany({
     where: {
+      archivedAt: null,
       OR: [
         { deliveryDate: null },
         { deliveryDate: { gte: cutoff } },

@@ -42,12 +42,15 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   const [productFilter, setProductFilter] = useState<string>("");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  // Toggle "Mostra archiviati" (Step 10). Default: archiviati nascosti.
+  const [showArchived, setShowArchived] = useState(false);
 
-  const filtersActive = deliveryFrom !== "" || deliveryTo !== "" || productFilter !== "";
+  const filtersActive = deliveryFrom !== "" || deliveryTo !== "" || productFilter !== "" || showArchived;
   const resetFilters = () => {
     setDeliveryFrom("");
     setDeliveryTo("");
     setProductFilter("");
+    setShowArchived(false);
   };
 
   const handleSort = (key: string) => {
@@ -62,6 +65,11 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
   const processedProducts = useMemo(() => {
     let result = [...products];
+
+    // Step 10: nascondi archiviati di default. Toggle dedicato nei filtri.
+    if (!showArchived) {
+      result = result.filter((p) => !p.archivedAt);
+    }
 
     if (productFilter) {
       result = result.filter((p) => p.id === productFilter);
@@ -109,7 +117,7 @@ export default function ProductsTable({ products }: { products: ProductWithInven
     }
 
     return result;
-  }, [products, productFilter, deliveryFrom, deliveryTo, sortField, sortDir]);
+  }, [products, productFilter, deliveryFrom, deliveryTo, sortField, sortDir, showArchived]);
 
   // Auto-prune della selezione: gli id non più visibili escono dal set quando
   // cambiano filtri/sort. Stesso pattern di UsersTable / OrdersTable.
@@ -153,6 +161,34 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
   const clearSelection = () => setSelectedIds(new Set());
 
+  const handleBulkArchive = async (archive: boolean) => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const verb = archive ? "Archiviare" : "Ripristinare";
+    if (!confirm(`${verb} ${ids.length} ${ids.length === 1 ? "prodotto" : "prodotti"}?`)) {
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const response = await apiFetch("/api/admin/products/bulk/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, archive }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data?.error || "Errore durante l'operazione bulk.");
+        return;
+      }
+      clearSelection();
+      router.refresh();
+    } catch {
+      alert("Errore di rete. Riprova più tardi.");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
@@ -161,8 +197,8 @@ export default function ProductsTable({ products }: { products: ProductWithInven
     }
     setBulkLoading(true);
     try {
-      const response = await apiFetch("/api/admin/products/bulk", {
-        method: "DELETE",
+      const response = await apiFetch("/api/admin/products/bulk/delete", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
       });
@@ -307,8 +343,16 @@ export default function ProductsTable({ products }: { products: ProductWithInven
       key: "id",
       header: "ID",
       sortable: true,
-      cell: (p) => <span className="font-mono text-xs text-slate-500">{p.id.slice(0, 8)}</span>,
-      hideOnMobile: true,
+      cell: (p) => (
+        <span className="inline-flex items-center gap-2">
+          <span className="font-mono text-xs text-slate-500">{p.id.slice(0, 8)}</span>
+          {p.archivedAt && (
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-900">
+              Archiviato
+            </span>
+          )}
+        </span>
+      ),
     },
     {
       key: "sku",
@@ -413,6 +457,15 @@ export default function ProductsTable({ products }: { products: ProductWithInven
                 className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
               />
             </div>
+            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Mostra archiviati
+            </label>
           </div>
         </FiltersAccordion>
       </div>
@@ -423,6 +476,24 @@ export default function ProductsTable({ products }: { products: ProductWithInven
           <span className="font-medium text-blue-900">
             {selectedIds.size} {selectedIds.size === 1 ? "prodotto selezionato" : "prodotti selezionati"}
           </span>
+          <button
+            type="button"
+            onClick={() => handleBulkArchive(true)}
+            disabled={bulkLoading}
+            className="rounded bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+            title="Archivia i selezionati: nascosti dallo shop e dalle viste admin di default; reversibile."
+          >
+            {bulkLoading ? "..." : "Archivia"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleBulkArchive(false)}
+            disabled={bulkLoading}
+            className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            title="Ripristina (dis-archivia) i selezionati."
+          >
+            {bulkLoading ? "..." : "Ripristina"}
+          </button>
           <button
             type="button"
             onClick={handleBulkDelete}

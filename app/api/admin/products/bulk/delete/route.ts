@@ -5,7 +5,7 @@ import { bulkProductDeleteSchema } from "@/lib/validators";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
 /**
- * DELETE /api/admin/products/bulk
+ * POST /api/admin/products/bulk/delete
  * Body: { ids: string[] }
  *
  * Bulk delete con guard block-if-orders (mirror del DELETE single in
@@ -15,8 +15,10 @@ import { validateAuth, UserRole } from "@/lib/auth-helpers";
  *
  * Se la pre-flight passa, in transazione: cleanup di CartItem +
  * CartReservationItem + Inventory + Product per tutti gli id.
+ *
+ * NB: usa POST (non DELETE) perché DELETE con body non è canonico HTTP/REST.
  */
-export async function DELETE(request: NextRequest) {
+export async function POST(request: NextRequest) {
     const auth = await validateAuth(request, UserRole.ADMIN);
     if (!auth.ok) {
         return auth.errorResponse;
@@ -51,7 +53,7 @@ export async function DELETE(request: NextRequest) {
             const names = blockedProducts.map((p) => p.name).join(", ");
             return NextResponse.json(
                 {
-                    error: `Impossibile eliminare: ${blockedItems.length} ${blockedItems.length === 1 ? "prodotto è presente" : "prodotti sono presenti"} in ordini storici (${names}). Considera di disattivarli invece.`,
+                    error: `Impossibile eliminare: ${blockedItems.length} ${blockedItems.length === 1 ? "prodotto è presente" : "prodotti sono presenti"} in ordini storici (${names}). Considera di archiviarli invece.`,
                 },
                 { status: 409 },
             );

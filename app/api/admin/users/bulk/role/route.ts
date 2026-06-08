@@ -4,12 +4,12 @@ import { bulkUserRoleSchema } from "@/lib/validators";
 import { validateAuth, UserRole } from "@/lib/auth-helpers";
 
 /**
- * POST /api/admin/users/bulk
+ * POST /api/admin/users/bulk/role
  * Body: { ids: string[], role: UserRole }
  *
  * Cambia il ruolo di più utenti in un'unica transazione (`updateMany`).
- * Mirror della self-NUOVO guard di PUT /[id]: se l'admin loggato è in `ids`
- * e `role === NUOVO`, l'intera operazione viene rifiutata (400) senza
+ * Mirror della self-demotion guard di PUT /[id]: se l'admin loggato è in `ids`
+ * e `role !== ADMIN`, l'intera operazione viene rifiutata (400) senza
  * applicare alcun cambio (atomic). Niente bypass: o passa tutto o nulla.
  */
 export async function POST(request: NextRequest) {

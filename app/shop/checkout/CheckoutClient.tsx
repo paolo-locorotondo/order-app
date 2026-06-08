@@ -27,8 +27,35 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
   const [reservationMessage, setReservationMessage] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+  // Errori per-item: mappa cartItemId → messaggio. Popolata quando il server
+  // ritorna `archivedProductIds` nel body di un 410 (reserve o orders POST).
+  const [itemErrors, setItemErrors] = useState<Map<string, string>>(() => new Map());
+  // Dati per il banner "archived": label arricchite da renderizzare come elenco
+  // puntato. Indipendente dal testo reservationError (che resta fallback).
+  const [archivedBanner, setArchivedBanner] = useState<{ labels: string[] } | null>(null);
   const initRanRef = useRef(false);
   const isCompletingRef = useRef(false);
+
+  // Costruisce mappa per-item + dati del banner a partire dai productIds
+  // ritornati dal server. Usa `items` per matchare productId → cartItemId e
+  // per estrarre name + deliveryDate da renderizzare nel bullet.
+  const applyArchivedProductIds = (productIds: unknown) => {
+    if (!Array.isArray(productIds)) return;
+    const archivedSet = new Set<string>(productIds.filter((p): p is string => typeof p === "string"));
+    const errorMap = new Map<string, string>();
+    const labels: string[] = [];
+    for (const item of items) {
+      if (archivedSet.has(item.product.id)) {
+        errorMap.set(item.id, "Prodotto non più disponibile (archiviato dall'amministratore). Rimuovilo dal carrello.");
+        const delivery = item.product.deliveryDate
+          ? ` (cons. ${new Date(item.product.deliveryDate).toLocaleDateString("it-IT")})`
+          : "";
+        labels.push(`${item.product.name}${delivery}`);
+      }
+    }
+    setItemErrors(errorMap);
+    setArchivedBanner(labels.length > 0 ? { labels } : null);
+  };
 
   const total = items.reduce((sum, item) => sum + (item.product?.price ?? 0) * item.quantity, 0);
 
@@ -55,6 +82,8 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
     const initReservation = async () => {
       setReservationLoading(true);
       setReservationError(null);
+      setArchivedBanner(null);
+      setItemErrors(new Map());
 
       try {
         const getRes = await fetch("/api/cart/reserve", { method: "GET" });
@@ -74,6 +103,10 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
         const postData = await postRes.json();
 
         if (!postRes.ok) {
+          // Step 10: 410 con archivedProductIds → popola la mappa per-item.
+          if (postRes.status === 410) {
+            applyArchivedProductIds(postData.archivedProductIds);
+          }
           throw new Error(typeof postData.error === "string" ? postData.error : "Errore durante la prenotazione dei prodotti");
         }
 
@@ -140,6 +173,8 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
 
     setSubmitting(true);
     setReservationError(null);
+    setArchivedBanner(null);
+    setItemErrors(new Map());
     isCompletingRef.current = true;
 
     try {
@@ -151,6 +186,9 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 410) {
+          applyArchivedProductIds(data.archivedProductIds);
+        }
         throw new Error(typeof data.error === "string" ? data.error : "Errore nella creazione dell'ordine");
       }
 
@@ -171,11 +209,29 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
 
   return (
     <div>
-      {reservationError && (
+      {/* Banner "archived": preferito al testo reservationError quando abbiamo dati strutturati. */}
+      {archivedBanner ? (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-red-700">
+          <p className="font-medium">
+            {archivedBanner.labels.length === 1
+              ? "Un prodotto è stato archiviato"
+              : `${archivedBanner.labels.length} prodotti sono stati archiviati`}{" "}
+            dall&apos;amministratore:
+          </p>
+          <ul className="ml-5 mt-1 list-disc">
+            {archivedBanner.labels.map((label) => (
+              <li key={label}>{label}</li>
+            ))}
+          </ul>
+          <p className="mt-2">
+            {`${archivedBanner.labels.length === 1 ? "Rimuovilo" : "Rimuovili"} dal carrello per completare l'ordine.`}
+          </p>
+        </div>
+      ) : reservationError ? (
         <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-red-700">
           {reservationError}
         </div>
-      )}
+      ) : null}
 
       {!reservationError && reservationMessage && (
         <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 text-blue-700">
@@ -192,7 +248,7 @@ export default function CheckoutClient({ items }: { items: CartItem[] }) {
         <div className="min-w-0 lg:col-span-2">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm mb-6 sm:p-6">
             <h2 className="mb-4 text-lg font-bold">Riepilogo Carrello</h2>
-            <CartItemsList items={items} readOnly />
+            <CartItemsList items={items} readOnly itemErrors={itemErrors} />
           </div>
         </div>
 

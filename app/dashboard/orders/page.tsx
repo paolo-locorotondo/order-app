@@ -14,7 +14,9 @@ export default async function OrderHistoryPage() {
   }
 
   const orders = await prisma.order.findMany({
-    where: { userId: auth.session.user.id },
+    // Filtro `archivedAt: null` (Step 10): gli ordini archiviati dall'admin
+    // spariscono dallo storico cliente. Per recuperarli l'admin dis-archivia.
+    where: { userId: auth.session.user.id, archivedAt: null },
     // `product.{name,deliveryDate}` servono ai filtri lato client (Combobox usa
     // il nome canonico del Product, non lo snapshot di OrderItem.productName).
     include: { items: { include: { product: { select: { name: true, deliveryDate: true } } } } },

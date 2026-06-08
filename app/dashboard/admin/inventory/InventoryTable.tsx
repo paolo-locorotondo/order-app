@@ -25,12 +25,16 @@ export default function InventoryTable({ inventory }: { inventory: InventoryWith
     const [deliveryTo, setDeliveryTo] = useState<string>("");
     const [sortField, setSortField] = useState<SortField | null>(null);
     const [sortDir, setSortDir] = useState<SortDir>("asc");
+    // Toggle "Mostra archiviati" (Step 10). Niente bulk action qui: l'archivio
+    // si gestisce da Admin Prodotti, l'inventario si limita a riflettere lo stato.
+    const [showArchived, setShowArchived] = useState(false);
 
-    const filtersActive = productFilter !== "" || deliveryFrom !== "" || deliveryTo !== "";
+    const filtersActive = productFilter !== "" || deliveryFrom !== "" || deliveryTo !== "" || showArchived;
     const resetFilters = () => {
         setProductFilter("");
         setDeliveryFrom("");
         setDeliveryTo("");
+        setShowArchived(false);
     };
 
     const handleSort = (key: string) => {
@@ -55,6 +59,11 @@ export default function InventoryTable({ inventory }: { inventory: InventoryWith
 
     const processedInventory = useMemo(() => {
         let result = [...inventory];
+
+        // Step 10: nascondi gli inventory di prodotti archiviati di default.
+        if (!showArchived) {
+            result = result.filter((i) => !i.product?.archivedAt);
+        }
 
         if (productFilter) {
             result = result.filter((i) => i.product?.id === productFilter);
@@ -101,14 +110,23 @@ export default function InventoryTable({ inventory }: { inventory: InventoryWith
         }
 
         return result;
-    }, [inventory, productFilter, deliveryFrom, deliveryTo, sortField, sortDir]);
+    }, [inventory, productFilter, deliveryFrom, deliveryTo, sortField, sortDir, showArchived]);
 
     const columns: AdminTableColumn<InventoryWithProduct>[] = [
         {
             key: "product",
             header: "Prodotto",
             sortable: true,
-            cell: (i) => <span className="font-medium">{i.product?.name || "-"}</span>,
+            cell: (i) => (
+                <span className="font-medium">
+                    {i.product?.name || "-"}
+                    {i.product?.archivedAt && (
+                        <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-900">
+                            Archiviato
+                        </span>
+                    )}
+                </span>
+            ),
         },
         {
             key: "deliveryDate",
@@ -238,6 +256,15 @@ export default function InventoryTable({ inventory }: { inventory: InventoryWith
                                 className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-blue-400 focus:outline-none"
                             />
                         </div>
+                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                                type="checkbox"
+                                checked={showArchived}
+                                onChange={(e) => setShowArchived(e.target.checked)}
+                                className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Mostra archiviati
+                        </label>
                     </div>
                 </FiltersAccordion>
             </div>

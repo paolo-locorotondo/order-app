@@ -52,6 +52,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
     const [totalsOpen, setTotalsOpen] = useState(true);
+    // Toggle "Mostra archiviati" (Step 10). Default: archiviati nascosti.
+    const [showArchived, setShowArchived] = useState(false);
     // Sort multi-livello per la tabella "Totali per prodotto": il primo elemento
     // è il sort primario; gli altri agiscono da tiebreaker in cascata.
     // Click su colonna nuova: la promuove a primaria (default desc), demote la
@@ -91,7 +93,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         dateFrom !== "" ||
         dateTo !== "" ||
         deliveryFrom !== "" ||
-        deliveryTo !== "";
+        deliveryTo !== "" ||
+        showArchived;
 
     const resetFilters = () => {
         setStatusFilter(new Set());
@@ -102,6 +105,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         setDateTo("");
         setDeliveryFrom("");
         setDeliveryTo("");
+        setShowArchived(false);
     };
 
     const toggleStatusFilter = (status: OrderStatus) => {
@@ -200,6 +204,11 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
     const processedOrders = useMemo(() => {
         let result = [...orders];
 
+        // Step 10: nascondi archiviati di default. Toggle dedicato nei filtri.
+        if (!showArchived) {
+            result = result.filter((o) => !o.archivedAt);
+        }
+
         if (statusFilter.size > 0) {
             result = result.filter((o) => statusFilter.has(o.status));
         }
@@ -269,7 +278,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         });
 
         return result;
-    }, [orders, statusFilter, userFilter, productFilter, dateField, dateFrom, dateTo, deliveryFrom, deliveryTo, sortField, sortDir]);
+    }, [orders, statusFilter, userFilter, productFilter, dateField, dateFrom, dateTo, deliveryFrom, deliveryTo, sortField, sortDir, showArchived]);
 
     // Auto-prune: stesso pattern di UsersTable. Quando i filtri cambiano,
     // gli id non più visibili escono dal set selectedIds.
@@ -321,7 +330,7 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         }
         setBulkLoading(true);
         try {
-            const response = await apiFetch("/api/admin/orders/bulk", {
+            const response = await apiFetch("/api/admin/orders/bulk/status", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ids, status: bulkStatus }),
@@ -329,6 +338,34 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
             const data = await response.json();
             if (!response.ok) {
                 alert(data?.error || "Errore durante l'aggiornamento bulk.");
+                return;
+            }
+            clearSelection();
+            router.refresh();
+        } catch {
+            alert("Errore di rete. Riprova più tardi.");
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+    const handleBulkArchive = async (archive: boolean) => {
+        if (selectedIds.size === 0) return;
+        const ids = Array.from(selectedIds);
+        const verb = archive ? "Archiviare" : "Ripristinare";
+        if (!confirm(`${verb} ${ids.length} ${ids.length === 1 ? "ordine" : "ordini"}?`)) {
+            return;
+        }
+        setBulkLoading(true);
+        try {
+            const response = await apiFetch("/api/admin/orders/bulk/archive", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids, archive }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data?.error || "Errore durante l'operazione bulk.");
                 return;
             }
             clearSelection();
@@ -355,8 +392,8 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         }
         setBulkLoading(true);
         try {
-            const response = await apiFetch("/api/admin/orders/bulk", {
-                method: "DELETE",
+            const response = await apiFetch("/api/admin/orders/bulk/delete", {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ids }),
             });
@@ -440,7 +477,16 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
         {
             key: "id",
             header: "ID",
-            cell: (o) => <span className="font-mono text-xs text-slate-500">{o.id.slice(0, 8)}</span>,
+            cell: (o) => (
+                <span className="inline-flex items-center gap-2">
+                    <span className="font-mono text-xs text-slate-500">{o.id.slice(0, 8)}</span>
+                    {o.archivedAt && (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-900">
+                            Archiviato
+                        </span>
+                    )}
+                </span>
+            ),
         },
         {
             key: "user",
@@ -718,6 +764,16 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                     );
                                 })}
                             </div>
+
+                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                                type="checkbox"
+                                checked={showArchived}
+                                onChange={(e) => setShowArchived(e.target.checked)}
+                                className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Mostra archiviati
+                        </label>
                         </div>
                 </FiltersAccordion>
 
@@ -748,6 +804,24 @@ export default function OrdersTable({ orders, users, products }: OrdersTableProp
                                 {bulkLoading ? "..." : "Applica"}
                             </button>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => handleBulkArchive(true)}
+                            disabled={bulkLoading}
+                            className="rounded bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                            title="Archivia i selezionati: nascosti dalle viste admin di default e dallo storico cliente; reversibile."
+                        >
+                            Archivia
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleBulkArchive(false)}
+                            disabled={bulkLoading}
+                            className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                            title="Ripristina (dis-archivia) i selezionati."
+                        >
+                            Ripristina
+                        </button>
                         <button
                             type="button"
                             onClick={handleBulkDelete}

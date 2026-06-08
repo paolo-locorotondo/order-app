@@ -23,7 +23,12 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
   // l'utente vedrà il nuovo valore — accettato per MVP, valutare snapshot quando servirà.
   const order = await prisma.order.findUnique({
     where: { id },
-    include: { items: { include: { product: { select: { deliveryDate: true } } } } },
+    include: {
+      items: { include: { product: { select: { deliveryDate: true } } } },
+      // user incluso per il blocco "Ordinante" (visibile solo all'admin che
+      // sta vedendo un ordine non suo, vedi sotto).
+      user: { select: { name: true, email: true } },
+    },
   });
 
   // Ordine non trovato
@@ -34,7 +39,21 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
     notFound(); // non riveliamo che l'ordine esiste ma appartiene a qualcun altro
   }
 
+  // Step 10: ordini archiviati nascosti dal customer (mirror dello storico).
+  // L'admin invece deve poterli vedere per gestione: gli serve la pagina raw
+  // anche dopo aver archiviato (es. customer chiede info su ordine vecchio,
+  // l'admin manda il link senza dover dis-archiviare).
+  if (order.archivedAt && auth.session.user.role !== UserRole.ADMIN) {
+    notFound();
+  }
+
   const orderTotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  // Mostra il blocco "Ordinante" solo se l'admin sta vedendo un ordine NON suo.
+  // Per il customer è ridondante (è il proprio ordine); per un admin sui propri
+  // ordini è ridondante allo stesso modo.
+  const showOwnerInfo =
+    auth.session.user.role === UserRole.ADMIN && order.userId !== auth.session.user.id;
 
   const PAYMENT_LABELS: Record<PaymentMethods, string> = {
     [PaymentMethods.CASH]: "Contanti (Pagamento alla consegna)",
@@ -69,6 +88,18 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
                 })}
               </p>
             </div>
+
+            {/* Ordinante: visibile solo all'admin che sta vedendo un ordine non suo. */}
+            {showOwnerInfo && (
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-6 shadow-sm">
+                <h2 className="mb-2 text-lg font-bold text-purple-900">Ordinante</h2>
+                <p className="text-sm font-medium text-slate-800">{order.user?.name || "(senza nome)"}</p>
+                <p className="text-sm text-slate-600">{order.user?.email}</p>
+                <p className="mt-2 text-xs italic text-purple-700">
+                  Stai visualizzando questo ordine come admin.
+                </p>
+              </div>
+            )}
 
             {/* Indirizzo Spedizione */}
             <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">

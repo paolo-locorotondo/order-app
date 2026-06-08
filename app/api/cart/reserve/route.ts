@@ -69,7 +69,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Il carrello è vuoto" }, { status: 400 });
   }
 
-  // 4. Valida disponibilità prima di creare la reservation.
+  // 4. Valida non-archiviato prima della disponibilità: lista completa di
+  // prodotti dismessi raccolti in una sola risposta (non solo il primo, così
+  // l'utente vede in un colpo solo cosa rimuovere). Etichetta col `(cons. DD/MM/YYYY)`
+  // se valorizzata, per disambiguare prodotti omonimi su date diverse.
+  // Body include anche `archivedProductIds` per permettere al client di
+  // mostrare errori inline sotto ogni card prodotto.
+  const archivedItems = cartItems.filter((it) => it.product.archivedAt);
+  if (archivedItems.length > 0) {
+    const labels = archivedItems.map((it) => {
+      const delivery = it.product.deliveryDate
+        ? ` (cons. ${new Date(it.product.deliveryDate).toLocaleDateString("it-IT")})`
+        : "";
+      return `${it.product.name}${delivery}`;
+    });
+    return NextResponse.json(
+      {
+        error: `${archivedItems.length === 1 ? "Un prodotto è stato archiviato" : `${archivedItems.length} prodotti sono stati archiviati`} dall'amministratore (${labels.join(", ")}). ${archivedItems.length === 1 ? "Rimuovilo" : "Rimuovili"} dal carrello per proseguire.`,
+        archivedProductIds: archivedItems.map((it) => it.productId),
+      },
+      { status: 410 }
+    );
+  }
+
+  // Valida disponibilità inventory.
   for (const item of cartItems) {
     const inventory = item.product.inventory;
     if (!inventory) {

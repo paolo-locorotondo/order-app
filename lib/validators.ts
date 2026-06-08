@@ -113,7 +113,7 @@ export const userUpdateSchema = z.object({
   phoneNumber: phoneSchema,
 });
 
-// Body per il bulk status-change da POST /api/admin/orders/bulk.
+// Body per il bulk status-change da POST /api/admin/orders/bulk/status.
 // `ids`: lista di order id (cuid). `status`: target. Le transizioni
 // NON-ANNULLATO ↔ ANNULLATO ribilanciano l'inventory atomicamente nell'handler.
 export const bulkOrderStatusSchema = z.object({
@@ -129,20 +129,28 @@ export const bulkOrderStatusSchema = z.object({
   ]),
 });
 
-// Body per il bulk delete da DELETE /api/admin/orders/bulk.
+// Body per il bulk delete da POST /api/admin/orders/bulk/delete.
 // Cleanup meccanico (no inventory restore, vedi commit b49ef44).
 export const bulkOrderDeleteSchema = z.object({
   ids: z.array(z.string().cuid()).min(1, "Seleziona almeno un ordine"),
 });
 
-// Body per il bulk delete da DELETE /api/admin/products/bulk.
+// Body per il bulk delete da POST /api/admin/products/bulk/delete.
 // Block-if-orders pre-flight all-or-nothing: se UN solo prodotto è referenziato
 // da OrderItem storici, l'intera operazione viene rifiutata.
 export const bulkProductDeleteSchema = z.object({
   ids: z.array(z.string().cuid()).min(1, "Seleziona almeno un prodotto"),
 });
 
-// Body per il bulk role-change da POST /api/admin/users/bulk.
+// Body per i bulk archive/unarchive (Step 10). `archive: true` → archivedAt = now;
+// `archive: false` → archivedAt = null. Stesso schema riusato per Product e Order
+// (la differenza è solo nel target id space).
+export const bulkArchiveSchema = z.object({
+  ids: z.array(z.string().cuid()).min(1, "Seleziona almeno un record"),
+  archive: z.boolean(),
+});
+
+// Body per il bulk role-change da POST /api/admin/users/bulk/role.
 // `ids`: lista di user id (cuid) non vuota e con duplicati ignorati lato handler.
 // `role`: ruolo target. Niente NUOVO se l'admin è in `ids` (controllo nel handler,
 // non qui — è una regola di business che dipende dalla session).

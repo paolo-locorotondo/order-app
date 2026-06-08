@@ -47,6 +47,10 @@ model Product {
   sku         String
   image       String?
   deliveryDate DateTime? // Data di consegna prevista; il prezzo è funzione di questa data.
+  // Soft-archive: timestamp dell'ultima archiviazione (null = attivo). Il record
+  // archiviato è nascosto dallo shop e dalle viste admin di default; restano
+  // disponibili gli OrderItem storici grazie agli snapshot. Reversibile.
+  archivedAt  DateTime?
   inventory   Inventory?
   orderItems  OrderItem[]
   cartItems   CartItem[]
@@ -88,6 +92,10 @@ model Order {
   notes           String?     // Note opzionali
   paymentMethod   PaymentMethods @default(CASH)
   stripePaymentId String?
+  // Soft-archive: vedi commento su Product.archivedAt. L'archiviazione di un
+  // Order non tocca lo status né l'inventory: è puramente UX (nascondere
+  // dalle view di default). Un ordine ANNULLATO archiviato resta annullato.
+  archivedAt      DateTime?
   items           OrderItem[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

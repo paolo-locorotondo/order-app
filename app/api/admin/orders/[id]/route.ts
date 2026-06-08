@@ -153,12 +153,22 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       const newQty = newQtyByProduct.get(productId) ?? 0;
       const oldQty = oldQtyByProduct.get(productId) ?? 0;
       const delta = newQty - oldQty;
-      if (delta <= 0) continue;
-      const inv = inventories.find((i) => i.productId === productId);
       const product = products.find((p) => p.id === productId);
       if (!product) {
         return NextResponse.json({ error: `Prodotto ${productId} non trovato` }, { status: 404 });
       }
+      // Step 10: blocca l'aggiunta di un prodotto archiviato come nuovo articolo
+      // (oldQty == 0 → riga creata in questa edit). Se invece il prodotto era già
+      // presente prima ed è stato archiviato dopo, l'admin può modificarne la
+      // quantità (mirror del pattern UI Combobox).
+      if (product.archivedAt && oldQty === 0 && newQty > 0) {
+        return NextResponse.json(
+          { error: `Prodotto ${product.name} è archiviato. Ripristinalo prima di aggiungerlo a un ordine.` },
+          { status: 410 }
+        );
+      }
+      if (delta <= 0) continue;
+      const inv = inventories.find((i) => i.productId === productId);
       // Disponibilità reale = quantity - reserved. L'admin NON può consumare lo stock
       // riservato dai cart checkout di altri customer.
       const invQuantity = inv?.quantity ?? 0;

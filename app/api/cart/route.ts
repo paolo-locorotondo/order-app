@@ -35,6 +35,23 @@ export async function POST(request: NextRequest) {
     include: { product: { include: { inventory: true } } },
   });
 
+  // Guard archiviazione (Step 10): un prodotto archiviato post-pageview non
+  // può finire in carrello. Controllo prima dell'inventory perché un prodotto
+  // archiviato resta sì in DB con relativo Inventory, ma è "dismesso" lato shop.
+  const product = await prisma.product.findUnique({
+    where: { id: parsed.data.productId },
+    select: { archivedAt: true },
+  });
+  if (!product) {
+    return NextResponse.json({ error: "Prodotto non trovato" }, { status: 404 });
+  }
+  if (product.archivedAt) {
+    return NextResponse.json(
+      { error: "Prodotto non più disponibile (archiviato dall'amministratore)." },
+      { status: 410 }
+    );
+  }
+
   // BUG FIX #3: VALIDATE INVENTORY AVAILABILITY
   const inventory = await prisma.inventory.findUnique({
     where: { productId: parsed.data.productId },
@@ -89,8 +106,21 @@ export async function PATCH(request: NextRequest) {
   const parsed = z.object({ id: z.string().cuid(), quantity: z.number().int().min(1) }).safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
 
-  const item = await prisma.cartItem.findUnique({ where: { id: parsed.data.id } });
+  const item = await prisma.cartItem.findUnique({
+    where: { id: parsed.data.id },
+    include: { product: { select: { archivedAt: true } } },
+  });
   if (!item || item.userId !== auth.token.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Step 10: blocca anche PATCH (cambio quantità) se il prodotto è archiviato.
+  // Senza questa guard l'utente può aggiustare la qty di un prodotto dismesso
+  // sulla pagina carrello e scoprire l'errore solo a checkout.
+  if (item.product?.archivedAt) {
+    return NextResponse.json(
+      { error: "Prodotto non più disponibile (archiviato dall'amministratore). Rimuovilo dal carrello." },
+      { status: 410 }
+    );
+  }
 
   const updated = await prisma.cartItem.update({
     where: { id: item.id },

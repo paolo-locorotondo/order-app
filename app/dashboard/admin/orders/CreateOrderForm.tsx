@@ -53,14 +53,18 @@ export default function CreateOrderForm({ users, products }: CreateOrderFormProp
     }, 0);
 
     // Lista per la Combobox prodotti: ordinata per data consegna asc (imminente
-    // prima); i prodotti senza data finiscono in fondo.
+    // prima); i prodotti senza data finiscono in fondo. Esclude i prodotti
+    // archiviati (Step 10): l'admin non può creare nuovi ordini su prodotti
+    // dismessi (anche se gli ordini storici li mantengono via OrderItem snapshot).
     const productsForCombobox = useMemo(() => {
-        return [...products].sort((a, b) => {
-            const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
-            const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
-            if (aTs !== bTs) return aTs - bTs;
-            return a.name.localeCompare(b.name);
-        });
+        return [...products]
+            .filter((p) => !p.archivedAt)
+            .sort((a, b) => {
+                const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+                const bTs = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+                if (aTs !== bTs) return aTs - bTs;
+                return a.name.localeCompare(b.name);
+            });
     }, [products]);
 
     const handleSubmit = async (e: React.FormEvent) => {

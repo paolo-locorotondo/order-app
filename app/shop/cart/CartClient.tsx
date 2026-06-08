@@ -27,17 +27,45 @@ export default function CartClient({
   noticeMessage?: string;
 }) {
   const [items, setItems] = useState<CartItem[]>(initialItems);
-  const [error, setError] = useState<string | null>(null);
+  // Errori per-item (mappa itemId → messaggio): permette di mostrarli inline
+  // sotto la card del prodotto interessato e di pulirli al primo successo su
+  // quello stesso item, senza affettare gli altri.
+  const [itemErrors, setItemErrors] = useState<Map<string, string>>(() => new Map());
   const router = useRouter();
+
+  const setItemError = (itemId: string, msg: string) =>
+    setItemErrors((prev) => new Map(prev).set(itemId, msg));
+  const clearItemError = (itemId: string) =>
+    setItemErrors((prev) => {
+      if (!prev.has(itemId)) return prev;
+      const next = new Map(prev);
+      next.delete(itemId);
+      return next;
+    });
+
+  // Legge il messaggio di errore dal body server quando disponibile (es. la
+  // guard "prodotto archiviato" del PATCH ritorna 410 con .error specifico),
+  // altrimenti fallback al testo generico passato dal caller.
+  const extractServerError = async (res: Response, fallback: string): Promise<string> => {
+    try {
+      const data = await res.json();
+      if (typeof data?.error === "string") return data.error;
+      if (data?.error) return JSON.stringify(data.error);
+    } catch {
+      // body non JSON o vuoto → fallback
+    }
+    return fallback;
+  };
 
   const handleRemove = async (itemId: string) => {
     try {
       const res = await apiFetch(`/api/cart?id=${itemId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Errore nella rimozione");
+      if (!res.ok) throw new Error(await extractServerError(res, "Errore nella rimozione"));
       setItems((prev) => prev.filter((item) => item.id !== itemId));
+      clearItemError(itemId);
       notifyCartChanged();
     } catch (err) {
-      setError((err as Error).message);
+      setItemError(itemId, (err as Error).message);
     }
   };
 
@@ -48,14 +76,15 @@ export default function CartClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: itemId, quantity: qty }),
       });
-      if (!res.ok) throw new Error("Errore nell'aggiornamento");
+      if (!res.ok) throw new Error(await extractServerError(res, "Errore nell'aggiornamento"));
       const updated = await res.json();
       setItems((prev) =>
         prev.map((item) => (item.id === itemId ? updated.data : item))
       );
+      clearItemError(itemId);
       notifyCartChanged();
     } catch (err) {
-      setError((err as Error).message);
+      setItemError(itemId, (err as Error).message);
     }
   };
 
@@ -70,14 +99,13 @@ export default function CartClient({
           {noticeMessage}
         </div>
       )}
-      {error && <p className="mb-4 text-red-600">{error}</p>}
-
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 lg:col-span-2">
           <CartItemsList
             items={items}
             onRemove={handleRemove}
             onUpdateQty={handleUpdateQty}
+            itemErrors={itemErrors}
           />
         </div>
 

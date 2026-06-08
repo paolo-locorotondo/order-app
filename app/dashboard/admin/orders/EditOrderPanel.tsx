@@ -246,6 +246,11 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
 
     // Lista per la Combobox prodotti: ordinata per data consegna asc (imminente
     // prima); i prodotti senza data finiscono in fondo.
+    // Includo anche i prodotti archiviati (Step 10) ma li marcheremo disabled
+    // a livello di option, salvo che siano già selezionati nella riga corrente
+    // (mirror del pattern già usato per i prodotti esauriti). Questo evita di
+    // perdere il valore della select su ordini editati che contengono prodotti
+    // archiviati post-creazione.
     const productsForCombobox = useMemo(() => {
         return [...products].sort((a, b) => {
             const aTs = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
@@ -437,12 +442,14 @@ export default function EditOrderPanel({ order, products, users, onSuccess }: Ed
                                                 const delivery = p.deliveryDate
                                                     ? ` (cons. ${new Date(p.deliveryDate).toLocaleDateString("it-IT")})`
                                                     : "";
+                                                const archivedTag = p.archivedAt ? " (archiviato)" : "";
+                                                // Permettiamo comunque di mantenere selezionato il prodotto corrente
+                                                // anche se esaurito o archiviato (era già caricato sull'ordine).
+                                                const isCurrent = p.id === item.productId;
                                                 return {
                                                     value: p.id,
-                                                    label: `${p.name}${delivery} — €${p.price.toFixed(2)} (disp: ${disp})`,
-                                                    // Permettiamo comunque di mantenere selezionato il prodotto corrente
-                                                    // se è esaurito (era già caricato sull'ordine).
-                                                    disabled: disp <= 0 && p.id !== item.productId,
+                                                    label: `${p.name}${delivery}${archivedTag} — €${p.price.toFixed(2)} (disp: ${disp})`,
+                                                    disabled: !isCurrent && (disp <= 0 || !!p.archivedAt),
                                                 };
                                             })}
                                         />

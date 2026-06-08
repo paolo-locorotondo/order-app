@@ -46,6 +46,12 @@ export default async function ProductPage({ params }: Props) {
   if (product.deliveryDate && new Date(product.deliveryDate) < shopVisibilityCutoff()) {
     notFound();
   }
+  // Auto-hide prodotti archiviati (Step 10): equivalente a soft-delete dalla
+  // prospettiva customer. L'order-confirmation legge ancora dall'OrderItem
+  // snapshot quindi gli ordini storici non si rompono.
+  if (product.archivedAt) {
+    notFound();
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

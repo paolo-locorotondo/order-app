@@ -78,6 +78,14 @@ export async function POST(request: NextRequest) {
     if (!product) {
       return NextResponse.json({ error: `Product ${productId} not found` }, { status: 404 });
     }
+    // Step 10: rifiuta prodotti archiviati. La Combobox lato UI già li esclude;
+    // questo è la difesa server-side (es. POST diretto da console/curl).
+    if (product.archivedAt) {
+      return NextResponse.json(
+        { error: `Prodotto ${product.name} è archiviato. Ripristinalo prima di creare nuovi ordini.` },
+        { status: 410 }
+      );
+    }
     // Disponibilità reale = quantity - reserved (quote in mano ad altri checkout customer).
     // L'admin NON può bypassare le reservation altrui.
     const quantity = product.inventory?.quantity ?? 0;

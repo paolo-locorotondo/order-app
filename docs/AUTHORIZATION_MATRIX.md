@@ -1,6 +1,6 @@
 # Authorization Matrix
 
-> **Snapshot del 2026-05-27.** La sorgente di verità sono le chiamate
+> **Snapshot del 2026-06-05.** La sorgente di verità sono le chiamate
 > `validateAuth(request, ...)` nelle `route.ts` (API) e
 > `validateAuthFromServerSession(...)` nelle `page.tsx` (server components),
 > più il matcher di [middleware.ts](../middleware.ts).
@@ -56,15 +56,18 @@ I ruoli sono definiti in `prisma/schema.prisma` (`enum UserRole`):
 | `GET /api/orders/[id]` | ↪ | 🔒 | ✅ (solo proprio) | ✅ |
 | `GET\|POST /api/products` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET\|PUT\|DELETE /api/products/[id]` | ↪ | 🔒 | 🔒 | ✅ |
-| `DELETE /api/admin/products/bulk` | ↪ | 🔒 | 🔒 | ✅ |
+| `POST /api/admin/products/bulk/delete` | ↪ | 🔒 | 🔒 | ✅ |
+| `POST /api/admin/products/bulk/archive` | ↪ | 🔒 | 🔒 | ✅ |
 | `PUT /api/inventory/[id]` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET\|POST /api/admin/users` | ↪ | 🔒 | 🔒 | ✅ |
 | `PUT\|DELETE /api/admin/users/[id]` | ↪ | 🔒 | 🔒 | ✅ |
-| `POST /api/admin/users/bulk` | ↪ | 🔒 | 🔒 | ✅ |
+| `POST /api/admin/users/bulk/role` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET\|POST /api/admin/orders` | ↪ | 🔒 | 🔒 | ✅ |
 | `GET /api/admin/orders/[id]` | ↪ | 🔒 | ✅ (solo proprio) | ✅ |
 | `PUT\|DELETE /api/admin/orders/[id]` | ↪ | 🔒 | 🔒 | ✅ |
-| `POST\|DELETE /api/admin/orders/bulk` | ↪ | 🔒 | 🔒 | ✅ |
+| `POST /api/admin/orders/bulk/status` | ↪ | 🔒 | 🔒 | ✅ |
+| `POST /api/admin/orders/bulk/delete` | ↪ | 🔒 | 🔒 | ✅ |
+| `POST /api/admin/orders/bulk/archive` | ↪ | 🔒 | 🔒 | ✅ |
 | `POST /api/user/changepassword` | ↪ | ✅ (cred) / 400 (oauth) | ✅ (cred) / 400 (oauth) | ✅ (cred) / 400 (oauth) |
 
 ## Note

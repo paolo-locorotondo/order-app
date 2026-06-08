@@ -244,7 +244,7 @@ export default function UsersTable({ users }: { users: User[] }) {
     }
     setBulkLoading(true);
     try {
-      const response = await apiFetch("/api/admin/users/bulk", {
+      const response = await apiFetch("/api/admin/users/bulk/role", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids, role: bulkRole }),
