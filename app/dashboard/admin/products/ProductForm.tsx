@@ -7,6 +7,12 @@ import PriceInput from "@/components/PriceInput";
 
 interface ProductFormProps {
   product?: ProductModel & { inventory: InventoryModel | null };
+  /**
+   * Valori iniziali per i campi del form in modalità *creazione* (quando `product`
+   * è undefined). Usato dal flow "Duplica" per pre-compilare i campi col prodotto
+   * sorgente. Ignorato in modalità edit (`product` ha la precedenza).
+   */
+  initialValues?: Partial<ProductFormData>;
   onSubmit: (data: ProductFormData) => Promise<void>;
   loading?: boolean;
   error?: string | null;
@@ -36,16 +42,18 @@ const toDateInputValue = (v: Date | string | null | undefined): string => {
   return `${y}-${m}-${day}`;
 };
 
-export default function ProductForm({ product, onSubmit, loading = false, error, success }: ProductFormProps) {
+export default function ProductForm({ product, initialValues, onSubmit, loading = false, error, success }: ProductFormProps) {
+  // Stato iniziale: in modalità edit i valori vengono dal `product`; in
+  // modalità create vengono dagli `initialValues` (Duplica) o da defaults vuoti.
   const [formData, setFormData] = useState<ProductFormData>({
-    name: product?.name || "",
-    slug: product?.slug || "",
-    description: product?.description || "",
-    price: product?.price || 0,
-    sku: product?.sku || "",
-    image: product?.image || "",
-    quantity: product?.inventory?.quantity || 0,
-    deliveryDate: toDateInputValue(product?.deliveryDate),
+    name: product?.name ?? initialValues?.name ?? "",
+    slug: product?.slug ?? initialValues?.slug ?? "",
+    description: product?.description ?? initialValues?.description ?? "",
+    price: product?.price ?? initialValues?.price ?? 0,
+    sku: product?.sku ?? initialValues?.sku ?? "",
+    image: product?.image ?? initialValues?.image ?? "",
+    quantity: product?.inventory?.quantity ?? initialValues?.quantity ?? 0,
+    deliveryDate: product ? toDateInputValue(product.deliveryDate) : initialValues?.deliveryDate ?? "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});

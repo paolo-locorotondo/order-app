@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProductForm, { ProductFormData } from "./ProductForm";
+
 import AdminModal from "@/components/AdminModal";
 import AdminTable, { AdminTableColumn } from "@/components/AdminTable";
 import RefreshButton from "@/components/RefreshButton";
@@ -27,6 +28,9 @@ export default function ProductsTable({ products }: { products: ProductWithInven
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // Sorgente del flow "Duplica": prodotto da copiare nel modal di creazione.
+  // Mutuamente esclusivo con `selectedProduct` (edit). Reset alla chiusura modal.
+  const [duplicateSource, setDuplicateSource] = useState<ProductWithInventory | undefined>();
 
   // Selezione multipla per bulk delete con auto-prune (stesso pattern di
   // UsersTable e OrdersTable). Le righe nascoste dai filtri escono dal set.
@@ -230,6 +234,17 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
   const openModal = (product?: ProductWithInventory) => {
     setSelectedProduct(product);
+    setDuplicateSource(undefined); // edit/create normale: niente pre-fill duplicate
+    setFormError(null);
+    setFormSuccess(null);
+    setModalOpen(true);
+  };
+
+  const openDuplicateModal = (source: ProductWithInventory) => {
+    // Modalità create con pre-fill dei campi del prodotto sorgente. La logica
+    // di copia/azzera dei singoli campi è in `duplicateInitialValues` più sotto.
+    setSelectedProduct(undefined);
+    setDuplicateSource(source);
     setFormError(null);
     setFormSuccess(null);
     setModalOpen(true);
@@ -237,10 +252,42 @@ export default function ProductsTable({ products }: { products: ProductWithInven
 
   const closeModal = () => {
     setSelectedProduct(undefined);
+    setDuplicateSource(undefined);
     setFormError(null);
     setFormSuccess(null);
     setModalOpen(false);
   };
+
+  // Pre-fill values per il flow Duplica. Decisioni concordate:
+  //   - SKU: copia identico (l'utente cambierà slug per evitare 409 sull'unique)
+  //   - deliveryDate: copia dalla sorgente
+  //   - quantity: 0 (azzerata, niente stock fantasma)
+  // Tutti gli altri scalari (name/slug/description/price/image) vengono copiati.
+  const duplicateInitialValues: Partial<ProductFormData> | undefined = (() => {
+    if (!duplicateSource) return undefined;
+    // Replico la conversione locale (NON ISO/UTC) per evitare drift timezone:
+    // un prodotto con deliveryDate alle 23:30 locali tornerebbe il giorno dopo in UTC.
+    let dateStr = "";
+    if (duplicateSource.deliveryDate) {
+      const d = new Date(duplicateSource.deliveryDate);
+      if (!Number.isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        dateStr = `${y}-${m}-${day}`;
+      }
+    }
+    return {
+      name: duplicateSource.name,
+      slug: duplicateSource.slug,
+      description: duplicateSource.description ?? "",
+      price: duplicateSource.price,
+      sku: duplicateSource.sku,
+      image: duplicateSource.image ?? "",
+      quantity: 0,
+      deliveryDate: dateStr,
+    };
+  })();
 
   const handleSubmit = useCallback(
     async (formData: ProductFormData) => {
@@ -535,6 +582,13 @@ export default function ProductsTable({ products }: { products: ProductWithInven
             >
               Modifica
             </button>
+            <button
+              onClick={() => openDuplicateModal(product)}
+              className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-700"
+              title="Crea un nuovo prodotto pre-compilato con questi dati"
+            >
+              Duplica
+            </button>
             {deleteConfirm === product.id ? (
               <>
                 <button
@@ -567,11 +621,21 @@ export default function ProductsTable({ products }: { products: ProductWithInven
       <AdminModal
         isOpen={modalOpen}
         onClose={closeModal}
-        title={selectedProduct ? `Modifica: ${selectedProduct.name}` : "Nuovo Prodotto"}
+        title={
+          selectedProduct
+            ? `Modifica: ${selectedProduct.name}`
+            : duplicateSource
+              ? `Duplica da: ${duplicateSource.name}`
+              : "Nuovo Prodotto"
+        }
       >
         <ProductForm
-          key={selectedProduct?.id ?? `new-${createResetCount}`}
+          // Key cambia per forzare il remount del form quando cambia il contesto
+          // (edit vs duplica vs nuovo). Il `dup-${id}` distingue duplicati da
+          // diversi sorgenti aperti in sequenza.
+          key={selectedProduct?.id ?? (duplicateSource ? `dup-${duplicateSource.id}-${createResetCount}` : `new-${createResetCount}`)}
           product={selectedProduct}
+          initialValues={duplicateInitialValues}
           onSubmit={handleSubmit}
           loading={formLoading}
           error={formError}
