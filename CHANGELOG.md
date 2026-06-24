@@ -742,3 +742,64 @@ Sostituito `<select>` con `Combobox` in **6 punti**:
 
 **Priority**: 🟢 LOW (UX polish)
 
+---
+
+## 🆕 Iterazione 2026-06 (bulk, archiviazione, backup)
+
+### Selezione multipla + azioni bulk (Admin Utenti, Ordini, Prodotti)
+
+`AdminTable` esteso con prop opt-in `selectable` / `selectedIds` / `onToggleRowSelection` / `onToggleAllVisible` (checkbox per riga + header select-all-visibili con stato indeterminato; retrocompatibile). Pattern condiviso: state `Set<id>` con **auto-prune** quando cambiano i filtri (l'azione bulk opera solo sulle righe visibili, niente ghost-edit), action bar che appare con ≥1 selezionato, `confirm()` prima di applicare.
+
+- **Admin Utenti**: cambio ruolo bulk (`POST /api/admin/users/bulk/role`, `updateMany` atomico). Self-demotion guard estesa: l'admin loggato non può togliersi il ruolo ADMIN né da single PUT né da bulk. Tutte le colonne rese sortable.
+- **Admin Ordini**: cambio status bulk (`POST /api/admin/orders/bulk/status`) con gestione transizioni inventory (cancel→increment, uncancel→decrement, pre-flight all-or-nothing su disponibilità); delete bulk (`POST /api/admin/orders/bulk/delete`). Colonne Cliente e Status sortable.
+- **Admin Prodotti**: delete bulk (`POST /api/admin/products/bulk/delete`) con guard block-if-orders (rifiuta in 409 se anche un solo prodotto è in ordini storici, elenca i nomi).
+
+### Filtri status/ruolo cumulativi
+
+`statusFilter` (Admin Ordini + Storico Ordini) e `roleFilter` (Admin Utenti) passati da single-value a `Set`: selezione multipla a somma. "Tutti" = set vuoto (mostra tutto) e azzera; click su un valore fa toggle.
+
+### DELETE ordine meccanico (no restore inventory)
+
+Risolto un double-restore latente: l'inventory veniva ripristinato sia alla transizione status→ANNULLATO sia al DELETE. Ora il DELETE (single + bulk) fa solo cleanup di `OrderItem` + `Order`; l'accounting inventory è guidato **esclusivamente** dalle transizioni di status. La UI avvisa quando si elimina un ordine non-ANNULLATO ("stock non restituito").
+
+### Step 10 — Archiviazione soft di Product e Order
+
+Campi `archivedAt: DateTime?` su `Product` e `Order` (migration `20260605120000_add_archived_at_product_order`). Reversibile, niente delete fisico. Endpoint `POST /api/admin/{products,orders}/bulk/archive { ids, archive }`.
+
+- **Visibilità**: i record archiviati sono nascosti di default da shop (`/shop`, `/shop/products/[id]` → 404), storico cliente, e dalle tabelle admin (toggle "Mostra archiviati" nei filtri + badge ambra). Combobox prodotti negli ordini admin escludono gli archiviati (in EditOrderPanel restano selezionabili solo se già sulla riga).
+- **Guard anti-bypass su prodotto archiviato**: `POST/PATCH /api/cart`, `POST /api/cart/reserve`, `POST /api/orders` ritornano 410 con elenco prodotti (banner a lista puntata nel checkout + errori inline per-card nel carrello). `archivedProductIds` nel body per gli errori per-item.
+- **Order confirmation**: 404 se archiviato per non-admin; box "Ordinante" (nome+email) visibile all'admin che consulta un ordine non suo.
+- **Refactor path bulk** (REST-friendly, tutti POST con body): `…/bulk` → `…/bulk/role|status|delete|archive`.
+
+### Duplica prodotto
+
+Bottone "Duplica" per riga in Admin Prodotti: apre il modal in creazione pre-compilato col prodotto sorgente (`ProductForm.initialValues`). Copia name/slug/description/price/sku/image/deliveryDate; quantity azzerata a 0.
+
+### Export PDF — colonne data consegna + sort multi-livello tabella Totali
+
+Tabella "Totali per prodotto" (Admin Ordini): colonna "Data consegna" separata, sort multi-livello a 2 chiavi con tiebreaker chained (default `deliveryDate desc, name asc`). Export PDF allineato: sezione "Totali per prodotto" e "Aggregato per cliente" con colonna data consegna dedicata, larghezze uniformi (190mm, margini 10mm), rispetta il sort UI, rimossa colonna "Appunti".
+
+### Homepage — CTA login
+
+Box informativo (solo utenti non autenticati) con link a login/registrazione. Nuovo helper `isAuthenticatedFromServerSession()` in `lib/auth-helpers.ts` (check leggero JWT, no DB, per scelte cosmetiche).
+
+### Step 10-bis — Backup / restore completo del DB (`pg_dump`/`pg_restore`)
+
+Script `npm run db:backup` e `npm run db:restore -- <file> --yes` per backup completo (schema + dati + `_prisma_migrations` → replica esatta), pensati per snapshot, disaster recovery e migrazione verso un nuovo provider Postgres. Documentazione in `scripts/README.md`.
+
+- **`pg_dump` e non export JSON in-app**: strumento standard, completo (FK/enum/ordine inserimento), gratuito con Supabase. Un round-trip JSON via Prisma sarebbe stato più codice e meno fedele (no `_prisma_migrations`, timestamp `@updatedAt` sovrascritti, ordine FK manuale). Prisma resterebbe preferibile solo per export *filtrato* o cambio di *engine* DB.
+- **Robustezza connection string**: i parametri vengono passati a pg_dump/pg_restore via env `PG*` (`PGPASSWORD` letterale) invece che come URI — evita sia i parametri Prisma non-libpq (`?schema`, `?pgbouncer`) sia il break su password Supabase con `%`/`,` non percent-encodati. `--schema public` per non trascinare gli schemi `auth`/`storage` di Supabase.
+- **Restore tollerante**: distingue errori benigni (SET di GUC di versioni Postgres più recenti del server target, es. `transaction_timeout`; "does not exist, skipping" del `--clean`) dagli errori reali, riportando successo quando i dati sono comunque ripristinati.
+- `backups/` git-ignored.
+
+**File coinvolti** (iterazione):
+- `prisma/schema.prisma`, `prisma/migrations/20260605120000_add_archived_at_product_order/`
+- `components/AdminTable.tsx`, `app/dashboard/admin/{users,orders,products,inventory}/*`, `app/dashboard/orders/*`
+- `app/api/admin/{users,orders,products}/bulk/*`, `app/api/cart/*`, `app/api/orders/route.ts`, `app/api/admin/orders/[id]/route.ts`
+- `app/shop/{page,products/[id]/page,cart,checkout,order-confirmation,_components/CartItemsList}.tsx`
+- `app/dashboard/admin/products/{ProductForm,ProductsTable}.tsx`
+- `scripts/{db-backup,db-restore,pg-conn}.ts` (NEW), `scripts/README.md` (NEW)
+- `lib/validators.ts`, `lib/auth-helpers.ts`, `docs/AUTHORIZATION_MATRIX.md`, `README.md`, `package.json`, `.gitignore`
+
+**Priority**: 🟡 MEDIUM (data management + operatività admin)
+

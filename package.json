@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
+    "db:backup": "tsx scripts/db-backup.ts",
+    "db:restore": "tsx scripts/db-restore.ts",
     "verify": "tsx scripts/verify/run-all.ts",
     "verify:cart": "tsx scripts/verify/cart-reservation.ts",
     "verify:admin": "tsx scripts/verify/admin-delete-order.ts && tsx scripts/verify/admin-delete-user.ts && tsx scripts/verify/admin-delete-product.ts"

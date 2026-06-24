@@ -130,6 +130,31 @@ Lista di requisiti raccolti il 2026-05-26, in ordine di priorità decrescente (1
 
 ---
 
+### Backlog — Cleanup/purge ordini archiviati (idea futura)
+**Stato**: 🔵 BACKLOG (non urgente: il backup `pg_dump` copre già "non perdere i dati", vedi CHANGELOG iter. 2026-06)
+**Descrizione**: SE in futuro servirà liberare spazio sul DB mantenendo l'app online, valutare un purge fisico degli ordini archiviati (export filtrato JSON via Prisma → hard delete). Distinto dal backup completo già implementato.
+**Vincolo da ricordare**: nessuna relazione ha `onDelete: Cascade` (tranne `CartReservationItem→CartReservation`). Il purge di un `Product` è downstream del purge di TUTTI gli Order che lo citano → un eventuale cleanup va limitato agli **Order** (+ OrderItem), che sono l'unità purgabile pulita. Per l'export filtrato Prisma sarebbe più adatto di pg_dump (query `where`, engine-agnostico).
+
+---
+
+### Backlog — Backup/migrazione via Prisma (solo SE si cambia engine DB)
+**Stato**: 🔵 BACKLOG (da analizzare solo se si lascia Postgres)
+**Contesto**: il backup/restore attuale (`npm run db:backup` / `db:restore`, vedi CHANGELOG iter. 2026-06) usa `pg_dump`/`pg_restore`, che è **solo-Postgres**. Funziona perfettamente per Supabase → altro Postgres. Questo step si attiva SOLO se un giorno si migra verso un **motore diverso** (MySQL, SQLite, ecc.), dove pg_dump non serve.
+
+**Idea**: script di export/import dati basati su **Prisma Client** (engine-agnostico): `findMany()` per ogni model → JSON versionato → re-insert in ordine di FK su qualunque DB supportato da Prisma.
+
+**Trade-off / punti da analizzare** (emersi dal confronto pg_dump vs Prisma):
+- **Pro**: engine-agnostico (l'unico modo per Postgres→MySQL/SQLite); permette export *filtrato* (es. solo archiviati) e *trasformazioni* dei dati durante la migrazione; non richiede i client tool `pg_*` installati.
+- **Contro / da risolvere**:
+  - `_prisma_migrations` NON esportata → il nuovo DB va inizializzato prima con `prisma migrate deploy` (schema) e poi caricato coi dati.
+  - Timestamp `@default(now())` / `@updatedAt`: vanno forzati esplicitamente al re-insert, altrimenti Prisma li sovrascrive (perdi createdAt/updatedAt originali).
+  - **Ordine di inserimento FK** da gestire a mano: User → Product → Inventory → Order → OrderItem → CartItem/Reservation. (Nessun ciclo nel grafo attuale, gestibile.)
+  - Niente sequenze/default/vincoli/estensioni a livello DB: li ricrea lo schema Prisma, non l'export.
+  - Intere tabelle caricate in memoria Node → ok per volumi piccoli, problematico su grandi dataset (valutare batch/cursor).
+- **Conclusione provvisoria**: finché si resta su Postgres, `pg_dump` vince (fedeltà completa, zero codice). Promuovere questo step solo a fronte di un cambio di engine deciso.
+
+---
+
 ### Step 9-bis. Template messaggi WhatsApp in DB (follow-up di Step 9)
 **Stato**: 🔴 TODO (backlog non bloccante)
 **Descrizione**: Spostare i template dei messaggi WhatsApp da `lib/whatsapp.ts` (hardcoded) a una tabella `MessageTemplate { key, body }` editabile a runtime tramite UI admin. Per ora resta hardcoded perché redeploy Vercel su git push è ~90s e il single-admin (te) ha accesso al codice.

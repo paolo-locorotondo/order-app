@@ -101,9 +101,17 @@ Apri [http://localhost:3000](http://localhost:3000)
 - `npm run build` - build di produzione
 - `npm run lint` - linter
 - `npm run db:seed` - popola DB con dati di test
+- `npm run db:backup` - backup completo del DB ([dettagli](scripts/README.md))
+- `npm run db:restore -- <file.dump> --yes` - ripristino di un backup, distruttivo ([dettagli](scripts/README.md))
 - `npx prisma studio` - visualizza DB
 - `docker-compose up -d` - avvia Postgres
 - `docker-compose down` - ferma Postgres
+
+## Backup e ripristino del database
+
+Backup completo via `pg_dump`/`pg_restore` per snapshot periodici, disaster
+recovery e migrazione verso un nuovo provider. Prerequisiti, comandi e flow di
+migrazione sono documentati in **[scripts/README.md](scripts/README.md)**.
 
 ## Struttura del Progetto
 

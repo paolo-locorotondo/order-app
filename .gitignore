@@ -44,3 +44,6 @@ next-env.d.ts
 /app/generated/prisma
 /generated/
 *.tmp*
+
+# database backups (pg_dump) — conserva fuori dal repo
+/backups/
